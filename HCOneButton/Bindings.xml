@@ -1,0 +1,3 @@
+<Bindings>
+    <Binding name="CLICK HCOneButtonFrame:LeftButton" header="HCOB" />
+</Bindings>
