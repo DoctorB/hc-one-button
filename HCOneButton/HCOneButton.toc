@@ -2,7 +2,7 @@
 ## Title: HC One Button
 ## Notes: Hardcore combat assistant with Advisor Engine 2.0 for Hunter/Mage/Warrior/Warlock/Priest/Rogue/Paladin/Shaman (scored decisions, rolling TTK/TTD, class survival reserve and hysteresis), unified Core HUD, deterministic secure action slots, configurable slot keybinds, diagnostic RGB, pet feeding, profession coach and combat telemetry for WoW Classic Era.
 ## Author: DoctorB
-## Version: 1.21.1
+## Version: 1.21.5
 ## SavedVariables: HCOB_DB, HCOB_CombatLog
 
 PetFoodDB.lua
