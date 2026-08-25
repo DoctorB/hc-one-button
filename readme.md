@@ -2,15 +2,38 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-**Current version:** `1.21.1`  
+**Current version:** `1.26.1`  
 **Target client:** World of Warcraft Classic Era / Hardcore  
 **Interface:** `11509`
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
-The addon combines a compact combat HUD, a class-aware Advisor, fixed secure action buttons, survival-oriented decision logic, profession guidance, Hunter pet management and detailed combat telemetry.
+The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine classes**, deterministic secure action slots, survival-oriented decision logic, profession guidance, Hunter pet management and detailed combat telemetry.
 
 > **Important:** HCOneButton does **not** automatically execute the Advisor's combat decisions. Protected actions still require a player click/key press through WoW's secure action system.
+
+---
+
+## What's new in 1.26.1
+
+Version `1.26.1` is the full-class stability release built on top of the architecture refactor and the complete Druid Advisor 2.0 migration.
+
+Highlights:
+
+- all **9/9 classes** now use Advisor Engine 2.0;
+- Druid now has full Cat, Bear/Dire Bear and caster-form decision logic;
+- Druid form detection no longer depends on hard-coded stance indexes;
+- Druid secure modifier macros use the actual stance-bar layout where required;
+- Fixed Action Panel supports up to **20 deterministic slots**;
+- existing slot meanings remain stable and new class actions are append-only;
+- Core and Advisor remain class-agnostic; class-specific combat policy lives in `Classes/*.lua`;
+- secure macro/action configuration remains protected by combat-lockdown guards;
+- the modular runtime contains 37 Lua chunks instead of the former monolithic runtime;
+- `HCOB_CombatLog` is cleared in place so SavedVariable identity is preserved correctly;
+- inactive HCOB slot bindings are released safely without removing keys the user has rebound to another action;
+- diagnostic protocol v3 remains slot-only and deterministic.
+
+The 1.26.1 stability review validated TOC order, module loading, all class contracts, combat-lockdown behavior, macro size limits, action-slot mappings and dedicated Druid scenarios.
 
 ---
 
@@ -45,7 +68,9 @@ It can consider, depending on class:
 - rolling estimated **TTD** (time to death);
 - class-specific **Survival Reserve**;
 - current recommendation stability/hysteresis;
-- fight duration and resource efficiency.
+- fight duration and resource efficiency;
+- spec/talent direction where relevant;
+- opener, sustain, finisher, interrupt and emergency priorities.
 
 Current class coverage:
 
@@ -59,9 +84,15 @@ Current class coverage:
 | Mage | ✅ Engine 2.0 |
 | Warlock | ✅ Engine 2.0 |
 | Shaman | ✅ Engine 2.0 |
-| Druid | 🔹 Base logic for now |
+| Druid | ✅ Engine 2.0 |
 
 Emergency states such as interrupts, critical HP and dangerous multi-pulls remain hard-priority safety gates.
+
+### Class-owned combat policy
+
+The modular architecture keeps the central Advisor class-agnostic. Each class owns its own combat policy through `Classes/<Class>.lua`, including recommendation candidates, survival reserve, panic/multi-pull behavior, interrupt choice and class-specific secure macro policy.
+
+The shared Advisor is responsible for context, scoring, hysteresis and final selection rather than hard-coding individual spells such as Serpent Sting, Overpower or Life Tap.
 
 ### Secure clickable Action Panel
 
@@ -87,8 +118,9 @@ For example, on Hunter:
 - Slot 01 is always Hunter's Mark;
 - Slot 02 is always Serpent Sting;
 - Slot 03 is always Arcane Shot;
-- Slot 04 is always Aimed Shot;
-- etc.
+- Slot 18 is always Aspect of the Hawk;
+- Slot 19 is always Aspect of the Monkey;
+- Slot 20 is always Aspect of the Cheetah.
 
 If the spell has not been learned yet, the slot stays in place and remains disabled/dim. When the spell is learned, the same slot becomes active.
 
@@ -96,7 +128,7 @@ This guarantees stable slot → key → diagnostic-color mappings for the lifeti
 
 ### Fixed Action Panel bindings
 
-By default, HCOneButton uses the following slot bindings. They can now be changed from **`/hcob options` → Fixed Action Panel bindings → Configure slot bindings...**. The mapping is stored per slot and is shared across classes, while each class keeps its own deterministic spell layout.
+By default, HCOneButton uses the following slot bindings. They can be changed from **`/hcob options` → Fixed Action Panel bindings → Configure slot bindings...**. The mapping is stored per slot and is shared across classes, while each class keeps its own deterministic spell layout.
 
 | Slot | Default binding |
 |---:|---|
@@ -118,8 +150,12 @@ By default, HCOneButton uses the following slot bindings. They can now be change
 | 16 | `CTRL+SHIFT+6` |
 | 17 | `CTRL+SHIFT+7` |
 | 18 | `CTRL+SHIFT+8` |
+| 19 | `CTRL+SHIFT+9` |
+| 20 | `CTRL+SHIFT+0` |
 
 > **Warning:** both default and custom combinations may already be used by the WoW UI or another addon. HCOneButton can overwrite the existing binding when auto-bind is enabled. The binding editor rejects duplicate keys between HCOB slots, but it may intentionally replace a non-HCOB WoW binding. Turning auto-bind off stops HCOneButton from applying slot bindings again, but does not automatically restore bindings that were previously replaced.
+
+When a character/class uses fewer slots than another character, HCOneButton can release stale HCOB slot bindings that are no longer active. It only clears a key if that key still points to the exact HCOB slot command; a key the user has rebound to another action is left untouched.
 
 In the binding editor, click a slot key and press the desired combination. `ESC` cancels capture, `DELETE`/`BACKSPACE` leaves that slot unbound, **Default** resets one slot, and **Reset all** restores the full default layout.
 
@@ -135,7 +171,7 @@ to print the current slot → key → action mapping.
 
 ## Class action layouts
 
-The following layouts are deterministic. Unknown spells keep their slot.
+The following layouts are deterministic. Unknown spells keep their slot. Existing slots are preserved across releases; newly introduced actions are appended whenever possible.
 
 <details>
 <summary><strong>Warrior</strong></summary>
@@ -160,6 +196,7 @@ The following layouts are deterministic. Unknown spells keep their slot.
 | 16 | Berserker Rage |
 | 17 | Retaliation |
 | 18 | Shield Wall |
+| 19 | Charge |
 
 </details>
 
@@ -208,6 +245,8 @@ The following layouts are deterministic. Unknown spells keep their slot.
 | 16 | Rapid Fire |
 | 17 | Freezing Trap |
 | 18 | Aspect of the Hawk |
+| 19 | Aspect of the Monkey |
+| 20 | Aspect of the Cheetah |
 
 </details>
 
@@ -232,6 +271,7 @@ The following layouts are deterministic. Unknown spells keep their slot.
 | 14 | Kidney Shot |
 | 15 | Blind |
 | 16 | Adrenaline Rush |
+| 17 | Riposte |
 
 </details>
 
@@ -282,6 +322,7 @@ The following layouts are deterministic. Unknown spells keep their slot.
 | 16 | Arcane Explosion |
 | 17 | Blizzard |
 | 18 | Shoot |
+| 19 | Arcane Missiles |
 
 `Frost Nova` is intentionally prepared with its explicit learned rank from the low-rank identifier used by HCOneButton for efficient control. Other normal `/cast SpellName` actions use the highest learned rank selected by the WoW client.
 
@@ -329,8 +370,16 @@ The following layouts are deterministic. Unknown spells keep their slot.
 | 12 | Dash |
 | 13 | Travel Form |
 | 14 | Mark of the Wild |
+| 15 | Cat Form |
+| 16 | Bear Form |
+| 17 | Rip |
+| 18 | Faerie Fire (Feral) |
+| 19 | Healing Touch |
+| 20 | Frenzied Regeneration |
 
-> Druid currently uses the older/base Advisor logic rather than Advisor Engine 2.0.
+Druid now uses Advisor Engine 2.0 across Cat, Bear/Dire Bear and caster-form play. The stability layer identifies forms by stable form ID when available, with a resource-type fallback, rather than depending on a fixed stance-bar position.
+
+Relevant secure Druid actions can cancel form before casting when required. Mobility/interrupt modifier macros also use form-aware fallbacks rather than assuming that Cat or Bear always occupies the same numeric stance slot.
 
 </details>
 
@@ -352,6 +401,8 @@ The following layouts are deterministic. Unknown spells keep their slot.
 | 11 | Searing Totem |
 | 12 | Fire Nova Totem |
 | 13 | Chain Lightning |
+| 14 | Rockbiter Weapon |
+| 15 | Windfury Weapon |
 
 </details>
 
@@ -385,7 +436,10 @@ The fixed Hunter Action Panel uses:
 
 - Slot 11: Mend Pet;
 - Slot 12: Feed Pet;
-- Slot 13: Feign Death.
+- Slot 13: Feign Death;
+- Slot 18: Aspect of the Hawk;
+- Slot 19: Aspect of the Monkey;
+- Slot 20: Aspect of the Cheetah.
 
 Feign Death's secure action also prepares pet passive/follow before the spell.
 
@@ -454,33 +508,99 @@ The Profession Coach panel is hidden automatically in combat.
 
 ---
 
+## Modular architecture
+
+HCOneButton no longer uses the former monolithic `HCOneButton.lua` runtime. The addon is split into focused modules with a single public `HCOneButton` namespace and a private shared runtime environment.
+
+Current high-level structure:
+
+```text
+HCOneButton/
+├── HCOneButton.toc
+├── Bindings.xml
+├── README.txt
+├── Core/
+│   ├── Init.lua
+│   ├── State.lua
+│   ├── Utils.lua
+│   ├── SpellUtils.lua
+│   ├── Range.lua
+│   ├── Auras.lua
+│   ├── Macros.lua
+│   ├── Commands.lua
+│   └── Events.lua
+├── Advisor/
+│   ├── Dynamics.lua
+│   ├── Threat.lua
+│   ├── Survival.lua
+│   └── Engine.lua
+├── Classes/
+│   ├── Warrior.lua
+│   ├── Hunter.lua
+│   ├── Mage.lua
+│   ├── Warlock.lua
+│   ├── Priest.lua
+│   ├── Rogue.lua
+│   ├── Paladin.lua
+│   ├── Shaman.lua
+│   └── Druid.lua
+├── Hunter/
+│   ├── Pet.lua
+│   ├── Ammo.lua
+│   ├── Aspects.lua
+│   ├── PetFood.lua
+│   └── Management.lua
+├── UI/
+│   ├── CoreHUD.lua
+│   ├── Advisor.lua
+│   ├── ActionPanel.lua
+│   ├── Options.lua
+│   └── DiagnosticPixel.lua
+├── Systems/
+│   ├── Bindings.lua
+│   ├── CombatLog.lua
+│   └── ProfessionCoach.lua
+└── Data/
+    ├── Spells.lua
+    └── PetFoodDB.lua
+```
+
+`Core/*` and `Advisor/*` do not contain per-class decision chains. Class-specific policy belongs to `Classes/<Class>.lua`, while complex Hunter-only services remain in the dedicated `Hunter/` subsystem.
+
+---
+
 ## Installation
 
 1. Close World of Warcraft.
-2. Extract the addon so the directory is:
+2. Remove or replace the previous `HCOneButton` addon directory when upgrading across the architecture-refactor releases.
+3. Extract the addon so the directory is:
 
 ```text
 World of Warcraft/_classic_era_/Interface/AddOns/HCOneButton/
 ```
 
-3. Verify that the folder directly contains:
+4. Verify that the folder directly contains at least:
 
 ```text
 HCOneButton.toc
-HCOneButton.lua
-PetFoodDB.lua
-ProfessionCoach.lua
 Bindings.xml
+Core/
+Advisor/
+Classes/
+Hunter/
+UI/
+Systems/
+Data/
 ```
 
-4. Start WoW and enable **HC One Button** in the AddOns list.
-5. Enter the world and run:
+5. Start WoW and enable **HC One Button** in the AddOns list.
+6. Enter the world and run:
 
 ```text
 /hcob status
 ```
 
-If upgrading from an older HCOneButton build, replace the complete addon folder. SavedVariables are stored separately and are preserved unless you delete them manually.
+If upgrading from an older HCOneButton build, replace the complete addon folder instead of copying individual files over it. SavedVariables are stored separately and are preserved unless you delete them manually.
 
 ---
 
@@ -665,7 +785,7 @@ HCOneButton can expose a small diagnostic pixel intended for passive external di
 
 Protocol v3 is **slot-only**. It intentionally does not encode class or spell names.
 
-For action slots 1–18:
+For action slots 1–20:
 
 ```text
 R = slot × 12
@@ -689,6 +809,8 @@ Examples:
 | 03 | `36, 96, 224` | `#2460E0` |
 | 10 | `120, 96, 224` | `#7860E0` |
 | 18 | `216, 96, 224` | `#D860E0` |
+| 19 | `228, 96, 224` | `#E460E0` |
+| 20 | `240, 96, 224` | `#F060E0` |
 
 The meaning of each slot is guaranteed by HCOneButton's deterministic class layout, not by the external reader.
 
@@ -699,6 +821,7 @@ The meaning of each slot is guaranteed by HCOneButton's deterministic class layo
 WoW restricts protected combat actions. HCOneButton is designed around those restrictions:
 
 - secure action attributes are prepared outside combat;
+- secure macro/button configuration is guarded by `InCombatLockdown()`;
 - the Advisor may change its visual recommendation during combat;
 - it does **not** dynamically rewrite a secure button into a different spell during combat;
 - the Action Panel therefore uses permanent class-specific spell slots;
@@ -708,7 +831,7 @@ This separation is intentional and is fundamental to the addon's architecture.
 
 ---
 
-## Performance
+## Performance and runtime safety
 
 HCOneButton avoids heavy continuous scans where possible:
 
@@ -716,7 +839,11 @@ HCOneButton avoids heavy continuous scans where possible:
 - profession panels hide in combat;
 - Action Panel state/cooldown updates are throttled;
 - combat telemetry is compact and retained with a configurable fight limit;
-- smart components include runtime fail-safe handling.
+- smart components include runtime fail-safe handling;
+- shared combat data is collected into a common Advisor context instead of repeatedly querying the same APIs from every class module;
+- defensive value-access guards fail closed if a shared API value is unexpectedly unavailable, instead of fabricating combat state.
+
+If essential live combat data cannot be read safely, smart recommendations can degrade to a limited state while secure player input remains available.
 
 If something appears wrong, run:
 
@@ -737,6 +864,29 @@ HCOB_CombatLog
 ```
 
 Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configuration and telemetry. Back it up first if you want to keep combat history.
+
+`/hcob log clear` clears the existing combat-log table in place so the WoW SavedVariable identity remains intact across `/reload` and logout.
+
+---
+
+## Release validation
+
+The `1.26.1` stability candidate was checked for:
+
+- 37/37 Lua chunks parsing successfully;
+- all 38 TOC references existing (`37 Lua + Bindings.xml`);
+- exact TOC-order loading;
+- `PLAYER_LOGIN` and primary class contracts for all 9 classes;
+- fault-injection handling for all 9 classes;
+- Druid Cat/Bear/Dire Bear and stance-index scenarios;
+- secure-lockdown immutability for main macros, Action Panel configuration and slot bindings;
+- generated secure macro text remaining within the WoW macrotext limit used by the test harness;
+- no class exceeding 20 deterministic Action Panel slots;
+- no duplicate action IDs within class layouts;
+- no missing `S.*` spell constants in the audited paths;
+- no reintroduction of `Core/Runtime.lua` or class decision chains into Core/Advisor.
+
+A short in-game smoke test is still recommended after installation because actual client taint/secure-execution behavior cannot be reproduced perfectly by an external harness.
 
 ---
 
