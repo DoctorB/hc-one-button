@@ -346,7 +346,7 @@ function UpdateDisplayMinimal(reason)
 end
 
 
-function UpdateDisplayCore()
+function UpdateDisplayCore(recordTelemetrySample)
     if not UnitExists("player") then return end
     UpdateBaseVisual()
     if HCOB_DB.smartDisplay == false or runtimeSmartDisabled then
@@ -364,21 +364,27 @@ function UpdateDisplayCore()
 
     local telemetryReserve = nil
     if currentFight and HCOB_DB.combatLogging ~= false and not runtimeTelemetryDisabled then
+        -- Event-driven refreshes still need the current reserve in the feedback
+        -- trace, but only heartbeat refreshes contribute to time-sampled combat
+        -- percentages/averages. This keeps 1.27 telemetry comparable even when
+        -- UNIT_AURA or UNIT_POWER fire at different rates for different classes.
         local reserve = HCOB.Advisor.Engine.SurvivalReserve()
         telemetryReserve = tonumber(reserve)
-        currentFight.survivalReserveSamples = (tonumber(currentFight.survivalReserveSamples) or 0) + 1
-        currentFight.survivalReserveSum = (tonumber(currentFight.survivalReserveSum) or 0) + (tonumber(reserve) or 0)
-        currentFight.survivalReserveMin = math.min(tonumber(currentFight.survivalReserveMin) or 100, tonumber(reserve) or 100)
-        currentFight.advisorSamples = (tonumber(currentFight.advisorSamples) or 0) + 1
-        if kind == "danger" then
-            currentFight.advisorDangerSamples = (tonumber(currentFight.advisorDangerSamples) or 0) + 1
-        elseif kind == "caution" then
-            currentFight.advisorCautionSamples = (tonumber(currentFight.advisorCautionSamples) or 0) + 1
-        elseif kind == "interrupt" then
-            currentFight.advisorInterruptSamples = (tonumber(currentFight.advisorInterruptSamples) or 0) + 1
-        end
-        if keyHint == "CAST MANUALLY" then
-            currentFight.advisorManualSamples = (tonumber(currentFight.advisorManualSamples) or 0) + 1
+        if recordTelemetrySample ~= false then
+            currentFight.survivalReserveSamples = (tonumber(currentFight.survivalReserveSamples) or 0) + 1
+            currentFight.survivalReserveSum = (tonumber(currentFight.survivalReserveSum) or 0) + (tonumber(reserve) or 0)
+            currentFight.survivalReserveMin = math.min(tonumber(currentFight.survivalReserveMin) or 100, tonumber(reserve) or 100)
+            currentFight.advisorSamples = (tonumber(currentFight.advisorSamples) or 0) + 1
+            if kind == "danger" then
+                currentFight.advisorDangerSamples = (tonumber(currentFight.advisorDangerSamples) or 0) + 1
+            elseif kind == "caution" then
+                currentFight.advisorCautionSamples = (tonumber(currentFight.advisorCautionSamples) or 0) + 1
+            elseif kind == "interrupt" then
+                currentFight.advisorInterruptSamples = (tonumber(currentFight.advisorInterruptSamples) or 0) + 1
+            end
+            if keyHint == "CAST MANUALLY" then
+                currentFight.advisorManualSamples = (tonumber(currentFight.advisorManualSamples) or 0) + 1
+            end
         end
     end
 
@@ -408,8 +414,8 @@ function UpdateDisplayCore()
 end
 
 
-function UpdateDisplay()
-    local ok = SafeRun("SmartHUD", UpdateDisplayCore)
+function UpdateDisplay(recordTelemetrySample)
+    local ok = SafeRun("SmartHUD", UpdateDisplayCore, recordTelemetrySample)
     if not ok then
         -- A single Smart HUD error is enough to put it into safe mode.
         -- The SecureActionButton and macro remain independent and continue working.

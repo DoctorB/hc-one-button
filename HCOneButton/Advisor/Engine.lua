@@ -29,8 +29,8 @@ function HCOB.Advisor.Engine.SelectCandidate(list)
     for _, c in ipairs(list) do
         local effective = c.score or 0
         if HCOB.Advisor.Engine.lastClassActionId and c.id == HCOB.Advisor.Engine.lastClassActionId
-           and (now - (HCOB.Advisor.Engine.lastClassActionAt or 0)) <= 1.25 then
-            effective = effective + 7 -- hysteresis: avoid threshold flicker
+           and (now - (HCOB.Advisor.Engine.lastClassActionAt or 0)) <= 0.65 then
+            effective = effective + 4 -- short hysteresis: preserve stability without masking a fresh state change
         end
         c.effectiveScore = effective
         if not best or effective > bestScore then best, bestScore = c, effective end
@@ -66,10 +66,10 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
 
     -- Never delay a higher-priority safety/interrupt state.  For normal action
     -- swaps, keep the previous recommendation for a tiny window only when the
-    -- old spell is still known/ready.  This removes 100-200 ms threshold flicker
-    -- without hiding real emergency changes.
+    -- old spell is still known/ready.  This removes single-frame threshold flicker while keeping ordinary
+    -- recommendations responsive. Higher-priority safety states still bypass it.
     local age = now - (state.since or 0)
-    local hold = (state.kind == "action" or state.kind == "buff") and 0.28 or 0
+    local hold = (state.kind == "action" or state.kind == "buff") and 0.12 or 0
     local oldStillPlausible = state.spellId and IsKnown(state.spellId) and CooldownReady(state.spellId)
     if priority <= (state.priority or 0) and hold > 0 and age < hold and oldStillPlausible then
         return state.spellId, state.title, state.key, state.reason, state.kind

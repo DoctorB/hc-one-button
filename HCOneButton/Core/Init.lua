@@ -3,7 +3,7 @@ local addonName = ...
 
 HCOneButton = HCOneButton or {}
 local HCOB = HCOneButton
-HCOB.VERSION = "1.27.2"
+HCOB.VERSION = "1.27.3"
 
 HCOB.Core = HCOB.Core or {}
 HCOB.Data = HCOB.Data or {}

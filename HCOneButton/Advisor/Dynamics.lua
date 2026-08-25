@@ -39,6 +39,8 @@ function HCOB.Advisor.Engine.RollingDynamics(targetHP)
     local now = GetTime()
     local samples = HCOB.Advisor.Engine.samples
     local last = samples[#samples]
+    -- Dynamics intentionally stays at 0.20s: the UI/Advisor may refresh faster,
+    -- but TTK/TTD does not benefit from oversampling the same health state.
     if not last or (now - last.t) >= 0.20 then
         samples[#samples + 1] = {
             t=now,

@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-**Current version:** `1.27.2`  
+**Current version:** `1.27.3`  
 **Target client:** World of Warcraft Classic Era / Hardcore  
 **Interface:** `11509`
 
@@ -14,6 +14,22 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ---
 
+## What's new in 1.27.3
+
+Version `1.27.3` is an **Advisor Responsiveness Pass**. It changes how quickly the existing Advisor logic is reevaluated, but does **not** change class scores, spell priorities, deterministic action slots, bindings, secure Action Panel actions or Diagnostic Pixel Protocol V3.
+
+- Important state changes now request an Advisor refresh immediately instead of waiting for the next periodic HUD tick. This includes player HP/resource, player/target/pet auras and health, cooldown/usability changes, combo points, target changes, target-of-target changes, pet/form changes and hostile-cast state detected by the combat log.
+- Event bursts are coalesced behind a **35 ms minimum refresh interval**, preventing noisy `UNIT_AURA` / `UNIT_POWER_UPDATE` bursts from causing excessive full evaluations.
+- The fallback heartbeat is now **120 ms in combat** and **300 ms out of combat**, down from 200 ms / 500 ms.
+- Normal `action` / `buff` recommendation hold is reduced from **280 ms to 120 ms**.
+- Previous-candidate hysteresis is reduced from **+7 for 1.25 s** to **+4 for 0.65 s**. Close-score recommendations still resist flicker, but the old action is no longer favored for as long.
+- Higher-priority safety states such as interrupts and danger recommendations continue to bypass the normal-action hold.
+- Rolling TTK/TTD sampling intentionally remains at **200 ms**. The UI can react faster without oversampling the same health state into the dynamics model.
+- Combat-log percentages remain heartbeat-sampled. Event-driven UI refreshes can update the feedback trace immediately, but do not bias Advisor sample percentages simply because one class generates more power/aura events than another.
+
+This release is specifically aimed at reducing the feeling of input/recommendation inertia while preserving the anti-flicker behavior that makes the HUD readable.
+
+---
 
 ## What's new in 1.27.2
 

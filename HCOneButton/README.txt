@@ -1,3 +1,25 @@
+HC ONE BUTTON v1.27.3 - ADVISOR RESPONSIVENESS PASS
+====================================================
+
+RELEASE SUMMARY
+- Advisor refresh is now event-driven for important combat-state changes instead of waiting only for the periodic HUD heartbeat.
+- Player HP/resource, target/pet HP, auras, cooldown/usability changes, combo points, target/target-of-target changes, pet/form changes and hostile cast state can trigger a fast refresh.
+- Event bursts are coalesced behind a 35ms minimum refresh interval to avoid excessive full Advisor evaluations.
+- Combat heartbeat reduced from 0.20s to 0.12s; out-of-combat heartbeat reduced from 0.50s to 0.30s.
+- Normal action/buff display hold reduced from 0.28s to 0.12s.
+- Previous-candidate hysteresis reduced from +7 for 1.25s to +4 for 0.65s.
+- Interrupt / CAUTION / DANGER safety priority behavior remains immediate and is never intentionally delayed by the normal-action hold.
+- Rolling TTK/TTD sampling remains at 0.20s intentionally; faster UI refresh does not oversample the dynamics model.
+- Event-driven refreshes do not count as periodic Advisor telemetry samples, preventing event-heavy classes from biasing combat-log percentages. Recommendation-change trace still records immediately.
+- All nine class modules, deterministic slots, bindings, secure Action Panel actions and Diagnostic Pixel Protocol V3 are unchanged from 1.27.2.
+
+RELEASE 1.27.3 - 2026-08-25
+- Event-driven Advisor refresh path with 35ms coalescing.
+- Faster 120ms combat / 300ms idle fallback heartbeat.
+- Shorter normal recommendation hold and candidate hysteresis.
+- Telemetry sampling decoupled from event refresh frequency.
+- No class score, spell mapping, slot, binding or pixel-protocol changes.
+
 HC ONE BUTTON v1.27.2 - ALERT-ONLY HUD BORDER HOTFIX
 =====================================================
 
