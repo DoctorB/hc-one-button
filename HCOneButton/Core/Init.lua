@@ -3,7 +3,7 @@ local addonName = ...
 
 HCOneButton = HCOneButton or {}
 local HCOB = HCOneButton
-HCOB.VERSION = "1.26.1"
+HCOB.VERSION = "1.27.0"
 
 HCOB.Core = HCOB.Core or {}
 HCOB.Data = HCOB.Data or {}
@@ -35,6 +35,8 @@ E.HCOB_CombatLog = HCOB_CombatLog
 HCOB.UI.ActionPanel = HCOB.UI.ActionPanel or {}
 HCOB.Advisor.Engine = HCOB.Advisor.Engine or {}
 HCOB.Systems.ProfessionCoach = HCOB.Systems.ProfessionCoach or {}
+HCOB.Systems.Feedback = HCOB.Systems.Feedback or {}
+HCOB.UI.Feedback = HCOB.UI.Feedback or {}
 
 _G.BINDING_HEADER_HCOB = "HC One Button"
 _G["BINDING_NAME_CLICK HCOneButtonFrame:LeftButton"] = "HC One Button"

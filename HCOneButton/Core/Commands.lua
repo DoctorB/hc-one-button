@@ -23,6 +23,8 @@ SlashCmdList.HCOB = function(msg)
     elseif cmd == "bindtest" then BindTest(arg ~= "" and arg or "BUTTON4")
     elseif cmd == "center" then Center()
     elseif cmd == "options" or cmd == "config" then OpenOptionsPanel()
+    elseif cmd == "report" or cmd == "feedback" then
+        if HCOB.UI.Feedback and HCOB.UI.Feedback.Open then HCOB.UI.Feedback.Open(arg == "recent" and "recent" or "last") else print("|cffff5555HCOB:|r feedback window unavailable. Try /reload.") end
     elseif cmd == "settings" then OpenBlizzardSettingsPanel()
     elseif cmd == "show" then if not InCombatLockdown() then HCOB_DB.visible=true; RefreshButtonState() end
     elseif cmd == "hide" then if not InCombatLockdown() then HCOB_DB.visible=false; RefreshButtonState() end
@@ -95,10 +97,17 @@ SlashCmdList.HCOB = function(msg)
         elseif sub == "session" then
             InitCombatLogDB(); if rest and rest ~= "" then HCOB_CombatLog.session=rest; print("|cff00ff98HCOB LOG:|r session="..rest) else print("|cff00ff98HCOB LOG:|r session="..tostring(HCOB_CombatLog.session)) end
         elseif sub == "export" then
-            InitCombatLogDB(); print("|cff00ff98HCOB LOG EXPORT:|r use /reload to force a save, then copy WTF/Account/<account>/SavedVariables/HCOneButton.lua. Table: HCOB_CombatLog")
+            local exportMode = (rest or ""):lower()
+            if exportMode == "raw" then
+                InitCombatLogDB(); print("|cff00ff98HCOB LOG EXPORT:|r use /reload to force a save, then copy WTF/Account/<account>/SavedVariables/HCOneButton.lua. Table: HCOB_CombatLog")
+            elseif HCOB.UI.Feedback and HCOB.UI.Feedback.Open then
+                HCOB.UI.Feedback.Open(exportMode == "recent" and "recent" or "last")
+            else
+                print("|cffff5555HCOB LOG EXPORT:|r feedback window unavailable. Try /reload.")
+            end
         else
             InitCombatLogDB(); print("|cff00ff98HCOB LOG:|r "..(HCOB_DB.combatLogging~=false and "ON" or "OFF").." | saved fights="..#HCOB_CombatLog.fights.."/"..tostring(HCOB_DB.combatLogMaxFights).." | total="..tostring(HCOB_CombatLog.totalFights).." | telemetrySafe="..tostring(runtimeTelemetryDisabled))
-            print("/hcob log on|off | last | stats | export | clear | max 60 | session name")
+            print("/hcob log on|off | last | stats | export [recent|raw] | clear | max 60 | session name")
         end
     elseif cmd == "prof" then
         if HCOB.Systems.ProfessionCoach and HCOB.Systems.ProfessionCoach.HandleSlash then HCOB.Systems.ProfessionCoach.HandleSlash(arg) else print("|cffff5555HCOB PROF:|r module unavailable") end
@@ -161,12 +170,12 @@ SlashCmdList.HCOB = function(msg)
         print("|cff00ff98HC One Button v"..VERSION.."|r - all Classic Era classes")
         print("/hcob bind BUTTON4 | Q   /hcob keys   /hcob bindtest [BUTTON4]   /hcob unbind BUTTON4")
         print("/hcob plan   /hcob mods   /hcob status   /hcob hunter   /hcob ammo   /hcob petfood   /hcob petskills   /hcob prof [on|off|refresh]   /hcob actions on|off|scale 1.0|bind on|off|binds")
-        print("/hcob center   /hcob show|hide   /hcob lock|unlock   /hcob options   /hcob settings")
+        print("/hcob center   /hcob show|hide   /hcob lock|unlock   /hcob options   /hcob report   /hcob settings")
         print("/hcob scale 1.1")
         print("/hcob danger 35   /hcob critical 20   /hcob sound on|off   /hcob swing on|off   /hcob dps on|off")
         print("/hcob smart on|off   /hcob advisor on|off|debug   /hcob diagpixel on|off   /hcob rendspam on|off   /hcob sunder on|off   /hcob hsrage 35")
         print("/hcob errors   /hcob reseterrors")
-        print("/hcob log last   /hcob log stats   /hcob log export   /hcob log on|off")
+        print("/hcob log last   /hcob log stats   /hcob log export [recent|raw]   /hcob log on|off")
         print("Automatically updates with level, trainer, talents, gear and forms.")
     end
 end

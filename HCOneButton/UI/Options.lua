@@ -219,11 +219,23 @@ function CreateOptionsPanel()
     closeBtn:SetText("Close")
     closeBtn:SetScript("OnClick", function() panel:Hide() end)
 
+    local reportBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    reportBtn:SetSize(190, 27)
+    reportBtn:SetPoint("TOPLEFT", resetBtn, "BOTTOMLEFT", 0, -13)
+    reportBtn:SetText("Report a problem...")
+    reportBtn:SetScript("OnClick", function()
+        if HCOB.UI.Feedback and HCOB.UI.Feedback.Open then
+            HCOB.UI.Feedback.Open("last")
+        else
+            print("|cffff5555HCOB:|r feedback window unavailable. Try /reload.")
+        end
+    end)
+
     local tip = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    tip:SetPoint("TOPLEFT", resetBtn, "BOTTOMLEFT", 0, -78)
+    tip:SetPoint("TOPLEFT", reportBtn, "BOTTOMLEFT", 0, -18)
     tip:SetWidth(620)
     tip:SetJustifyH("LEFT")
-    tip:SetText("Quick commands: /hcob bind BUTTON4, /hcob plan, /hcob actions binds, /hcob log last. Fixed Action Panel bindings can be changed above and are applied only out of combat.")
+    tip:SetText("Quick commands: /hcob bind BUTTON4, /hcob plan, /hcob actions binds, /hcob report. Use Report a problem after a suspicious fight to generate an anonymized CurseForge-ready diagnostic report.")
 
     panel.controls = controls
     panel.Refresh = function(self)

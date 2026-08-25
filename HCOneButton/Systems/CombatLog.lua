@@ -5,7 +5,7 @@ local E = HCOB.Internal
 setfenv(1, E)
 
 function InitCombatLogDB()
-    HCOB_CombatLog.version = 9
+    HCOB_CombatLog.version = 10
     HCOB_CombatLog.fights = HCOB_CombatLog.fights or {}
     HCOB_CombatLog.totalFights = tonumber(HCOB_CombatLog.totalFights) or 0
     HCOB_CombatLog.session = HCOB_CombatLog.session or ("HCOneButton " .. VERSION)
@@ -135,7 +135,7 @@ function StartCombatTelemetry()
     end
     local equip = EquipmentTelemetrySnapshot()
     currentFight = {
-        schema=10, addonVersion=VERSION, session=HCOB_CombatLog.session,
+        schema=11, addonVersion=VERSION, session=HCOB_CombatLog.session,
         startedAt=(GetServerTime and GetServerTime()) or (time and time()) or 0,
         startClock=GetTime(), duration=0,
         class=PLAYER_CLASS, level=PlayerLevel(), spec=specName, specIndex=specIndex, specPoints=specPoints,
@@ -163,6 +163,7 @@ function StartCombatTelemetry()
         advisorInterruptSamples=0, advisorManualSamples=0,
         advisorDangerEvents=0, advisorCautionEvents=0,
         survivalReserveSum=0, survivalReserveSamples=0, survivalReserveMin=100,
+        advisorTrace={}, advisorTraceDropped=0,
     }
     local tg = SafeUnitGUID("target")
     if tg and UnitCanAttack("player", "target") then AddEnemyToFight(tg, targetName) end
@@ -231,6 +232,7 @@ function FinalizeCombatTelemetry(reason)
     table.sort(f.enemies)
     f._enemies = nil
     f._killed = nil
+    f._feedbackLastKey = nil
     f.targetGuid = nil
     f.startClock = nil
     InitCombatLogDB()
@@ -422,7 +424,7 @@ function ClearCombatLog()
     -- Core/Init.lua, HCOneButton.CombatLog and WoW persistence all reference
     -- this exact object. Mutate it in place so /reload persists the clear.
     for key in pairs(HCOB_CombatLog) do HCOB_CombatLog[key] = nil end
-    HCOB_CombatLog.version = 9
+    HCOB_CombatLog.version = 10
     HCOB_CombatLog.fights = {}
     HCOB_CombatLog.totalFights = 0
     HCOB_CombatLog.session = "HCOneButton " .. VERSION

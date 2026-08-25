@@ -18,6 +18,7 @@ function HCOB.Advisor.Engine.ResetDynamics()
     HCOB.Advisor.Engine.samples = {}
     HCOB.Advisor.Engine.dynamicsTargetGuid = nil
     HCOB.Advisor.Engine.trendState = nil
+    HCOB.Advisor.Engine.lastDynamics = nil
 end
 
 function HCOB.Advisor.Engine.RollingDynamics(targetHP)

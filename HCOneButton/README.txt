@@ -1,3 +1,65 @@
+HC ONE BUTTON v1.27.0 - FEEDBACK & TELEMETRY RELEASE
+=====================================================
+
+RELEASE GOAL
+- Turn real in-game testing into structured, copy/paste-ready CurseForge issue reports without requiring users to browse the WTF/SavedVariables folder.
+- Keep combat behavior stable: class modules, Fixed Action Panel layouts, default bindings and Diagnostic Pixel Protocol V3 are unchanged from v1.26.1.
+- Keep feedback telemetry non-critical: a report/trace failure must never disable the secure button or alter an Advisor recommendation.
+
+REPORT A PROBLEM WINDOW
+- Added a "Report a problem..." button to /hcob options.
+- Added /hcob report and /hcob feedback aliases to open the same window directly.
+- The window explains the complete workflow: reproduce the issue, generate a report, select it, press Ctrl+C, open the HCOneButton CurseForge Issues page, create an issue and paste the report.
+- CurseForge Issues URL is displayed in a selectable field: https://www.curseforge.com/wow/addons/hconebutton/issues
+- "Generate Last Fight" creates the preferred compact bug report for a single suspicious combat.
+- "Generate Recent Fights" includes the latest three fights, or up to five when Detailed telemetry is enabled.
+- "Detailed telemetry" adds the complete stored Advisor trace, top candidate scores and ability telemetry.
+- The report generator deliberately omits character name/realm, target names/GUIDs, zone/subzone and equipment item IDs.
+- WoW addons cannot place arbitrary text directly on the operating-system clipboard or reliably open a browser, so the UI selects the report/URL and instructs the user to press Ctrl+C.
+
+ADVISOR TRACE / TELEMETRY 1.27
+- Combat fight schema is now 11 and the combat-log database schema is 10.
+- Each fight stores a compact, change-only Advisor trace capped at 32 recommendation changes to keep SavedVariables bounded.
+- A trace entry can contain elapsed fight time, deterministic slot, recommendation title/kind/reason, player HP, target HP when readable, active enemy count and Survival Reserve.
+- When rolling dynamics are valid, the trace also records TTK, TTD and confidence.
+- When the recommendation came directly from class candidate scoring, the top three candidate names/slots/scores are stored for tuning analysis.
+- Recommendation trace recording is protected with pcall and runtime fail-safe logging; feedback telemetry cannot become a new Smart HUD failure path.
+- Stale rolling dynamics are explicitly cleared when the dynamics engine resets, preventing an old target's TTK/TTD from leaking into a later diagnostic trace.
+
+COMMANDS / COMPATIBILITY
+- /hcob log export now opens the report window for the last fight.
+- /hcob log export recent opens the recent-fights report.
+- /hcob log export raw preserves the old SavedVariables workflow for advanced debugging.
+- Existing combat history remains readable; fights recorded before 1.27.0 simply show that an Advisor recommendation trace is unavailable.
+- The combat logger remains optional and bounded by the existing /hcob log max setting.
+
+REGRESSION GUARANTEES
+- All nine Classes/*.lua files are byte-identical to v1.26.1.
+- UI/ActionPanel.lua, UI/DiagnosticPixel.lua, Systems/Bindings.lua, Bindings.xml and Data/Spells.lua are byte-identical to v1.26.1.
+- No Fixed Action Panel slot was added, removed or renumbered.
+- Default slot bindings are unchanged.
+- Diagnostic Pixel Protocol V3 remains R = slot * 12, G = 96, B = 224.
+- No AddCandidate score, class rotation, secure Action Panel macro or class survival/interrupt policy is intentionally changed by this release.
+
+VALIDATION COMPLETED FOR 1.27.0
+- 39/39 Lua chunks parse with a real Lua compiler.
+- All 40 TOC references exist (39 Lua + Bindings.xml).
+- Feedback report formatter unit test passes for last-fight and recent-fights output.
+- Detailed recent-fights output is capped by the built-in 18,000-character report limit and truncates cleanly when necessary.
+- Feedback UI construction/open/generate smoke test passes with the report and URL fields present.
+- All 9 Classes/*.lua files plus ActionPanel.lua, DiagnosticPixel.lua, Systems/Bindings.lua, Bindings.xml and Data/Spells.lua are byte-identical to v1.26.1.
+- Telemetry trace recording is isolated behind pcall so diagnostic collection cannot directly become a Smart HUD failure path.
+- Combat-log fight schema 11 / database schema 10 are present and older fights remain reportable without a trace.
+
+RELEASE 1.27.0 - 2026-08-25
+----------------------------
+- Added in-game CurseForge-ready feedback/report workflow.
+- Added anonymized last-fight/recent-fights report generation and detailed telemetry mode.
+- Added compact per-fight Advisor recommendation trace and top-candidate snapshots.
+- Preserved raw SavedVariables export as /hcob log export raw.
+- Updated README.txt and README.md for the new tester/issue workflow.
+
+
 HC ONE BUTTON v1.26.1 - FULL CLASS STABILITY REVIEW
 ====================================================
 

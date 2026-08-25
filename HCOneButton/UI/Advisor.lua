@@ -360,8 +360,10 @@ function UpdateDisplayCore()
     spellId, title, keyHint, reason, kind = HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
     SetDisplay(spellId, title, keyHint, reason, kind)
 
+    local telemetryReserve = nil
     if currentFight and HCOB_DB.combatLogging ~= false and not runtimeTelemetryDisabled then
         local reserve = HCOB.Advisor.Engine.SurvivalReserve()
+        telemetryReserve = tonumber(reserve)
         currentFight.survivalReserveSamples = (tonumber(currentFight.survivalReserveSamples) or 0) + 1
         currentFight.survivalReserveSum = (tonumber(currentFight.survivalReserveSum) or 0) + (tonumber(reserve) or 0)
         currentFight.survivalReserveMin = math.min(tonumber(currentFight.survivalReserveMin) or 100, tonumber(reserve) or 100)
@@ -376,6 +378,11 @@ function UpdateDisplayCore()
         if keyHint == "CAST MANUALLY" then
             currentFight.advisorManualSamples = (tonumber(currentFight.advisorManualSamples) or 0) + 1
         end
+    end
+
+    if currentFight and HCOB.Systems and HCOB.Systems.Feedback and HCOB.Systems.Feedback.RecordRecommendation then
+        local ok, err = pcall(HCOB.Systems.Feedback.RecordRecommendation, spellId, title, keyHint, reason, kind, telemetryReserve, enemies, hp, hpReadable)
+        if not ok then RecordRuntimeError("FeedbackTrace", err) end
     end
 
     local recKey = tostring(spellId) .. ":" .. tostring(kind) .. ":" .. tostring(title)

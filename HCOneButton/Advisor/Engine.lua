@@ -37,6 +37,7 @@ function HCOB.Advisor.Engine.SelectCandidate(list)
     end
     table.sort(list, function(a,b) return (a.effectiveScore or a.score or 0) > (b.effectiveScore or b.score or 0) end)
     HCOB.Advisor.Engine.lastCandidates = list
+    HCOB.Advisor.Engine.lastCandidateSelectionAt = now
     if best then
         if HCOB.Advisor.Engine.lastClassActionId ~= best.id then
             HCOB.Advisor.Engine.lastClassActionAt = now
@@ -170,6 +171,11 @@ function ClassRecommendation(inCombat, hostile, targetHP)
 end
 
 function Recommend()
+    -- Recommendation-local candidate snapshots must never leak across an early
+    -- safety/interrupt return. SelectCandidate repopulates these when class
+    -- scoring is actually reached during this Recommend() call.
+    HCOB.Advisor.Engine.lastCandidates = {}
+    HCOB.Advisor.Engine.lastCandidateSelectionAt = nil
     local inCombat = UnitAffectingCombat("player") and true or false
     local hostile = HostileLiveTarget()
     local hp, hpReadable = UnitHealthPct("player")
