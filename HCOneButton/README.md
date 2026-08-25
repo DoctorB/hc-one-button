@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-**Current version:** `1.27.0`  
+**Current version:** `1.27.2`  
 **Target client:** World of Warcraft Classic Era / Hardcore  
 **Interface:** `11509`
 
@@ -11,6 +11,31 @@ HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardc
 The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine classes**, deterministic secure action slots, survival-oriented decision logic, profession guidance, Hunter pet management and detailed combat telemetry.
 
 > **Important:** HCOneButton does **not** automatically execute the Advisor's combat decisions. Protected actions still require a player click/key press through WoW's secure action system.
+
+---
+
+
+## What's new in 1.27.2
+
+Version `1.27.2` is a visual-polish hotfix for the unified combat HUD. It does not change Advisor scoring, class rotations, deterministic action slots, bindings, telemetry or Diagnostic Pixel Protocol V3.
+
+- The outer `HCOB_CoreShell` border is now **alert-only** instead of being permanently visible.
+- Normal states such as `OK`, `PULL`, modifier/manual recommendations, automatic-action states and buffs keep the outer shell border fully transparent.
+- `CAUTION` still shows the amber warning border.
+- `DANGER` / critical recommendations still show the red warning border.
+- The CoreShell itself is still used as the visual container for BASE + Advisor + telemetry; only its redundant normal-state outline was removed.
+
+---
+
+## What's new in 1.27.1
+
+Version `1.27.1` is a compact-UI stability hotfix based on direct in-game feedback. It does not change Advisor scoring, class rotations, deterministic action-slot numbering, bindings or Diagnostic Pixel Protocol V3.
+
+- The Fixed Action Panel now uses a compact **10-column × 2-row maximum** layout with 32 px buttons instead of the previous 6-column layout with 44 px buttons. Slot order remains exactly 01 → 20.
+- The maximum Action Panel height for a 20-slot class drops from roughly 207 px to roughly 84 px at scale 1.0, significantly reducing combat-screen occlusion.
+- Profession Coach now has an explicit combat-state latch. `PLAYER_REGEN_DISABLED` hides the panel immediately and queued refresh timers cannot reopen it during combat.
+- `PLAYER_REGEN_ENABLED` re-enables normal event-driven Profession Coach refreshes after combat.
+- The Profession Coach panel itself is slightly shorter out of combat.
 
 ---
 

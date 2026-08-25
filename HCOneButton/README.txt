@@ -1,6 +1,26 @@
-HC ONE BUTTON v1.27.0 - FEEDBACK & TELEMETRY RELEASE
+HC ONE BUTTON v1.27.2 - ALERT-ONLY HUD BORDER HOTFIX
 =====================================================
 
+HOTFIX SUMMARY
+- Removed the always-visible outer CoreShell outline during normal HUD operation.
+- The CoreShell border is now transparent for OK, PULL, normal manual/modifier, auto-active and buff states.
+- CAUTION keeps the amber warning outline; DANGER/critical keeps the red warning outline.
+- The CoreShell container/background remains intact; this is visual polish only.
+- Advisor scoring, class rotations, Action Panel slots, bindings, telemetry and Diagnostic Pixel Protocol V3 are unchanged.
+
+RELEASE 1.27.2 - 2026-08-25
+- CoreShell outer border changed from always-on state coloring to alert-only visibility.
+- No combat-logic or deterministic mapping changes.
+
+1.27.1 COMPACT UI & PROFESSION COACH HOTFIX
+HOTFIX SUMMARY
+- Reduce the combat HUD footprint without changing deterministic slot numbering.
+- Fixed Action Panel is now 10 columns x 2 rows maximum with 32px icons.
+- Profession Coach is now hard-hidden for the full PLAYER_REGEN_DISABLED -> PLAYER_REGEN_ENABLED combat window.
+- Queued Profession Coach timers cannot reopen the panel while combat is active.
+- Advisor scoring, class rotations, bindings and Diagnostic Pixel Protocol V3 are unchanged.
+
+1.27.0 FEEDBACK & TELEMETRY BASE
 RELEASE GOAL
 - Turn real in-game testing into structured, copy/paste-ready CurseForge issue reports without requiring users to browse the WTF/SavedVariables folder.
 - Keep combat behavior stable: class modules, Fixed Action Panel layouts, default bindings and Diagnostic Pixel Protocol V3 are unchanged from v1.26.1.
@@ -50,6 +70,15 @@ VALIDATION COMPLETED FOR 1.27.0
 - All 9 Classes/*.lua files plus ActionPanel.lua, DiagnosticPixel.lua, Systems/Bindings.lua, Bindings.xml and Data/Spells.lua are byte-identical to v1.26.1.
 - Telemetry trace recording is isolated behind pcall so diagnostic collection cannot directly become a Smart HUD failure path.
 - Combat-log fight schema 11 / database schema 10 are present and older fights remain reportable without a trace.
+
+
+RELEASE 1.27.1 - 2026-08-25
+- Compact in-combat Action Panel: 10 columns, max 2 rows, 32px buttons.
+- Deterministic slot numbering 01-20 is unchanged; bindings and Pixel Protocol V3 are unchanged.
+- Profession Coach now uses an explicit PLAYER_REGEN combat latch and cannot be reopened by queued refresh timers while in combat.
+- Profession Coach refresh resumes after PLAYER_REGEN_ENABLED.
+- Profession Coach panel reduced from 62px to 52px height out of combat.
+- No Advisor scoring or class-rotation changes.
 
 RELEASE 1.27.0 - 2026-08-25
 ----------------------------

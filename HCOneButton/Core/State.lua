@@ -4,7 +4,7 @@ local HCOB = HCOneButton
 local E = HCOB.Internal
 setfenv(1, E)
 
-VERSION = HCOB.VERSION or "1.27.0"
+VERSION = HCOB.VERSION or "1.27.2"
 MACRO_LIMIT = 255
 
 _, PLAYER_CLASS = UnitClass("player")

@@ -610,9 +610,9 @@ function HCOB.UI.ActionPanel.Configure()
 
     HCOB.UI.ActionPanel.visibleCount = visible
     if HCOB.UI.ActionPanel.frame then
-        local rows = math.max(1, math.ceil(visible / (HCOB.UI.ActionPanel.columns or 6)))
-        local size = HCOB.UI.ActionPanel.buttonSize or 44
-        local gap = HCOB.UI.ActionPanel.gap or 5
+        local rows = math.max(1, math.ceil(visible / (HCOB.UI.ActionPanel.columns or 10)))
+        local size = HCOB.UI.ActionPanel.buttonSize or 32
+        local gap = HCOB.UI.ActionPanel.gap or 4
         local top = HCOB.UI.ActionPanel.topOffset or 8
         local bottom = 8
         HCOB.UI.ActionPanel.frame:SetHeight(top + rows * size + math.max(0, rows - 1) * gap + bottom)
@@ -752,14 +752,15 @@ end
 -- Secure action palette: created inside a separate function to avoid
 -- consuming locals/registers in the main chunk (Classic has a tight limit).
 function HCOB.UI.ActionPanel.CreateFrames()
-    HCOB.UI.ActionPanel.columns = 6
-    HCOB.UI.ActionPanel.buttonSize = 44
-    HCOB.UI.ActionPanel.gap = 5
+    HCOB.UI.ActionPanel.columns = 10
+    HCOB.UI.ActionPanel.buttonSize = 32
+    HCOB.UI.ActionPanel.gap = 4
     -- v1.18.2: no text header; the panel contains only icons.
     HCOB.UI.ActionPanel.topOffset = 8
 
-    -- v1.18.8: the Actions panel has exactly the same width as the
-    -- Core HUD. The six icons remain centered in the panel.
+    -- v1.27.1: compact combat layout. The deterministic 1-20 slot order is
+    -- unchanged, but ten smaller icons fit per row so every class uses at
+    -- most two rows. This substantially reduces vertical screen occlusion.
     local rowWidth = HCOB.UI.ActionPanel.columns * HCOB.UI.ActionPanel.buttonSize
         + (HCOB.UI.ActionPanel.columns - 1) * HCOB.UI.ActionPanel.gap
     local width = (HCOB_CoreShell and HCOB_CoreShell.GetWidth and HCOB_CoreShell:GetWidth()) or 376

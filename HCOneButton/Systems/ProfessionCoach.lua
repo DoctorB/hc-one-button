@@ -1,4 +1,4 @@
--- HCOneButton Profession Coach v1.17.0
+-- HCOneButton Profession Coach v1.27.2
 -- Event-driven profession leveling advisor for WoW Classic Era.
 -- No automatic crafting/gathering: it only recommends the most efficient next action.
 
@@ -72,6 +72,7 @@ local state = {
     lastRecipes={},
     dirty=true,
     lastUpdate=0,
+    inCombat=false,
 }
 
 local function ScanSkills()
@@ -433,7 +434,7 @@ local function CreatePanel()
     local actionAnchor=_G.HCOneButtonAdvisorActions
     local coachWidth=282
     if actionAnchor and actionAnchor.GetWidth then coachWidth=math.max(282,actionAnchor:GetWidth() or 282) end
-    frame:SetSize(coachWidth,62)
+    frame:SetSize(coachWidth,52)
     frame:SetFrameStrata("HIGH")
     local anchor=_G.HCOneButtonFrame
     if actionAnchor then frame:SetPoint("TOPLEFT",actionAnchor,"BOTTOMLEFT",0,-6)
@@ -450,6 +451,10 @@ end
 local function UpdatePanel()
     CreatePanel()
     if HCOB_DB and HCOB_DB.profCoach==false then frame:Hide(); return end
+    -- PLAYER_REGEN_* is authoritative for the panel. The explicit latch also
+    -- prevents an already queued C_Timer refresh from reopening the coach
+    -- after combat has started.
+    if state.inCombat then frame:Hide(); return end
     if UnitAffectingCombat and UnitAffectingCombat("player") then frame:Hide(); return end
     local plans=BuildPlans()
     if #plans==0 then frame:Hide(); return end
@@ -462,6 +467,10 @@ end
 
 function P.Refresh()
     state.dirty=true
+    if state.inCombat then
+        if frame then frame:Hide() end
+        return
+    end
     if refreshPending then return end
     refreshPending=true
     if C_Timer and C_Timer.After then
@@ -507,7 +516,16 @@ for _,e in ipairs(events) do pcall(ef.RegisterEvent,ef,e) end
 ef:SetScript("OnEvent",function(_,event)
     if event=="PLAYER_LOGIN" then
         HCOB_DB=HCOB_DB or {}; if HCOB_DB.profCoach==nil then HCOB_DB.profCoach=true end
+        state.inCombat = UnitAffectingCombat and UnitAffectingCombat("player") and true or false
         if C_Timer and C_Timer.After then C_Timer.After(1.0,UpdatePanel) else UpdatePanel() end
-    elseif event=="PLAYER_REGEN_DISABLED" then if frame then frame:Hide() end
-    else P.Refresh() end
+    elseif event=="PLAYER_REGEN_DISABLED" then
+        state.inCombat=true
+        refreshPending=false
+        if frame then frame:Hide() end
+    elseif event=="PLAYER_REGEN_ENABLED" then
+        state.inCombat=false
+        P.Refresh()
+    else
+        P.Refresh()
+    end
 end)

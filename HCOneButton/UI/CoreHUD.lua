@@ -136,7 +136,7 @@ HCOB_CoreShell:EnableMouse(false)
 HCOB_CoreShell.bg = HCOB_CoreShell:CreateTexture(nil, "BACKGROUND")
 HCOB_CoreShell.bg:SetAllPoints()
 HCOB_CoreShell.bg:SetColorTexture(0.012, 0.014, 0.018, 0.96)
-HCOB_MakeRectBorder(HCOB_CoreShell, 0.28, 0.38, 0.48, 0.88)
+HCOB_MakeRectBorder(HCOB_CoreShell, 0, 0, 0, 0)
 
 
 swingBG = CreateFrame("Frame", nil, btn)
@@ -198,7 +198,8 @@ function ApplyVisualTheme()
     classText:SetTextColor(cr, cg, cb)
     border:SetVertexColor(0.42, 0.48, 0.52, 0.95)
     if advisor.iconBorder then advisor.iconBorder:SetVertexColor(0.42, 0.48, 0.52, 0.95) end
-    HCOB_SetRectBorderColor(HCOB_CoreShell, 0.28, 0.38, 0.48, 0.88)
+    -- v1.27.2: CoreShell border is alert-only. Normal/pull/buff states stay borderless.
+    HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
     dpsValue:SetTextColor(0.72, 0.90, 1.0)
     if HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.title then HCOB.UI.ActionPanel.title:SetTextColor(math.min(1,cr+0.18),math.min(1,cg+0.18),math.min(1,cb+0.18)) end
     label:SetTextColor(1, 0.97, 0.86)
