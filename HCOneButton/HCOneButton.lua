@@ -5,7 +5,7 @@ HCOB_CombatLog = HCOB_CombatLog or {}
 BINDING_HEADER_HCOB = "HC One Button"
 _G["BINDING_NAME_CLICK HCOneButtonFrame:LeftButton"] = "HC One Button"
 
-local VERSION = "1.21.5"
+local VERSION = "1.21.7"
 local MACRO_LIMIT = 255
 
 local _, PLAYER_CLASS = UnitClass("player")
@@ -474,6 +474,44 @@ function HCOB_Hunter.PullRangeState()
     return "unknown"
 end
 
+-- Hunter aspect state is managed independently from the generic buff advisor.
+-- This prevents Hawk/Monkey/Cheetah from fighting each other as ordinary buffs.
+function HCOB_Hunter.ActiveAspect()
+    if IsKnown(S.ASPECT_HAWK) and HasPlayerBuff(S.ASPECT_HAWK) then return S.ASPECT_HAWK end
+    if IsKnown(S.ASPECT_MONKEY) and HasPlayerBuff(S.ASPECT_MONKEY) then return S.ASPECT_MONKEY end
+    if IsKnown(S.ASPECT_CHEETAH) and HasPlayerBuff(S.ASPECT_CHEETAH) then return S.ASPECT_CHEETAH end
+    return nil
+end
+
+function HCOB_Hunter.RangedStableSeconds(close, canShoot)
+    local now = GetTime()
+    if canShoot and not close then
+        if not HCOB_Hunter.rangedStableSince then HCOB_Hunter.rangedStableSince = now end
+        return math.max(0, now - HCOB_Hunter.rangedStableSince)
+    end
+    HCOB_Hunter.rangedStableSince = nil
+    return 0
+end
+
+function HCOB_Hunter.TravelStableSeconds(inCombat, hostile)
+    local moving = GetUnitSpeed and (tonumber(GetUnitSpeed("player")) or 0) > 0
+    local mounted = IsMounted and IsMounted() or false
+    local outdoors = true
+    if IsOutdoors then
+        local ok, value = pcall(IsOutdoors)
+        if ok and value ~= nil then outdoors = value and true or false end
+    end
+
+    local travel = not inCombat and not hostile and moving and not mounted and outdoors
+    local now = GetTime()
+    if travel then
+        if not HCOB_Hunter.travelStableSince then HCOB_Hunter.travelStableSince = now end
+        return math.max(0, now - HCOB_Hunter.travelStableSince)
+    end
+    HCOB_Hunter.travelStableSince = nil
+    return 0
+end
+
 function HCOB_Hunter.HasSerpentSting()
     if not HostileLiveTarget() then return false end
     if HasMyTargetDebuff(S.SERPENT_STING) then return true end
@@ -491,6 +529,34 @@ function HCOB_Hunter.CanCastRanged(id)
     return HCOB_Hunter.CanShootTarget() and not HCOB_Hunter.TargetIsClose()
 end
 
+-- Per-target timing is independent from the overall combat session. This is
+-- critical for chain pulls: a fresh target selected while still in combat must
+-- get a fresh setup window for Hunter's Mark, Serpent Sting and rolling TTK.
+function HCOB_Hunter.TargetElapsed(inCombat)
+    if not HostileLiveTarget() then return 0 end
+    local guid = UnitGUID("target")
+    if not guid then return 0 end
+    local now = GetTime()
+    if HCOB_Hunter.engagedTargetGUID ~= guid then
+        HCOB_Hunter.engagedTargetGUID = guid
+        HCOB_Hunter.targetEngagedAt = inCombat and now or nil
+    elseif inCombat and not HCOB_Hunter.targetEngagedAt then
+        HCOB_Hunter.targetEngagedAt = now
+    elseif not inCombat then
+        HCOB_Hunter.targetEngagedAt = nil
+    end
+    return HCOB_Hunter.targetEngagedAt and math.max(0, now - HCOB_Hunter.targetEngagedAt) or 0
+end
+
+function HCOB_Hunter.ResetTargetState(inCombat)
+    HCOB_Hunter.engagedTargetGUID = HostileLiveTarget() and UnitGUID("target") or nil
+    HCOB_Hunter.targetEngagedAt = (inCombat and HCOB_Hunter.engagedTargetGUID) and GetTime() or nil
+    HCOB_Hunter.serpentGUID = nil
+    HCOB_Hunter.serpentActive = false
+    HCOB_Hunter.serpentPendingUntil = 0
+    HCOB_Hunter.rangedStableSince = nil
+end
+
 -- Hunter attack-mode state. Classic has separate melee Auto Attack and ranged
 -- Auto Shot states, plus a dead zone where either can be interrupted.  These
 -- helpers are advisory only: protected attack changes still happen through the
@@ -503,6 +569,7 @@ end
 
 function HCOB_Hunter.AutoShotActive()
     if not IsKnown(S.AUTO_SHOT) then return false end
+    if HCOB_Hunter.autoRepeatActive == true then return true end
     if IsCurrentSpell then
         local ok, active = pcall(IsCurrentSpell, S.AUTO_SHOT)
         if ok and active then return true end
@@ -1234,11 +1301,11 @@ HCOB_ActionPanel.buttons = HCOB_ActionPanel.buttons or {}
 HCOB_ActionPanel.idToButton = HCOB_ActionPanel.idToButton or {}
 HCOB_ActionPanel.idToSlot = HCOB_ActionPanel.idToSlot or {}
 HCOB_ActionPanel.idToActionIndex = HCOB_ActionPanel.idToActionIndex or {}
-HCOB_ActionPanel.maxButtons = 18
+HCOB_ActionPanel.maxButtons = 20
 
 -- Diagnostic RGB protocol v3. The external reader does NOT know classes or spells:
 -- it only knows the color and translates it into a fixed panel SLOT.
---   R = fixed slot (1..18) * 12
+--   R = fixed slot (1..20) * 12
 --   G = 96
 --   B = 224
 -- Black = NONE. White = recommendation not mapped to the panel.
@@ -1250,7 +1317,7 @@ HCOB_ActionPanel.maxButtons = 18
 HCOB_ActionPanel.actions = {
     WARRIOR={S.REND,S.OVERPOWER,S.EXECUTE,S.HEROIC_STRIKE,S.SUNDER_ARMOR,S.THUNDER_CLAP,S.DEMO_SHOUT,S.BATTLE_SHOUT,S.BLOODRAGE,S.HAMSTRING,S.MORTAL_STRIKE,S.BLOODTHIRST,S.WHIRLWIND,S.PUMMEL,S.SHIELD_BASH,S.BERSERKER_RAGE,S.RETALIATION,S.SHIELD_WALL},
     PALADIN={S.SEAL_RIGHTEOUSNESS,S.SEAL_COMMAND,S.JUDGEMENT,S.BLESSING_MIGHT,S.CONSECRATION,S.HAMMER_JUSTICE,S.EXORCISM,S.HAMMER_WRATH,S.DIVINE_PROTECTION,S.LAY_ON_HANDS,S.HOLY_LIGHT,S.FLASH_LIGHT,S.DIVINE_SHIELD,S.SEAL_CRUSADER},
-    HUNTER={S.HUNTERS_MARK,S.SERPENT_STING,S.ARCANE_SHOT,S.AIMED_SHOT,S.MULTI_SHOT,S.CONCUSSIVE_SHOT,S.SCATTER_SHOT,S.WING_CLIP,S.RAPTOR_STRIKE,S.MONGOOSE_BITE,S.MEND_PET,S.FEED_PET,S.FEIGN_DEATH,S.INTIMIDATION,S.BESTIAL_WRATH,S.RAPID_FIRE,S.FREEZING_TRAP,S.ASPECT_HAWK},
+    HUNTER={S.HUNTERS_MARK,S.SERPENT_STING,S.ARCANE_SHOT,S.AIMED_SHOT,S.MULTI_SHOT,S.CONCUSSIVE_SHOT,S.SCATTER_SHOT,S.WING_CLIP,S.RAPTOR_STRIKE,S.MONGOOSE_BITE,S.MEND_PET,S.FEED_PET,S.FEIGN_DEATH,S.INTIMIDATION,S.BESTIAL_WRATH,S.RAPID_FIRE,S.FREEZING_TRAP,S.ASPECT_HAWK,S.ASPECT_MONKEY,S.ASPECT_CHEETAH},
     ROGUE={S.SINISTER_STRIKE,S.HEMORRHAGE,S.EVISCERATE,S.GOUGE,S.KICK,S.STEALTH,S.SPRINT,S.EVASION,S.VANISH,S.BLADE_FLURRY,S.SLICE_DICE,S.GARROTE,S.CHEAP_SHOT,S.KIDNEY_SHOT,S.BLIND,S.ADRENALINE_RUSH},
     PRIEST={S.SHADOW_WORD_PAIN,S.MIND_BLAST,S.MIND_FLAY,S.POWER_WORD_SHIELD,S.RENEW,S.PSYCHIC_SCREAM,S.SILENCE,S.FADE,S.FORTITUDE,S.SHOOT,S.LESSER_HEAL,S.HEAL,S.FLASH_HEAL,S.INNER_FIRE,S.HOLY_FIRE,S.SMITE},
     MAGE={S.FROSTBOLT,S.FIREBALL,S.FIRE_BLAST,S.FROST_NOVA,S.BLINK,S.COUNTERSPELL,S.POLYMORPH,S.ICE_BARRIER,S.MANA_SHIELD,S.ICE_BLOCK,S.COLD_SNAP,S.EVOCATION,S.PYROBLAST,S.SCORCH,S.CONE_OF_COLD,S.ARCANE_EXPLOSION,S.BLIZZARD,S.SHOOT},
@@ -1269,6 +1336,7 @@ HCOB_ActionPanel.defaultSlotKeys = {
     "SHIFT-6", "SHIFT-7", "SHIFT-8", "SHIFT-9", "SHIFT-0",
     "CTRL-SHIFT-1", "CTRL-SHIFT-2", "CTRL-SHIFT-3", "CTRL-SHIFT-4",
     "CTRL-SHIFT-5", "CTRL-SHIFT-6", "CTRL-SHIFT-7", "CTRL-SHIFT-8",
+    "CTRL-SHIFT-9", "CTRL-SHIFT-0",
 }
 -- Compatibility alias for older code/tools that inspected this table.
 HCOB_ActionPanel.slotKeys = HCOB_ActionPanel.defaultSlotKeys
@@ -1323,7 +1391,7 @@ end
 function HCOB_ActionPanel.FindSlotUsingKey(key, exceptSlot)
     key = HCOB_ActionPanel.NormalizeSlotKey(key)
     if not key then return nil end
-    for slot=1,(HCOB_ActionPanel.maxButtons or 18) do
+    for slot=1,(HCOB_ActionPanel.maxButtons or 20) do
         if slot ~= tonumber(exceptSlot) and HCOB_ActionPanel.GetSlotKey(slot) == key then
             return slot
         end
@@ -1338,7 +1406,7 @@ function HCOB_ActionPanel.ApplySlotBindings()
     HCOB_DB.actionSlotAppliedKeys = HCOB_DB.actionSlotAppliedKeys or {}
     local visible = tonumber(HCOB_ActionPanel.visibleCount) or 0
     local changed = false
-    for slot=1,math.min(visible, HCOB_ActionPanel.maxButtons or 18) do
+    for slot=1,math.min(visible, HCOB_ActionPanel.maxButtons or 20) do
         local key = HCOB_ActionPanel.GetSlotKey(slot)
         local button = HCOB_ActionPanel.buttons and HCOB_ActionPanel.buttons[slot]
         local expected = HCOB_ActionPanel.GetSlotBindingCommand(slot)
@@ -1381,7 +1449,7 @@ end
 function HCOB_ActionPanel.SetSlotKey(slot, key)
     if InCombatLockdown() then return false, "Change bindings out of combat." end
     slot = tonumber(slot)
-    if not slot or slot < 1 or slot > (HCOB_ActionPanel.maxButtons or 18) then
+    if not slot or slot < 1 or slot > (HCOB_ActionPanel.maxButtons or 20) then
         return false, "Invalid slot."
     end
 
@@ -1426,7 +1494,7 @@ end
 function HCOB_ActionPanel.PrintSlotBindings()
     local visible = tonumber(HCOB_ActionPanel.visibleCount) or 0
     print("|cff00ff98HCOB ACTION BINDS:|r slot -> key -> action")
-    for slot=1,math.min(visible, HCOB_ActionPanel.maxButtons or 18) do
+    for slot=1,math.min(visible, HCOB_ActionPanel.maxButtons or 20) do
         local key = HCOB_ActionPanel.GetSlotKey(slot)
         local b = HCOB_ActionPanel.buttons and HCOB_ActionPanel.buttons[slot]
         local name = b and b.actionName or HCOB_ActionPanel.GetSlotActionName(slot)
@@ -1530,7 +1598,7 @@ function HCOB_ActionPanel.AcceptCapturedBinding(base)
         local note = string.format("SLOT %02d -> %s", slot, key:gsub("%-", "+"))
         local own = HCOB_ActionPanel.GetSlotBindingCommand(slot)
         if previous and previous ~= "" and previous ~= own then
-            note = note .. " (sostituito bind WoW: " .. tostring(previous) .. ")"
+            note = note .. " (replaced WoW binding: " .. tostring(previous) .. ")"
         end
         HCOB_ActionPanel.EndBindingCapture(note, false)
     else
@@ -1542,7 +1610,7 @@ function HCOB_ActionPanel.CreateBindingOptions()
     if HCOB_ActionPanel.bindingOptions then return HCOB_ActionPanel.bindingOptions end
 
     local panel = CreateFrame("Frame", "HCOneButtonActionBindingOptions", UIParent, "BasicFrameTemplateWithInset")
-    panel:SetSize(690, 690)
+    panel:SetSize(690, 760)
     panel:SetPoint("CENTER", UIParent, "CENTER", 0, 20)
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
@@ -1562,7 +1630,7 @@ function HCOB_ActionPanel.CreateBindingOptions()
     hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -7)
     hint:SetWidth(640)
     hint:SetJustifyH("LEFT")
-    hint:SetText("Slots stay fixed per class. Click a binding and press the desired key combination. Defaults are SHIFT+1...SHIFT+0 and CTRL+SHIFT+1...8.")
+    hint:SetText("Slots stay fixed per class. Click a binding and press the desired key combination. Defaults are SHIFT+1...SHIFT+0 and CTRL+SHIFT+1...0.")
 
     panel.classText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     panel.classText:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -10)
@@ -1578,7 +1646,7 @@ function HCOB_ActionPanel.CreateBindingOptions()
     hBind:SetText("BINDING")
 
     panel.rows = {}
-    for slot=1,(HCOB_ActionPanel.maxButtons or 18) do
+    for slot=1,(HCOB_ActionPanel.maxButtons or 20) do
         local row = {}
         local y = -120 - (slot-1) * 27
 
@@ -1735,7 +1803,7 @@ function HCOB_ActionPanel.BuildMacro(id)
         [S.LIFE_TAP]=true,[S.DEMON_ARMOR]=true,[S.DEMON_SKIN]=true,
         [S.BARKSKIN]=true,[S.NATURES_GRASP]=true,[S.DASH]=true,[S.TRAVEL_FORM]=true,[S.MARK_WILD]=true,
         [S.LIGHTNING_SHIELD]=true,[S.HEALING_WAVE]=true,[S.GHOST_WOLF]=true,
-        [S.ASPECT_HAWK]=true,[S.RAPID_FIRE]=true,
+        [S.ASPECT_HAWK]=true,[S.ASPECT_MONKEY]=true,[S.ASPECT_CHEETAH]=true,[S.RAPID_FIRE]=true,
     }
     if selfTarget[id] then return BuildSpellMacro(id, "@player") end
 
@@ -1753,7 +1821,7 @@ function HCOB_ActionPanel.Configure()
     -- v1.18.6: DETERMINISTIC layout. The slot always matches the logical index
     -- in the class list, even if the spell has not been learned yet.
     -- This prevents level/trainer changes from ever shifting bindings.
-    local visible = math.min(#list, HCOB_ActionPanel.maxButtons or 18)
+    local visible = math.min(#list, HCOB_ActionPanel.maxButtons or 20)
 
     for slot=1,visible do
         local id = list[slot]
@@ -2181,7 +2249,7 @@ dpsMeta:SetJustifyH("RIGHT")
 dpsMeta:SetText("AVG5 -- | DMG 0 | 0.0s")
 
 -- Secure action palette: created inside a separate function to avoid
--- consumare registri/locali del chunk principale (Classic ha un limite stretto).
+-- consuming locals/registers in the main chunk (Classic has a tight limit).
 function HCOB_ActionPanel.CreateFrames()
     HCOB_ActionPanel.columns = 6
     HCOB_ActionPanel.buttonSize = 44
@@ -3073,10 +3141,9 @@ function HCOB_AdvisorEngine.RollingDynamics(targetHP)
     end
 
     local guid = UnitGUID("target")
-    if currentFight.targetGuid and currentFight.targetGuid ~= guid then
-        HCOB_AdvisorEngine.ResetDynamics()
-        return nil
-    end
+    -- The combat session can contain several sequential targets. The rolling
+    -- window follows the current GUID instead of being pinned to the first
+    -- target recorded when combat started.
     if HCOB_AdvisorEngine.dynamicsTargetGuid ~= guid then
         HCOB_AdvisorEngine.ResetDynamics()
         HCOB_AdvisorEngine.dynamicsTargetGuid = guid
@@ -3402,8 +3469,16 @@ function HCOB_AdvisorEngine.HunterRecommendation(inCombat, hostile, targetHP, sp
         end
     end
 
-    if not hostile then return HCOB_AdvisorEngine.SelectCandidate(candidates) end
+    if not hostile then
+        local activeAspect = HCOB_Hunter.ActiveAspect()
+        local travelSeconds = HCOB_Hunter.TravelStableSeconds(inCombat, hostile)
+        if not inCombat and travelSeconds >= 2.0 and IsKnown(S.ASPECT_CHEETAH) and CooldownReady(S.ASPECT_CHEETAH) and IsUsable(S.ASPECT_CHEETAH) and activeAspect ~= S.ASPECT_CHEETAH then
+            HCOB_AdvisorEngine.AddCandidate(candidates, S.ASPECT_CHEETAH, "ASPECT OF THE CHEETAH", "CAST MANUALLY", "Traveling out of combat: increase movement speed", 58, "travel")
+        end
+        return HCOB_AdvisorEngine.SelectCandidate(candidates)
+    end
 
+    HCOB_Hunter.TravelStableSeconds(inCombat, hostile)
     local manaPct = HCOB_Hunter.ManaPct()
     local petHP = HCOB_Hunter.PetHP()
     local close = HCOB_Hunter.TargetIsClose()
@@ -3412,7 +3487,7 @@ function HCOB_AdvisorEngine.HunterRecommendation(inCombat, hostile, targetHP, sp
     local targetLevel = tonumber(UnitLevel("target")) or level
     local classification = UnitClassification("target") or "normal"
     local tough = classification == "elite" or classification == "rareelite" or classification == "worldboss" or targetLevel >= level
-    local elapsed = currentFight and math.max(0, GetTime() - (currentFight.startClock or GetTime())) or 0
+    local elapsed = HCOB_Hunter.TargetElapsed(inCombat)
     local afterAuto = HCOB_Hunter.AfterAutoWindow()
     local reserve, reserveLabel = HCOB_AdvisorEngine.SurvivalReserve()
     local dyn = inCombat and HCOB_AdvisorEngine.RollingDynamics(targetHP) or nil
@@ -3421,6 +3496,24 @@ function HCOB_AdvisorEngine.HunterRecommendation(inCombat, hostile, targetHP, sp
     if reserve < 35 then riskPenalty = riskPenalty + 10 end
     local context = string.format("reserve %.0f %s", reserve, reserveLabel)
     if estimatedTTK and estimatedTTK < math.huge then context = context .. string.format(" | TTK ~%.0fs", estimatedTTK) end
+
+    local activeAspect = HCOB_Hunter.ActiveAspect()
+    local rangedStable = HCOB_Hunter.RangedStableSeconds(close, canShoot)
+
+    -- Aspect management. Cheetah is never allowed to remain active in combat,
+    -- because taking a hit can daze the Hunter. Hawk is the normal ranged
+    -- combat aspect; Monkey is a temporary defensive stance for sustained melee.
+    if not inCombat and IsKnown(S.ASPECT_HAWK) and CooldownReady(S.ASPECT_HAWK) and IsUsable(S.ASPECT_HAWK) and activeAspect ~= S.ASPECT_HAWK then
+        local aspectReason = activeAspect == S.ASPECT_CHEETAH and "Drop Cheetah before the pull to avoid a daze" or "Prepare the normal ranged combat aspect"
+        HCOB_AdvisorEngine.AddCandidate(candidates, S.ASPECT_HAWK, "ASPECT OF THE HAWK", "CAST MANUALLY", aspectReason, 110, "aspect")
+    elseif inCombat and activeAspect == S.ASPECT_CHEETAH then
+        local emergencyAspect = (close and IsKnown(S.ASPECT_MONKEY)) and S.ASPECT_MONKEY or (IsKnown(S.ASPECT_HAWK) and S.ASPECT_HAWK or nil)
+        if emergencyAspect and CooldownReady(emergencyAspect) and IsUsable(emergencyAspect) then
+            HCOB_AdvisorEngine.AddCandidate(candidates, emergencyAspect, emergencyAspect == S.ASPECT_MONKEY and "DROP CHEETAH -> MONKEY" or "DROP CHEETAH -> HAWK", "CAST MANUALLY", "Cheetah is unsafe in combat: remove the daze risk immediately", 125, "survival")
+        end
+    elseif inCombat and canShoot and rangedStable >= 2.0 and IsKnown(S.ASPECT_HAWK) and CooldownReady(S.ASPECT_HAWK) and IsUsable(S.ASPECT_HAWK) and activeAspect ~= S.ASPECT_HAWK then
+        HCOB_AdvisorEngine.AddCandidate(candidates, S.ASPECT_HAWK, "ASPECT OF THE HAWK", "CAST MANUALLY", "Ranged position has been stable for 2s: return to the damage aspect", 74, "aspect")
+    end
 
     -- Attack-mode recovery.  Do not assume Classic will seamlessly swap ranged
     -- <-> melee through the dead zone.  BASE is the secure synchronizer for both
@@ -3441,23 +3534,52 @@ function HCOB_AdvisorEngine.HunterRecommendation(inCombat, hostile, targetHP, sp
     end
 
     if inCombat and close then
+        local dyingSoon = targetHP <= 18 or (estimatedTTK and estimatedTTK <= 2.8)
+        local lowTarget = targetHP <= 28 or (estimatedTTK and estimatedTTK <= 4.0)
+
+        if not dyingSoon and IsKnown(S.ASPECT_MONKEY) and CooldownReady(S.ASPECT_MONKEY) and IsUsable(S.ASPECT_MONKEY) and activeAspect ~= S.ASPECT_MONKEY then
+            local monkeyScore = reserve < 50 and 98 or 91
+            HCOB_AdvisorEngine.AddCandidate(candidates, S.ASPECT_MONKEY, "ASPECT OF THE MONKEY", "CAST MANUALLY", "Sustained melee pressure: trade ranged damage for dodge until you create distance", monkeyScore, "survival")
+        end
+
+        -- Reactive melee skills should be consumed when their proc is actually
+        -- available. Mongoose Bite is intentionally above normal kiting damage,
+        -- but below true panic control.
+        if IsKnown(S.MONGOOSE_BITE) and CooldownReady(S.MONGOOSE_BITE) and IsUsable(S.MONGOOSE_BITE) then
+            local mongooseScore = dyingSoon and 111 or 92
+            HCOB_AdvisorEngine.AddCandidate(candidates, S.MONGOOSE_BITE, "MONGOOSE BITE", "CAST MANUALLY", "Reactive dodge proc: use it before the window expires", mongooseScore, "proc")
+        end
+
+        if IsKnown(S.RAPTOR_STRIKE) and CooldownReady(S.RAPTOR_STRIKE) and IsUsable(S.RAPTOR_STRIKE) and lowTarget then
+            local raptorScore = dyingSoon and 109 or 97
+            HCOB_AdvisorEngine.AddCandidate(candidates, S.RAPTOR_STRIKE, "RAPTOR FINISH", "CAST MANUALLY", "Target is low: finish it instead of spending a GCD only to create range", raptorScore, "finisher")
+        end
+
         if IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
-            HCOB_AdvisorEngine.AddCandidate(candidates, S.WING_CLIP, "WING CLIP + EXIT", "ALT", "Dead zone: slow, create distance and resume Auto Shot", 100, "survival")
+            local wingScore = dyingSoon and 76 or (lowTarget and 90 or 100)
+            HCOB_AdvisorEngine.AddCandidate(candidates, S.WING_CLIP, "WING CLIP + EXIT", "ALT", "Dead zone: slow, create distance and resume Auto Shot", wingScore, "survival")
         end
-        if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and IsUsable(S.SCATTER_SHOT) and targetHP > 20 then
+        if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and HCOB_Hunter.CanCastRanged(S.SCATTER_SHOT) and targetHP > 20 then
             HCOB_AdvisorEngine.AddCandidate(candidates, S.SCATTER_SHOT, "SCATTER + DISTANCE", "CTRL+SHIFT", "Target is on you: break pressure and return to range", 94, "survival")
-        end
-        if IsKnown(S.RAPTOR_STRIKE) and CooldownReady(S.RAPTOR_STRIKE) and IsUsable(S.RAPTOR_STRIKE) and targetHP <= 25 then
-            HCOB_AdvisorEngine.AddCandidate(candidates, S.RAPTOR_STRIKE, "RAPTOR FINISH", "CAST MANUALLY", "Target is low and you are already in melee", 72, "finisher")
         end
     end
 
     if inCombat and not close and petAlive and UnitExists("targettarget") and UnitIsUnit and UnitIsUnit("targettarget", "player") then
-        if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and IsUsable(S.SCATTER_SHOT) then
+        if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and HCOB_Hunter.CanCastRanged(S.SCATTER_SHOT) then
             HCOB_AdvisorEngine.AddCandidate(candidates, S.SCATTER_SHOT, "PEEL: SCATTER", "CTRL+SHIFT", "You have aggro: create space and let the pet regain threat", 96, "survival")
         end
-        if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and IsUsable(S.CONCUSSIVE_SHOT) then
+        if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and HCOB_Hunter.CanCastRanged(S.CONCUSSIVE_SHOT) then
             HCOB_AdvisorEngine.AddCandidate(candidates, S.CONCUSSIVE_SHOT, "PEEL: CONCUSSIVE", "CTRL+SHIFT", "You have aggro: slow before the dead zone", 89, "survival")
+        end
+    end
+
+    -- Classic traps are primarily pre-pull tools. Recommend Freezing Trap only
+    -- when the target is meaningfully dangerous; do not slow normal grinding
+    -- by asking for a trap on every ordinary mob.
+    if not inCombat and IsKnown(S.FREEZING_TRAP) and CooldownReady(S.FREEZING_TRAP) and IsUsable(S.FREEZING_TRAP) then
+        local trapWorth = classification == "elite" or classification == "rareelite" or classification == "worldboss" or targetLevel >= level + 2
+        if trapWorth then
+            HCOB_AdvisorEngine.AddCandidate(candidates, S.FREEZING_TRAP, "FREEZING TRAP PREP", "CAST MANUALLY", "Dangerous pull: place a control trap before sending the pet or starting Auto Shot", 78, "setup")
         end
     end
 
@@ -3486,23 +3608,23 @@ function HCOB_AdvisorEngine.HunterRecommendation(inCombat, hostile, targetHP, sp
     -- suppress it immediately after a successful cast while the aura API is
     -- still catching up.
     if inCombat and manaPct >= 30 and targetHP >= 45 and elapsed <= 7.0 and stingWorth
-       and not close and canShoot and HCOB_Hunter.CanCastRanged(S.SERPENT_STING)
+       and CooldownReady(S.SERPENT_STING) and not close and canShoot and HCOB_Hunter.CanCastRanged(S.SERPENT_STING)
        and not HCOB_Hunter.HasSerpentSting() then
         local score = 67 + math.min(8, math.max(0, (manaPct - 45) * 0.12)) - riskPenalty
         HCOB_AdvisorEngine.AddCandidate(candidates, S.SERPENT_STING, "SERPENT STING", "CAST MANUALLY", "Early DoT, valid range and enough time to tick | " .. context, score, "dot")
     end
 
     if inCombat and canShoot and afterAuto then
-        if IsKnown(S.AIMED_SHOT) and CooldownReady(S.AIMED_SHOT) and IsUsable(S.AIMED_SHOT) and manaPct >= 40 and targetHP >= 38 then
+        if IsKnown(S.AIMED_SHOT) and CooldownReady(S.AIMED_SHOT) and HCOB_Hunter.CanCastRanged(S.AIMED_SHOT) and manaPct >= 40 and targetHP >= 38 then
             local longEnough = not estimatedTTK or estimatedTTK >= math.max(3.5, SpellCastSeconds(S.AIMED_SHOT) + 0.5)
             if longEnough then
                 HCOB_AdvisorEngine.AddCandidate(candidates, S.AIMED_SHOT, "AIMED WEAVE", "ALT+SHIFT", "Window immediately after Auto Shot | " .. context, 81 - riskPenalty, "weave")
             end
         end
-        if CountActiveEnemies() <= 1 and IsKnown(S.MULTI_SHOT) and CooldownReady(S.MULTI_SHOT) and IsUsable(S.MULTI_SHOT) and manaPct >= 53 and targetHP >= 30 then
+        if CountActiveEnemies() <= 1 and IsKnown(S.MULTI_SHOT) and CooldownReady(S.MULTI_SHOT) and HCOB_Hunter.CanCastRanged(S.MULTI_SHOT) and manaPct >= 53 and targetHP >= 30 then
             HCOB_AdvisorEngine.AddCandidate(candidates, S.MULTI_SHOT, "MULTI WEAVE", "CTRL", "After Auto Shot; healthy mana | " .. context, 72 - riskPenalty, "weave")
         end
-        if IsKnown(S.ARCANE_SHOT) and CooldownReady(S.ARCANE_SHOT) and IsUsable(S.ARCANE_SHOT) then
+        if IsKnown(S.ARCANE_SHOT) and CooldownReady(S.ARCANE_SHOT) and HCOB_Hunter.CanCastRanged(S.ARCANE_SHOT) then
             local finisher = targetHP <= 28 and manaPct >= 32
             local filler = not IsKnown(S.AIMED_SHOT) and manaPct >= 48 and targetHP >= 25
             local hardBurst = tough and manaPct >= 70 and (not estimatedTTK or estimatedTTK >= 5)
@@ -3635,7 +3757,7 @@ function HCOB_AdvisorEngine.WarriorRecommendation(inCombat, hostile, targetHP, s
     if heroicKnown and rage >= hsThreshold and IsUsable(S.HEROIC_STRIKE) then
         local excess = math.max(0, rage - hsThreshold)
         local score = 64 + math.min(16, excess * 0.8) + (targetHP <= 30 and 8 or 0) - riskPenalty * 0.55
-        HCOB_AdvisorEngine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / soglia " .. hsThreshold .. " | " .. context, score, "dump")
+        HCOB_AdvisorEngine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. " | " .. context, score, "dump")
     end
 
     return HCOB_AdvisorEngine.SelectCandidate(candidates)
@@ -3725,7 +3847,7 @@ function HCOB_AdvisorEngine.MageRecommendation(inCombat, hostile, targetHP, spec
     end
 
     if targetHP <= 18 and IsKnown(S.FIRE_BLAST) and CooldownReady(S.FIRE_BLAST) and IsUsable(S.FIRE_BLAST) then
-        HCOB_AdvisorEngine.AddCandidate(candidates, S.FIRE_BLAST, "FIRE BLAST", "ALT+SHIFT", "Finisher istantaneo | " .. context, 88 - riskPenalty * 0.1, "finisher")
+        HCOB_AdvisorEngine.AddCandidate(candidates, S.FIRE_BLAST, "FIRE BLAST", "ALT+SHIFT", "Instant finisher | " .. context, 88 - riskPenalty * 0.1, "finisher")
     end
 
     return HCOB_AdvisorEngine.SelectCandidate(candidates)
@@ -3790,7 +3912,7 @@ function HCOB_AdvisorEngine.WarlockRecommendation(inCombat, hostile, targetHP, s
     if manaPct <= 24 and hp >= 72 and reserve >= 58 and IsKnown(S.LIFE_TAP) and IsUsable(S.LIFE_TAP) then
         local ttdSafe = not dyn or dyn.ttd == math.huge or dyn.ttd >= 12
         if ttdSafe then
-            HCOB_AdvisorEngine.AddCandidate(candidates, S.LIFE_TAP, "LIFE TAP", "ALT+CTRL", "Mana bassa ma HP/reserve sicuri | " .. context, 67, "resource")
+            HCOB_AdvisorEngine.AddCandidate(candidates, S.LIFE_TAP, "LIFE TAP", "ALT+CTRL", "Low mana but HP/reserve are safe | " .. context, 67, "resource")
         end
     end
 
@@ -4074,7 +4196,7 @@ function HCOB_AdvisorEngine.ShamanRecommendation(inCombat, hostile, targetHP, sp
     end
 
     if targetHP <= 24 and IsKnown(S.EARTH_SHOCK) and CooldownReady(S.EARTH_SHOCK) and IsUsable(S.EARTH_SHOCK) and manaPct >= 28 then
-        HCOB_AdvisorEngine.AddCandidate(candidates, S.EARTH_SHOCK, "EARTH SHOCK", "CTRL+SHIFT", "Finisher istantaneo | " .. context, 88, "finisher")
+        HCOB_AdvisorEngine.AddCandidate(candidates, S.EARTH_SHOCK, "EARTH SHOCK", "CTRL+SHIFT", "Instant finisher | " .. context, 88, "finisher")
     elseif IsKnown(S.EARTH_SHOCK) and CooldownReady(S.EARTH_SHOCK) and IsUsable(S.EARTH_SHOCK) and manaPct >= 68 and reserve >= 62 and targetHP >= 35 then
         HCOB_AdvisorEngine.AddCandidate(candidates, S.EARTH_SHOCK, "EARTH SHOCK", "CAST MANUALLY", "Burst only with abundant mana; save the shock if the mob casts | " .. context, 60, "damage")
     end
@@ -4141,10 +4263,13 @@ local function InterruptRecommendation()
     elseif PLAYER_CLASS == "PALADIN" then
         if IsKnown(S.HAMMER_JUSTICE) and CooldownReady(S.HAMMER_JUSTICE) then return S.HAMMER_JUSTICE, "STOP CAST", "CTRL+SHIFT", "Stun (if possible)" end
     elseif PLAYER_CLASS == "HUNTER" then
+        -- Scatter is immediate when the target is in valid range. Intimidation
+        -- depends on the pet reaching and attacking the target, so keep it as the
+        -- fallback rather than the first interrupt recommendation.
+        if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and HCOB_Hunter.CanCastRanged(S.SCATTER_SHOT) then return S.SCATTER_SHOT, "INTERRUPT!", "CTRL+SHIFT", "Scatter Shot" end
         if IsKnown(S.INTIMIDATION) and HCOB_Hunter.PetAlive() and CooldownReady(S.INTIMIDATION) and IsUsable(S.INTIMIDATION) then
             return S.INTIMIDATION, "INTERRUPT!", "CAST MANUALLY", "Intimidation: pet stun"
         end
-        if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and IsUsable(S.SCATTER_SHOT) then return S.SCATTER_SHOT, "INTERRUPT!", "CTRL+SHIFT", "Scatter Shot" end
     elseif PLAYER_CLASS == "ROGUE" then
         if IsKnown(S.KICK) and CooldownReady(S.KICK) then return S.KICK, "INTERRUPT!", "CTRL+SHIFT", "Kick" end
     elseif PLAYER_CLASS == "PRIEST" then
@@ -4172,7 +4297,7 @@ local function PanicRecommendation()
         if hp <= 18 and IsKnown(S.LAY_ON_HANDS) and CooldownReady(S.LAY_ON_HANDS) and IsUsable(S.LAY_ON_HANDS) then return S.LAY_ON_HANDS, "LAY ON HANDS", "ALL MODS", "Extreme emergency: immediately recover HP" end
         if IsKnown(S.DIVINE_SHIELD) and CooldownReady(S.DIVINE_SHIELD) and IsUsable(S.DIVINE_SHIELD) then return S.DIVINE_SHIELD, "DIVINE SHIELD", "CAST MANUALLY", "Immunity: create time for healing/escape" end
         if IsKnown(S.DIVINE_PROTECTION) and CooldownReady(S.DIVINE_PROTECTION) and IsUsable(S.DIVINE_PROTECTION) then return S.DIVINE_PROTECTION, "DIVINE PROTECTION", "ALT+CTRL", "Reduce pressure and prepare healing/escape" end
-        if IsKnown(S.LAY_ON_HANDS) and CooldownReady(S.LAY_ON_HANDS) and IsUsable(S.LAY_ON_HANDS) then return S.LAY_ON_HANDS, "LAY ON HANDS", "ALL MODS", "Ultima risorsa immediata" end
+        if IsKnown(S.LAY_ON_HANDS) and CooldownReady(S.LAY_ON_HANDS) and IsUsable(S.LAY_ON_HANDS) then return S.LAY_ON_HANDS, "LAY ON HANDS", "ALL MODS", "Immediate last resort" end
         local heal = HCOB_AdvisorEngine.PaladinHealSpell(true)
         if heal then return heal, SpellName(heal,"HEAL"), "CAST MANUALLY", "No immunity ready: try to stabilize" end
         return nil, "RUN!", "PREPARE ESCAPE", "No immediate Paladin defensive available"
@@ -4183,10 +4308,10 @@ local function PanicRecommendation()
         if HCOB_Hunter.TargetIsClose() and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
             return S.WING_CLIP, "WING CLIP + RUN", "ALT", "Feign unavailable: slow and create distance"
         end
-        if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and IsUsable(S.SCATTER_SHOT) then
+        if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and HCOB_Hunter.CanCastRanged(S.SCATTER_SHOT) then
             return S.SCATTER_SHOT, "SCATTER + RUN", "CTRL+SHIFT", "Control the target and create distance"
         end
-        if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and IsUsable(S.CONCUSSIVE_SHOT) then
+        if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and HCOB_Hunter.CanCastRanged(S.CONCUSSIVE_SHOT) then
             return S.CONCUSSIVE_SHOT, "CONCUSSIVE + RUN", "CTRL+SHIFT", "Slow the target and extend the leash"
         end
         return nil, "RUN!", "PREPARE ESCAPE", "No immediate Hunter reset available"
@@ -4266,7 +4391,7 @@ local function BuffRecommendation(inCombat)
             local hasInt, intRemain = HasPlayerBuff(S.ARCANE_INTELLECT)
             local intKey = HostileLiveTarget() and "CAST MANUALLY" or "SHIFT"
             if not hasInt then
-                return S.ARCANE_INTELLECT, "ARCANE INT", intKey, "Buff intellect missingnte"
+                return S.ARCANE_INTELLECT, "ARCANE INT", intKey, "Intellect buff missing"
             end
             if intRemain < 20 then
                 return S.ARCANE_INTELLECT, "INT SOON", intKey, "Expires in " .. math.floor(intRemain) .. "s"
@@ -4278,7 +4403,7 @@ local function BuffRecommendation(inCombat)
     local id
     if PLAYER_CLASS == "WARRIOR" then id = S.BATTLE_SHOUT
     elseif PLAYER_CLASS == "PALADIN" then id = S.BLESSING_MIGHT
-    elseif PLAYER_CLASS == "HUNTER" then id = S.ASPECT_HAWK
+    elseif PLAYER_CLASS == "HUNTER" then return nil
     elseif PLAYER_CLASS == "PRIEST" then id = S.FORTITUDE
     elseif PLAYER_CLASS == "WARLOCK" then id = IsKnown(S.DEMON_ARMOR) and S.DEMON_ARMOR or S.DEMON_SKIN
     elseif PLAYER_CLASS == "DRUID" then id = S.MARK_WILD
@@ -4406,7 +4531,7 @@ local function MultiPullRecommendation(enemies, hp, targetHP)
             if close and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
                 return S.WING_CLIP, "3+ MOBS - WING CLIP", "ALT", "Slow the target on you and create an escape route", "danger"
             end
-            if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and IsUsable(S.SCATTER_SHOT) then
+            if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and HCOB_Hunter.CanCastRanged(S.SCATTER_SHOT) then
                 return S.SCATTER_SHOT, "3+ MOBS - SCATTER", "CTRL+SHIFT", "Control one, move away, do not tunnel DPS", "danger"
             end
             return nil, "3+ MOBS - GET OUT", "PREPARE ESCAPE", "Too many targets for a clean Hardcore pull", "danger"
@@ -4421,7 +4546,7 @@ local function MultiPullRecommendation(enemies, hp, targetHP)
             return S.WING_CLIP, "MULTI x2 - DEAD ZONE", "ALT", "Slow, leave melee and put the pet back in front", "caution"
         end
 
-        if IsKnown(S.MULTI_SHOT) and CooldownReady(S.MULTI_SHOT) and IsUsable(S.MULTI_SHOT) and manaPct >= 48 and (not petHP or petHP >= 50) and HCOB_Hunter.AfterAutoWindow() then
+        if IsKnown(S.MULTI_SHOT) and CooldownReady(S.MULTI_SHOT) and HCOB_Hunter.CanCastRanged(S.MULTI_SHOT) and manaPct >= 48 and (not petHP or petHP >= 50) and HCOB_Hunter.AfterAutoWindow() then
             return S.MULTI_SHOT, "MULTI x2 - WEAVE", "CTRL", "Only already engaged mobs: after Auto Shot", "caution"
         end
 
@@ -4610,7 +4735,7 @@ local function Recommend()
                     if HCOB_Hunter.TargetIsClose() and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
                         return S.WING_CLIP, "UNFAVORABLE FIGHT", "ALT", trendText .. ": Wing Clip and return to range", "caution"
                     end
-                    if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and IsUsable(S.CONCUSSIVE_SHOT) then
+                    if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and HCOB_Hunter.CanCastRanged(S.CONCUSSIVE_SHOT) then
                         return S.CONCUSSIVE_SHOT, "UNFAVORABLE FIGHT", "CTRL+SHIFT", trendText .. ": slow the target and let the pet tank", "caution"
                     end
                 elseif PLAYER_CLASS == "WARLOCK" then
@@ -5028,6 +5153,7 @@ local function CombatLogHandler()
         end
         if sourceGUID == playerGUID and (subevent == "RANGE_DAMAGE" or subevent == "RANGE_MISSED") and tonumber(spellId) == S.AUTO_SHOT then
             HCOB_Hunter.lastAutoShotAt = now
+            HCOB_Hunter.autoRepeatActive = true
         end
 
         local serpentName = SpellName(S.SERPENT_STING)
@@ -5640,6 +5766,7 @@ local events = {
     "PLAYER_LEVEL_UP", "SPELLS_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_TALENT_UPDATE",
     "UNIT_POWER_UPDATE", "UNIT_HEALTH", "UNIT_AURA", "SPELL_UPDATE_COOLDOWN", "UPDATE_SHAPESHIFT_FORM",
     "COMBAT_LOG_EVENT_UNFILTERED", "UNIT_PET", "PET_BAR_UPDATE", "UNIT_HAPPINESS",
+    "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL",
     "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED",
     "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
 }
@@ -5665,10 +5792,18 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             -- combat log will add enemies only after a real damage/miss exchange
             -- with player or pet. This prevents false x2 alerts on combat entry.
             activeEnemies = {}
-            if PLAYER_CLASS == "HUNTER" then HCOB_Hunter.combatEnteredAt = GetTime() end
+            if PLAYER_CLASS == "HUNTER" then
+                HCOB_Hunter.combatEnteredAt = GetTime()
+                HCOB_Hunter.ResetTargetState(true)
+            end
             if HCOB_DB.combatLogging ~= false and not runtimeTelemetryDisabled then SafeRun("TelemetryStart", StartCombatTelemetry) end
         elseif event == "PLAYER_REGEN_ENABLED" then
-            if PLAYER_CLASS == "HUNTER" then HCOB_Hunter.combatEnteredAt = nil end
+            if PLAYER_CLASS == "HUNTER" then
+                HCOB_Hunter.combatEnteredAt = nil
+                HCOB_Hunter.targetEngagedAt = nil
+                HCOB_Hunter.engagedTargetGUID = nil
+                HCOB_Hunter.autoRepeatActive = false
+            end
             if currentFight and HCOB_DB.combatLogging ~= false and not runtimeTelemetryDisabled then SafeRun("TelemetryFinalize", FinalizeCombatTelemetry, "combat_end") end
             activeEnemies = {}; activeTargetCast=nil
             if pendingRebuild then BuildMacros() end
@@ -5679,9 +5814,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             if PLAYER_CLASS == "HUNTER" then
                 HCOB_Hunter.lastMeleeAt = nil
                 HCOB_Hunter.lastAutoShotAt = nil
-                HCOB_Hunter.serpentGUID = nil
-                HCOB_Hunter.serpentActive = false
-                HCOB_Hunter.serpentPendingUntil = 0
+                HCOB_Hunter.ResetTargetState(UnitAffectingCombat("player"))
+                if HCOB_AdvisorEngine and HCOB_AdvisorEngine.ResetDynamics then HCOB_AdvisorEngine.ResetDynamics() end
             end
             -- Legal smartness: out of combat we may rebuild the secure macro for
             -- the selected target (e.g. decide whether Rend is worth one GCD).
@@ -5696,6 +5830,10 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
                     SafeRun("LevelUpPlan", PrintPlan)
                 end)
             end
+        elseif PLAYER_CLASS == "HUNTER" and event == "START_AUTOREPEAT_SPELL" then
+            HCOB_Hunter.autoRepeatActive = true
+        elseif PLAYER_CLASS == "HUNTER" and event == "STOP_AUTOREPEAT_SPELL" then
+            HCOB_Hunter.autoRepeatActive = false
         elseif PLAYER_CLASS == "HUNTER" and (event == "BAG_UPDATE_DELAYED" or event == "UNIT_HAPPINESS" or event == "GET_ITEM_INFO_RECEIVED" or (event == "UNIT_AURA" and eventArg1 == "pet")) then
             local relevant = event ~= "GET_ITEM_INFO_RECEIVED" or HCOB_Hunter.foodDataPending
             if relevant then

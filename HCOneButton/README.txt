@@ -1,4 +1,4 @@
-HCOneButton 1.21.5 - ENGLISH-ONLY LOCALIZATION
+HCOneButton 1.21.7 - ENGLISH-ONLY LOCALIZATION
 
 HCOneButton is a WoW Classic Era / Hardcore combat assistant built around secure player input.
 It provides class-aware recommendations, deterministic clickable action slots, survival-aware Advisor Engine 2.0 logic, Hunter pet management, profession coaching, combat telemetry, and passive diagnostic output.
@@ -20,7 +20,7 @@ CORE HUD
 FIXED ACTION PANEL DEFAULT BINDINGS
 - Slots 01-09: SHIFT+1 through SHIFT+9
 - Slot 10: SHIFT+0
-- Slots 11-18: CTRL+SHIFT+1 through CTRL+SHIFT+8
+- Slots 11-20: CTRL+SHIFT+1 through CTRL+SHIFT+0
 - Bindings can be customized from the addon options while out of combat.
 - Bindings are slot-based, not spell-based, so muscle memory remains stable across levels and characters.
 
@@ -47,9 +47,13 @@ Engine 2.0 includes:
 
 HUNTER
 - Hybrid ranged/melee attack recovery
-- Auto Shot range-aware pull state
+- Auto Shot range-aware pull state and auto-repeat state tracking
 - Accurate live multi-aggro tracking based on real combat exchanges
-- Serpent Sting live range/usability validation
+- Per-target chain-pull timing and rolling TTK/TTD state
+- Serpent Sting live range/usability/cooldown validation
+- Range-safe Scatter Shot and Concussive Shot recommendations
+- Melee finisher logic for Raptor Strike plus reactive Mongoose Bite
+- Freezing Trap pre-pull guidance for dangerous targets
 - Auto Shot weaving-aware recommendations
 - Pet health, threat, Mend Pet, Feign Death and smart pet feeding
 - Pet food selection based on diet, level usefulness, bag contents and food priority
