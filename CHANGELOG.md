@@ -2,7 +2,31 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.27.6`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.27.7`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.27.7 — 2026-08-26
+
+### Fixed
+
+- Fixed SavedVariables initialization order: `HCOB_DB` and `HCOB_CombatLog` are now rebound from the real TOC-declared globals when `ADDON_LOADED` fires.
+- Defaults, shape validation and one-shot migrations now run only after that rebind, so persistent settings are written to the table WoW actually serializes.
+- Hunter management defaults now use the same post-`ADDON_LOADED` initialization path instead of writing into the temporary bootstrap database.
+- HUD position is explicitly restored from the persistent database at `PLAYER_LOGIN`; the pre-login secure frame now uses literal bootstrap coordinates until SavedVariables are available.
+- Added a `PLAYER_LOGIN` fallback for test harnesses/unusual load paths that omit `ADDON_LOADED`.
+- Fixes settings such as HUD scale reverting after `/reload` even though other UI changes appeared to work during the current session.
+
+### Compatibility
+
+- Existing valid `HCOB_DB` and `HCOB_CombatLog` contents are preserved.
+- Malformed-root repair from 1.27.6 remains active, but is now performed at the correct SavedVariables lifecycle point.
+- Advisor scores, class rotations, deterministic Action Panel slots, bindings and Diagnostic Pixel Protocol V3 are unchanged.
+
+### Validation
+
+- 40/40 Lua chunks pass syntax parsing in the current validation environment.
+- 41/41 TOC references resolve with no duplicates.
+- Lifecycle simulation preserves existing scale, Profession Coach state, HUD position and Action Panel scale while adding only missing defaults.
+- Advisor, Classes, Data, ActionPanel, Bindings and Diagnostic Pixel behavior files are unchanged from 1.27.6.
 
 ## 1.27.6 — 2026-08-26
 
