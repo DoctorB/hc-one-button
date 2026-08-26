@@ -246,7 +246,7 @@ function ApplyHUDScale()
         HCOB.Systems.ProfessionCoach.ApplyHUDScale(hudScale)
     end
 
-    -- DiagnosticPixel intentionally stays exactly 1x1 for the external reader.
+    -- DiagnosticPixel intentionally stays unscaled (currently 8x8) for the external reader.
     pendingHUDScale = false
     return true
 end

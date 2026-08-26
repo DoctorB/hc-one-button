@@ -14,100 +14,31 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ---
 
-## What's new in 1.27.5
+## README contents
 
-Version `1.27.5` is an **Options Persistence & Profession Coach Toggle** release. The dedicated Options panel stores user preferences in `HCOB_DB`, a WoW SavedVariables table, so changes persist across `/reload`, logout/login and client restarts.
-
-A new **Profession Coach** checkbox is available in Options. Turning it off persists the choice, hides the Profession Coach panel and suspends its event-driven profession refresh/scans until re-enabled. `/hcob prof on|off` controls the same setting, and **Reset defaults** turns the coach back on.
-
-This release does not change Advisor scores, class rotations, deterministic action slots, configured bindings or Diagnostic Pixel Protocol V3.
-
----
-
-## What's new in 1.27.4
-
-Version `1.27.4` is a **HUD Scale & Window Management** release. It does not change Advisor scores, class rotations, deterministic action slots, bindings or Diagnostic Pixel Protocol V3.
-
-- The main **HUD scale** now resizes the complete combat HUD as one unit: BASE, CoreShell, Advisor, DPS meter, Fixed Action Panel and Profession Coach.
-- `/hcob actions scale` is retained as an optional **relative Action Panel multiplier**; the Action Panel still inherits the primary HUD scale first.
-- The 1x1 Diagnostic Pixel is intentionally excluded from HUD scaling so external slot readers keep an exact diagnostic pixel.
-- Added a small managed-window layer for HCOneButton standalone dialogs. Only one HCOB configuration/report window is shown at a time.
-- Opening **Configure slot bindings...** or **Report a problem...** from Options now hides the Options window instead of stacking a second large dialog directly on top of it.
-- Secondary windows display **Back to Options** when launched from Options and restore Options when closed, including when the standard frame X button is used.
-- Opening those windows directly with slash commands keeps normal standalone Close behavior.
-- Binding configuration closed automatically by combat does not reopen Options during combat.
-- Reset defaults now resets both the primary HUD scale and the optional Action Panel relative scale.
-
-This release is UI/UX-only: combat recommendations and secure action mappings are intentionally unchanged.
-
-Validation for this release includes 40/40 Lua chunks parsing, 41/41 TOC references resolving, managed-window navigation tests, HUD-scale propagation tests, and byte-identical `Classes/`, `Advisor/`, `Hunter/`, `Data/`, `UI/DiagnosticPixel.lua`, `Systems/Bindings.lua` and `Bindings.xml` versus `1.27.3`.
+- [What HCOneButton does](#what-hconebutton-does)
+- [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts)
+- [Hunter pet management](#hunter-pet-management)
+- [Installation](#installation)
+- [Basic usage](#basic-usage)
+- [Complete command reference](#complete-command-reference)
+- [Diagnostic Pixel and external reader protocol](#diagnostic-pixel-and-external-reader-protocol)
+- [Current baseline validation](#current-baseline-validation)
+- [Release history](CHANGELOG.md)
 
 ---
 
-## What's new in 1.27.3
+## Current release
 
-Version `1.27.3` is an **Advisor Responsiveness Pass**. It changes how quickly the existing Advisor logic is reevaluated, but does **not** change class scores, spell priorities, deterministic action slots, bindings, secure Action Panel actions or Diagnostic Pixel Protocol V3.
+Version `1.27.5` is the current baseline. It confirms that Options are persisted in `HCOB_DB` and adds a persistent **Profession Coach** toggle shared by the Options panel and `/hcob prof on|off`.
 
-- Important state changes now request an Advisor refresh immediately instead of waiting for the next periodic HUD tick. This includes player HP/resource, player/target/pet auras and health, cooldown/usability changes, combo points, target changes, target-of-target changes, pet/form changes and hostile-cast state detected by the combat log.
-- Event bursts are coalesced behind a **35 ms minimum refresh interval**, preventing noisy `UNIT_AURA` / `UNIT_POWER_UPDATE` bursts from causing excessive full evaluations.
-- The fallback heartbeat is now **120 ms in combat** and **300 ms out of combat**, down from 200 ms / 500 ms.
-- Normal `action` / `buff` recommendation hold is reduced from **280 ms to 120 ms**.
-- Previous-candidate hysteresis is reduced from **+7 for 1.25 s** to **+4 for 0.65 s**. Close-score recommendations still resist flicker, but the old action is no longer favored for as long.
-- Higher-priority safety states such as interrupts and danger recommendations continue to bypass the normal-action hold.
-- Rolling TTK/TTD sampling intentionally remains at **200 ms**. The UI can react faster without oversampling the same health state into the dynamics model.
-- Combat-log percentages remain heartbeat-sampled. Event-driven UI refreshes can update the feedback trace immediately, but do not bias Advisor sample percentages simply because one class generates more power/aura events than another.
+Advisor scores, class rotations, deterministic action slots, configured bindings and Diagnostic Pixel Protocol V3 are unchanged in this release.
 
-This release is specifically aimed at reducing the feeling of input/recommendation inertia while preserving the anti-flicker behavior that makes the HUD readable.
+See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
 ---
 
-## What's new in 1.27.2
-
-Version `1.27.2` is a visual-polish hotfix for the unified combat HUD. It does not change Advisor scoring, class rotations, deterministic action slots, bindings, telemetry or Diagnostic Pixel Protocol V3.
-
-- The outer `HCOB_CoreShell` border is now **alert-only** instead of being permanently visible.
-- Normal states such as `OK`, `PULL`, modifier/manual recommendations, automatic-action states and buffs keep the outer shell border fully transparent.
-- `CAUTION` still shows the amber warning border.
-- `DANGER` / critical recommendations still show the red warning border.
-- The CoreShell itself is still used as the visual container for BASE + Advisor + telemetry; only its redundant normal-state outline was removed.
-
----
-
-## What's new in 1.27.1
-
-Version `1.27.1` is a compact-UI stability hotfix based on direct in-game feedback. It does not change Advisor scoring, class rotations, deterministic action-slot numbering, bindings or Diagnostic Pixel Protocol V3.
-
-- The Fixed Action Panel now uses a compact **10-column × 2-row maximum** layout with 32 px buttons instead of the previous 6-column layout with 44 px buttons. Slot order remains exactly 01 → 20.
-- The maximum Action Panel height for a 20-slot class drops from roughly 207 px to roughly 84 px at scale 1.0, significantly reducing combat-screen occlusion.
-- Profession Coach now has an explicit combat-state latch. `PLAYER_REGEN_DISABLED` hides the panel immediately and queued refresh timers cannot reopen it during combat.
-- `PLAYER_REGEN_ENABLED` re-enables normal event-driven Profession Coach refreshes after combat.
-- The Profession Coach panel itself is slightly shorter out of combat.
-
----
-
-## What's new in 1.27.0
-
-Version `1.27.0` adds the first **Feedback & Telemetry** workflow for real-world testing without changing class rotations, deterministic action slots, default bindings or Diagnostic Pixel Protocol V3.
-
-Highlights:
-
-- **Report a problem...** button in `/hcob options`;
-- `/hcob report` and `/hcob feedback` open the same report window;
-- selectable HCOneButton CurseForge Issues URL;
-- **Generate Last Fight** for a focused Advisor/bug report;
-- **Generate Recent Fights** for a short multi-fight sample;
-- optional **Detailed telemetry** mode;
-- compact per-fight Advisor recommendation trace, capped at 32 recommendation changes;
-- trace snapshots can include slot, reason, HP, target HP, Survival Reserve, enemy count, TTK/TTD/confidence and top candidate scores when available;
-- reports intentionally omit character name/realm, target names/GUIDs, zone/subzone and equipment item IDs;
-- `/hcob log export` now opens the report window, while `/hcob log export raw` preserves the old SavedVariables workflow;
-- all nine class modules and the Action Panel / binding / pixel mappings remain unchanged from `1.26.1`.
-
-The report text is designed to be pasted directly into a new issue at the HCOneButton CurseForge Issues tracker. WoW addons cannot reliably open an external browser or write directly to the operating-system clipboard, so HCOneButton selects the URL/report and tells the tester when to press `Ctrl+C`.
-
----
-
-## Features
+## What HCOneButton does
 
 ### Unified combat HUD
 
@@ -243,9 +174,11 @@ to print the current slot → key → action mapping.
 
 ---
 
-## Class action layouts
+## Supported classes and deterministic action layouts
 
-The following layouts are deterministic. Unknown spells keep their slot. Existing slots are preserved across releases; newly introduced actions are appended whenever possible.
+HCOneButton supports all nine WoW Classic classes: **Warrior, Paladin, Hunter, Rogue, Priest, Mage, Warlock, Shaman and Druid**.
+
+The following class layouts are deterministic. Unknown spells keep their slot. Existing slots are preserved across releases; newly introduced actions are appended whenever possible.
 
 <details>
 <summary><strong>Warrior</strong></summary>
@@ -777,7 +710,7 @@ This can print information such as Survival Reserve, rolling TTK/TTD and the hig
 
 ---
 
-## Commands
+## Complete command reference
 
 Both aliases are supported:
 
@@ -903,9 +836,20 @@ HCOB_CombatLog
 
 ---
 
-## Diagnostic pixel protocol
+## Diagnostic Pixel and external reader protocol
 
 HCOneButton can expose a small diagnostic pixel intended for passive external diagnostics.
+
+The current implementation renders it as an unscaled **8×8 frame** so it remains easy for an external reader to sample. The encoded color, not the frame dimensions, is the protocol contract.
+
+### Using an external reader
+
+1. Enable the frame with `/hcob diagpixel on`.
+2. Locate it immediately to the right of the Advisor frame, separated by a 4 px gap. It follows the HUD position but is intentionally excluded from HUD scaling.
+3. Sample any point inside the solid 8×8 frame and read its 8-bit RGB value.
+4. Treat black as no recommendation and white as an Advisor recommendation that has no deterministic Action Panel slot.
+5. For a normal slot color, verify `G = 96` and `B = 224`, then decode `slot = R / 12`. Valid slots are 1–20.
+6. Resolve the decoded slot through the current class table in [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts).
 
 Protocol v3 is **slot-only**. It intentionally does not encode class or spell names.
 
@@ -993,23 +937,16 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 
 ---
 
-## Release validation
+## Current baseline validation
 
-The `1.27.0` release candidate was checked for:
+The `1.27.5` source baseline currently passes:
 
-- **39/39 Lua chunks** parsing successfully with a real Lua compiler;
-- **40/40 TOC references** resolving (`39 Lua + Bindings.xml`);
-- the new feedback report formatter producing valid last-fight and recent-fights diagnostic reports with deterministic slot and Advisor trace information;
-- detailed recent-fights output respecting the built-in **18,000-character** maximum and truncating cleanly when necessary;
-- the Feedback UI passing a construction/open/generate smoke test with selectable report and URL fields;
-- report output including the configured CurseForge Issues URL;
-- all nine `Classes/*.lua` files remaining byte-identical to `1.26.1`;
-- `UI/ActionPanel.lua`, `UI/DiagnosticPixel.lua`, `Systems/Bindings.lua`, `Bindings.xml` and `Data/Spells.lua` remaining byte-identical to `1.26.1`;
-- no Fixed Action Panel slot, default key binding or Diagnostic Pixel V3 mapping changing in this release;
-- feedback trace recording being isolated from the Smart HUD through a protected call;
-- legacy fights remaining exportable even when they do not contain the new 1.27 Advisor trace.
+- **40/40 Lua chunks** parsed with Lua 5.1.5 `luac -p`;
+- **41/41 TOC references** resolved (`40 Lua + Bindings.xml`);
+- no duplicate TOC entry;
+- all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants.
 
-A short in-game smoke test is still recommended after installation, particularly for the new report window's text selection/scrolling and normal CurseForge copy/paste workflow, because desktop clipboard/browser behavior cannot be reproduced perfectly by an external harness.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.
 
 ---
 
