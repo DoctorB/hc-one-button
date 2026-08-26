@@ -15,12 +15,6 @@ H.managementCache = H.managementCache or {}
 H.managementCache.ammoDirty = true
 H.managementCache.petDirty = true
 
-if HCOB_DB then
-    if HCOB_DB.hunterAmmoCriticalMinutes == nil then HCOB_DB.hunterAmmoCriticalMinutes = 8 end
-    if HCOB_DB.hunterAmmoLowMinutes == nil then HCOB_DB.hunterAmmoLowMinutes = 20 end
-    if HCOB_DB.hunterTrainingPointNotice == nil then HCOB_DB.hunterTrainingPointNotice = 10 end
-end
-
 H.PET_SKILL_IDS = H.PET_SKILL_IDS or {
     growl = 2649,
     bite = 17253,

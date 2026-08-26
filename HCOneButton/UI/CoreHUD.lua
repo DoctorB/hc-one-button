@@ -23,8 +23,8 @@ if GetCVar then
     if v ~= nil then hcobUseKeyDown = tostring(v) ~= "0" end
 end
 btn:SetAttribute("useOnKeyDown", hcobUseKeyDown)
-btn:SetPoint("CENTER", UIParent, "CENTER", HCOB_DB.x or 0, HCOB_DB.y or -180)
-btn:SetScale(HCOB_DB.scale or 1.0)
+btn:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
+btn:SetScale(1.0)
 
 bg = btn:CreateTexture(nil, "BACKGROUND")
 bg:SetAllPoints()
@@ -207,6 +207,13 @@ function ApplyVisualTheme()
     resourceText:SetTextColor(1, 1, 1)
     hpText:SetTextColor(1, 1, 1)
     panelShadow:Show()
+end
+
+function RestoreHUDPosition()
+    if InCombatLockdown and InCombatLockdown() then return false end
+    btn:ClearAllPoints()
+    btn:SetPoint("CENTER", UIParent, "CENTER", tonumber(HCOB_DB.x) or 0, tonumber(HCOB_DB.y) or -180)
+    return true
 end
 
 function ApplyHUDScale()

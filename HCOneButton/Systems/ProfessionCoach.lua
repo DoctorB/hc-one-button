@@ -1,4 +1,4 @@
--- HCOneButton Profession Coach v1.27.6
+-- HCOneButton Profession Coach v1.27.7
 -- Event-driven profession leveling advisor for WoW Classic Era.
 -- No automatic crafting/gathering: it only recommends the most efficient next action.
 

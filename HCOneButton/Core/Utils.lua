@@ -25,48 +25,54 @@ function Default(key, value)
         HCOB.RecordSavedVariableRepair("HCOB_DB." .. key)
     end
 end
-Default("visible", true)
-Default("x", 0)
-Default("y", -180)
-Default("scale", 1.0)
-Default("dangerHP", 35)
-Default("criticalHP", 20)
-Default("soundAlerts", true)
-Default("enemyWindow", 6)
-Default("showSwing", true)
-Default("locked", false)
-Default("showOptionsHint", true)
-Default("smartDisplay", true)
-Default("warriorHeroicRage", 35)
-Default("showAdvisor", true)
-Default("showDPSMeter", true)
-Default("hcDangerAdvisor", true)
-Default("warriorSunderBase", true)
-Default("warriorHeroicSpam", false)
-Default("warriorAutoRend", true)
-Default("combatLogging", true)
-Default("diagPixel", true)
-Default("profCoach", true)
-Default("secureActions", true)
-Default("actionScale", 1.0)
-Default("actionSlotAutoBind", true)
+function InitializeSavedVariables()
+    Default("visible", true)
+    Default("x", 0)
+    Default("y", -180)
+    Default("scale", 1.0)
+    Default("dangerHP", 35)
+    Default("criticalHP", 20)
+    Default("soundAlerts", true)
+    Default("enemyWindow", 6)
+    Default("showSwing", true)
+    Default("locked", false)
+    Default("showOptionsHint", true)
+    Default("smartDisplay", true)
+    Default("warriorHeroicRage", 35)
+    Default("showAdvisor", true)
+    Default("showDPSMeter", true)
+    Default("hcDangerAdvisor", true)
+    Default("warriorSunderBase", true)
+    Default("warriorHeroicSpam", false)
+    Default("warriorAutoRend", true)
+    Default("combatLogging", true)
+    Default("diagPixel", true)
+    Default("profCoach", true)
+    Default("secureActions", true)
+    Default("actionScale", 1.0)
+    Default("actionSlotAutoBind", true)
 
-for _, key in ipairs({"actionSlotKeys", "actionSlotAppliedKeys"}) do
-    if HCOB_DB[key] ~= nil and type(HCOB_DB[key]) ~= "table" then
-        HCOB_DB[key] = nil
-        HCOB.RecordSavedVariableRepair("HCOB_DB." .. key)
+    for _, key in ipairs({"actionSlotKeys", "actionSlotAppliedKeys"}) do
+        if HCOB_DB[key] ~= nil and type(HCOB_DB[key]) ~= "table" then
+            HCOB_DB[key] = nil
+            HCOB.RecordSavedVariableRepair("HCOB_DB." .. key)
+        end
     end
-end
 
--- v1.11: Heroic Strike must never live in the BASE SPAM macro. A secure macro
--- cannot test the player's current rage, so putting !Heroic Strike in the base
--- button queued it even when rage was scarce. Migrate existing SavedVariables
--- once so upgrades from older versions cannot retain the unsafe behavior.
-if HCOB_DB.warriorHeroicSafeBaseV111 ~= true then
-    HCOB_DB.warriorHeroicSpam = false
-    HCOB_DB.warriorHeroicSafeBaseV111 = true
+    -- v1.11: Heroic Strike must never live in the BASE SPAM macro. A secure macro
+    -- cannot test the player's current rage, so putting !Heroic Strike in the base
+    -- button queued it even when rage was scarce. Migrate existing SavedVariables
+    -- once so upgrades from older versions cannot retain the unsafe behavior.
+    if HCOB_DB.warriorHeroicSafeBaseV111 ~= true then
+        HCOB_DB.warriorHeroicSpam = false
+        HCOB_DB.warriorHeroicSafeBaseV111 = true
+    end
+    Default("combatLogMaxFights", 60)
+
+    Default("hunterAmmoCriticalMinutes", 8)
+    Default("hunterAmmoLowMinutes", 20)
+    Default("hunterTrainingPointNotice", 10)
 end
-Default("combatLogMaxFights", 60)
 
 function Clamp(v, lo, hi)
     if v < lo then return lo end

@@ -4,7 +4,7 @@ local HCOB = HCOneButton
 local E = HCOB.Internal
 setfenv(1, E)
 
-VERSION = HCOB.VERSION or "1.27.6"
+VERSION = HCOB.VERSION or "1.27.7"
 MACRO_LIMIT = 255
 
 _, PLAYER_CLASS = UnitClass("player")
@@ -12,6 +12,7 @@ _, PLAYER_CLASS = UnitClass("player")
 S = HCOB.Data.Spells
 
 
+savedVariablesReady = false
 pendingRebuild = false
 pendingHUDScale = false
 appliedHUDScale = nil

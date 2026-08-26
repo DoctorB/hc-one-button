@@ -6,7 +6,7 @@ setfenv(1, E)
 
 local eventFrame = CreateFrame("Frame")
 local events = {
-    "PLAYER_LOGIN", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_TARGET_CHANGED",
+    "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_TARGET_CHANGED",
     "PLAYER_LEVEL_UP", "SPELLS_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_TALENT_UPDATE",
     "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_AURA", "UNIT_TARGET",
     "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "PLAYER_COMBO_POINTS",
@@ -86,6 +86,24 @@ end
 
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     local eventArg1, eventArg2 = ...
+
+    local function EnsureSavedVariablesReady()
+        if savedVariablesReady then return true end
+        if not HCOB.BindSavedVariables then return false end
+        HCOB.BindSavedVariables()
+        if InitializeSavedVariables then InitializeSavedVariables() end
+        savedVariablesReady = true
+        return true
+    end
+
+    if event == "ADDON_LOADED" then
+        if eventArg1 ~= addonName then return end
+        local ok = SafeRun("SavedVariablesInit", EnsureSavedVariablesReady)
+        if not ok then
+            print("|cffff5555HCOB:|r SavedVariables initialization failed. Use /hcob errors for details.")
+        end
+        return
+    end
     local beforeCastKey, beforeEnemies
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         beforeCastKey = activeTargetCast and (tostring(activeTargetCast.guid) .. ":" .. tostring(activeTargetCast.spellId)) or ""
@@ -93,6 +111,13 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     end
 
     local function HandleEvent()
+        if event == "PLAYER_LOGIN" then
+            -- ADDON_LOADED is the normal initialization point. Keep this
+            -- fallback for test harnesses or unusual load paths that omit it,
+            -- and make the persistent tables ready before class login hooks.
+            EnsureSavedVariablesReady()
+        end
+
         local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
         if class and class.HandleEvent then class:HandleEvent(event, eventArg1, eventArg2) end
 
@@ -100,6 +125,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             playerGUID = SafeUnitGUID("player")
             RebuildKnownSpellNames()
             InitCombatLogDB()
+            if RestoreHUDPosition then RestoreHUDPosition() end
             ApplyVisualTheme()
             CreateOptionsPanel()
             BuildMacros()
