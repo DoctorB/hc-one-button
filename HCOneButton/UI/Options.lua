@@ -25,8 +25,13 @@ function OpenOptionsPanel()
         print("|cffffcc00HCOB:|r open options out of combat.")
         return
     end
-    optionsPanel:Show()
-    optionsPanel:Raise()
+    local windows = HCOB.UI and HCOB.UI.WindowManager
+    if windows and windows.Open then
+        windows.Open("options")
+    else
+        optionsPanel:Show()
+        optionsPanel:Raise()
+    end
 end
 
 function OpenBlizzardSettingsPanel()
@@ -96,7 +101,7 @@ function CreateOptionsPanel()
     -- from future changes to the Blizzard Settings API.
     local panel = CreateFrame("Frame", "HCOneButtonOptionsPanel", UIParent, "BasicFrameTemplateWithInset")
     panel:SetSize(700, 670)
-    panel:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
+    panel:SetPoint("CENTER", UIParent, "CENTER", 0, 20)
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
     panel:SetMovable(true)
@@ -127,12 +132,20 @@ function CreateOptionsPanel()
     local controls = {}
     local function add(control) table.insert(controls, control); return control end
 
-    add(CreateCheckBox(panel, "Show button", "Show or hide HC One Button.", function() return HCOB_DB.visible end, function(v) HCOB_DB.visible = v; RefreshButtonState() end, 24, -118))
+    add(CreateCheckBox(panel, "Show HUD", "Show or hide the complete HC One Button combat HUD.", function() return HCOB_DB.visible end, function(v) HCOB_DB.visible = v; RefreshButtonState() end, 24, -118))
     add(CreateCheckBox(panel, "Lock position", "Disable button dragging.", function() return HCOB_DB.locked end, function(v) HCOB_DB.locked = v end, 24, -148))
     add(CreateCheckBox(panel, "Alert sounds", "Play sounds for danger and interrupts.", function() return HCOB_DB.soundAlerts end, function(v) HCOB_DB.soundAlerts = v end, 24, -178))
     add(CreateCheckBox(panel, "Show swing timer", "Show the next auto-attack swing bar.", function() return HCOB_DB.showSwing end, function(v) HCOB_DB.showSwing = v; UpdateDisplay() end, 24, -208))
     add(CreateCheckBox(panel, "Smart HUD", "Analyze buffs, target, cooldowns and danger. If an API errors, Smart HUD is disabled for the session without stopping the secure button.", function() return HCOB_DB.smartDisplay ~= false end, function(v) HCOB_DB.smartDisplay = v; if v then runtimeSmartDisabled = false end; UpdateDisplay() end, 24, -238))
     add(CreateCheckBox(panel, "Show Advisor", "Show the right-side panel with the situational spell to cast manually.", function() return HCOB_DB.showAdvisor ~= false end, function(v) HCOB_DB.showAdvisor = v; RefreshButtonState(); UpdateDisplay() end, 24, -268))
+    add(CreateCheckBox(panel, "Profession Coach", "Enable the event-driven profession leveling coach. When disabled, its panel stays hidden and profession refresh/scans are suspended.", function()
+        local prof = HCOB.Systems and HCOB.Systems.ProfessionCoach
+        if prof and prof.IsEnabled then return prof.IsEnabled() end
+        return HCOB_DB.profCoach ~= false
+    end, function(v)
+        local prof = HCOB.Systems and HCOB.Systems.ProfessionCoach
+        if prof and prof.SetEnabled then prof.SetEnabled(v) else HCOB_DB.profCoach = v end
+    end, 24, -298))
     add(CreateCheckBox(panel, "HC danger advisor", "Multi-pull and fight trend: enter CAUTION/DANGER before relying on HP threshold alone.", function() return HCOB_DB.hcDangerAdvisor ~= false end, function(v) HCOB_DB.hcDangerAdvisor = v; UpdateDisplay() end, 350, -82))
     if PLAYER_CLASS == "WARRIOR" then
         add(CreateCheckBox(panel, "Warrior: smart pre-pull Rend", "Out of combat, if the target is equal/near-equal level or elite, prepare one Rend on the opener. Skip trivial mobs.", function() return HCOB_DB.warriorAutoRend ~= false end, function(v) HCOB_DB.warriorAutoRend = v; BuildMacros(); UpdateDisplay() end, 24, -328))
@@ -155,10 +168,10 @@ function CreateOptionsPanel()
     actionBindBtn:SetPoint("TOPLEFT", 350, -556)
     actionBindBtn:SetText("Configure slot bindings...")
     actionBindBtn:SetScript("OnClick", function()
-        if HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.OpenBindingOptions then HCOB.UI.ActionPanel.OpenBindingOptions() end
+        if HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.OpenBindingOptions then HCOB.UI.ActionPanel.OpenBindingOptions(true) end
     end)
 
-    add(CreateSlider(panel, "Button scale", 0.70, 1.60, 0.05, function() return HCOB_DB.scale or 1 end, function(v) HCOB_DB.scale = v; RefreshButtonState() end, 350, -120, "0.7", "1.6", "%.2f"))
+    add(CreateSlider(panel, "HUD scale", 0.70, 1.60, 0.05, function() return HCOB_DB.scale or 1 end, function(v) HCOB_DB.scale = v; RefreshButtonState() end, 350, -120, "0.7", "1.6", "%.2f"))
     add(CreateSlider(panel, "Danger HP", 20, 70, 1, function() return HCOB_DB.dangerHP or 35 end, function(v) HCOB_DB.dangerHP = v; UpdateDisplay() end, 350, -183, "20", "70", "%d%%"))
     add(CreateSlider(panel, "Critical HP", 10, 40, 1, function() return HCOB_DB.criticalHP or 20 end, function(v) HCOB_DB.criticalHP = v; UpdateDisplay() end, 350, -246, "10", "40", "%d%%"))
     add(CreateSlider(panel, "Enemy window", 3, 12, 1, function() return HCOB_DB.enemyWindow or 6 end, function(v) HCOB_DB.enemyWindow = v end, 350, -309, "3", "12", "%ds"))
@@ -169,7 +182,7 @@ function CreateOptionsPanel()
     local centerBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     centerBtn:SetSize(125, 25)
     centerBtn:SetPoint("TOPLEFT", 24, -445)
-    centerBtn:SetText("Center button")
+    centerBtn:SetText("Center HUD")
     centerBtn:SetScript("OnClick", Center)
 
     local planBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
@@ -186,6 +199,7 @@ function CreateOptionsPanel()
         HCOB_DB.visible = true
         HCOB_DB.locked = false
         HCOB_DB.scale = 1.0
+        HCOB_DB.actionScale = 1.0
         HCOB_DB.dangerHP = 35
         HCOB_DB.criticalHP = 20
         HCOB_DB.soundAlerts = true
@@ -202,6 +216,7 @@ function CreateOptionsPanel()
         HCOB_DB.warriorHeroicRage = 35
         HCOB_DB.combatLogging = true
         HCOB_DB.combatLogMaxFights = 60
+        HCOB_DB.profCoach = true
         HCOB_DB.actionSlotAutoBind = true
         HCOB_DB.actionSlotKeys = nil
         runtimeSmartDisabled = false
@@ -209,6 +224,7 @@ function CreateOptionsPanel()
         runtimeErrors = {}
         RefreshButtonState()
         if HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.ApplySlotBindings(); HCOB.UI.ActionPanel.RefreshBindingOptions() end
+        if HCOB.Systems and HCOB.Systems.ProfessionCoach and HCOB.Systems.ProfessionCoach.SetEnabled then HCOB.Systems.ProfessionCoach.SetEnabled(true) end
         if panel.Refresh then panel:Refresh() end
         UpdateDisplay()
     end)
@@ -217,7 +233,10 @@ function CreateOptionsPanel()
     closeBtn:SetSize(125, 25)
     closeBtn:SetPoint("LEFT", resetBtn, "RIGHT", 10, 0)
     closeBtn:SetText("Close")
-    closeBtn:SetScript("OnClick", function() panel:Hide() end)
+    closeBtn:SetScript("OnClick", function()
+        local windows = HCOB.UI and HCOB.UI.WindowManager
+        if windows and windows.Close then windows.Close("options", false) else panel:Hide() end
+    end)
 
     local reportBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     reportBtn:SetSize(190, 27)
@@ -225,7 +244,7 @@ function CreateOptionsPanel()
     reportBtn:SetText("Report a problem...")
     reportBtn:SetScript("OnClick", function()
         if HCOB.UI.Feedback and HCOB.UI.Feedback.Open then
-            HCOB.UI.Feedback.Open("last")
+            HCOB.UI.Feedback.Open("last", true)
         else
             print("|cffff5555HCOB:|r feedback window unavailable. Try /reload.")
         end
@@ -235,7 +254,7 @@ function CreateOptionsPanel()
     tip:SetPoint("TOPLEFT", reportBtn, "BOTTOMLEFT", 0, -18)
     tip:SetWidth(620)
     tip:SetJustifyH("LEFT")
-    tip:SetText("Quick commands: /hcob bind BUTTON4, /hcob plan, /hcob actions binds, /hcob report. Use Report a problem after a suspicious fight to generate an anonymized CurseForge-ready diagnostic report.")
+    tip:SetText("All options are persisted in HCOB_DB across reload/logout. HUD scale resizes BASE, Advisor, Action Panel, DPS and Profession Coach together. The Profession Coach can be fully disabled here. Secondary configuration windows replace Options and return here when closed. Use Report a problem after a suspicious fight to generate an anonymized CurseForge-ready diagnostic report.")
 
     panel.controls = controls
     panel.Refresh = function(self)
@@ -245,6 +264,9 @@ function CreateOptionsPanel()
     end
     panel:SetScript("OnShow", function(self) self:Refresh() end)
     optionsPanel = panel
+    if HCOB.UI and HCOB.UI.WindowManager and HCOB.UI.WindowManager.Register then
+        HCOB.UI.WindowManager.Register("options", panel)
+    end
 
     -- Optional integration with ESC > Options > AddOns.
     -- Keep a separate canvas so we do not depend on the behavior

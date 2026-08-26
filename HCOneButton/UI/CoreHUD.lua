@@ -209,22 +209,50 @@ function ApplyVisualTheme()
     panelShadow:Show()
 end
 
-function RefreshButtonState()
-    local hudScale = HCOB_DB.scale or 1.0
+function ApplyHUDScale()
+    -- Scaling protected buttons while combat-locked can be rejected/taint-prone.
+    -- Options already open only out of combat, but keep this helper safe for
+    -- slash commands and any future callers. The saved value is applied on the
+    -- next out-of-combat RefreshButtonState().
+    if InCombatLockdown and InCombatLockdown() then
+        pendingHUDScale = true
+        return false
+    end
+
+    local hudScale = Clamp(tonumber(HCOB_DB.scale) or 1.0, 0.70, 1.60)
+    local actionFactor = Clamp(tonumber(HCOB_DB.actionScale) or 1.0, 0.80, 1.50)
+    local actionEffectiveScale = hudScale * actionFactor
+
     btn:SetScale(hudScale)
     HCOB_CoreShell:SetScale(hudScale)
     advisor:SetScale(hudScale)
     dpsMeter:SetScale(hudScale)
+
+    -- The Fixed Action Panel is part of the combat HUD. actionScale remains an
+    -- optional *relative* fine-tuning factor, but the main HUD scale always
+    -- affects it. This fixes the old split where changing HUD scale resized
+    -- BASE/Advisor while leaving the action palette at a different size.
     if HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.frame then
-        -- v1.18.1: independent scale. With HUD 0.7 the old 28px icons
-        -- became roughly 20px; actions remain readable without enlarging
-        -- the rest of the panel.
-        local actionScale = HCOB_DB.actionScale or 1.0
-        HCOB.UI.ActionPanel.frame:SetScale(actionScale)
-        if not InCombatLockdown() then
-            for _, ab in ipairs(HCOB.UI.ActionPanel.buttons) do if ab then ab:SetScale(actionScale) end end
+        HCOB.UI.ActionPanel.frame:SetScale(actionEffectiveScale)
+        for _, ab in ipairs(HCOB.UI.ActionPanel.buttons or {}) do
+            if ab then ab:SetScale(actionEffectiveScale) end
         end
     end
+
+    -- Profession Coach is visually attached to the combat HUD and follows the
+    -- primary HUD scale. It deliberately does not inherit the Action Panel's
+    -- optional relative multiplier.
+    if HCOB.Systems and HCOB.Systems.ProfessionCoach and HCOB.Systems.ProfessionCoach.ApplyHUDScale then
+        HCOB.Systems.ProfessionCoach.ApplyHUDScale(hudScale)
+    end
+
+    -- DiagnosticPixel intentionally stays exactly 1x1 for the external reader.
+    pendingHUDScale = false
+    return true
+end
+
+function RefreshButtonState()
+    ApplyHUDScale()
     if HCOB_DB.visible then btn:Show() else btn:Hide() end
     if HCOB_DB.visible and HCOB_DB.showAdvisor ~= false then HCOB_CoreShell:Show() else HCOB_CoreShell:Hide() end
     -- Advisor/DPS are not secure: they can be shown/hidden without

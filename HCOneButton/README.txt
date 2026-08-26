@@ -1,3 +1,46 @@
+HC ONE BUTTON v1.27.5 - OPTIONS PERSISTENCE & PROFESSION COACH TOGGLE
+
+RELEASE 1.27.5 - 2026-08-26
+- Confirmed the dedicated Options panel writes persistent user preferences to HCOB_DB SavedVariables.
+- Added a Profession Coach checkbox to Options. It is enabled by default for existing/new users unless explicitly disabled.
+- Disabling Profession Coach now hides its HUD panel and suspends profession refresh/scans until it is re-enabled.
+- /hcob prof on|off uses the same persistent setting as the Options checkbox.
+- Reset defaults re-enables Profession Coach.
+- No Advisor/class rotation, deterministic action slot, binding or Diagnostic Pixel changes.
+
+HC ONE BUTTON v1.27.4 - HUD SCALE & WINDOW MANAGEMENT
+========================================================
+
+RELEASE SUMMARY
+- Primary HUD scale now resizes BASE, CoreShell, Advisor, DPS meter, Fixed Action Panel and Profession Coach together.
+- /hcob actions scale remains available only as an optional relative Action Panel multiplier on top of the HUD scale.
+- Diagnostic Pixel remains exactly 1x1 and is intentionally excluded from HUD scaling.
+- Added UI/WindowManager.lua so HCOneButton standalone dialogs no longer stack over one another.
+- Configure slot bindings... and Report a problem... opened from Options now replace Options and show Back to Options.
+- Closing a child window, including with the standard frame X button, restores Options when it was the caller.
+- Direct slash-command windows remain standalone and close normally without unexpectedly opening Options.
+- Binding configuration forced closed by combat does not restore Options during combat.
+- Reset defaults now resets both HUD scale and the Action Panel relative scale.
+- Advisor scoring, class rotations, deterministic slots, physical bindings and Diagnostic Pixel Protocol V3 are unchanged.
+
+RELEASE 1.27.4 - 2026-08-26
+- Unified HUD scaling across every normal visual HUD component.
+- Coherent single-window navigation for Options, binding configuration and feedback/report dialogs.
+- Added UI/WindowManager.lua.
+- No combat-logic or deterministic mapping changes.
+
+VALIDATION COMPLETED FOR 1.27.4
+- 40/40 Lua chunks parse with a real Lua compiler.
+- All 41 TOC references exist (40 Lua + Bindings.xml).
+- Managed-window navigation test passes: Options -> Bindings/Feedback -> Options, including X-button hide behavior.
+- Direct standalone child-window open/close does not unexpectedly reopen Options.
+- Combat-forced binding-window close does not restore Options while combat-locked.
+- HUD-scale test confirms the primary scale reaches BASE, CoreShell, Advisor, DPS, Action Panel buttons/frame and Profession Coach.
+- Action Panel relative scale remains multiplicative on top of HUD scale.
+- DiagnosticPixel.lua and Systems/Bindings.lua/Bindings.xml are byte-identical to 1.27.3.
+- Classes/, Advisor/, Hunter/ and Data/ are byte-identical to 1.27.3.
+- UI/ActionPanel.lua changes are restricted to binding-window navigation; action mappings and secure action construction are unchanged.
+
 HC ONE BUTTON v1.27.3 - ADVISOR RESPONSIVENESS PASS
 ====================================================
 
@@ -284,7 +327,7 @@ HC ONE BUTTON v1.24.0 - ARCHITECTURE REFACTOR
 
 DEEP ARCHITECTURE REFACTOR
 - Removed Core/Runtime.lua: the previous ~295 KB monolithic runtime no longer exists.
-- Runtime logic is distributed across 37 real Lua files; no Classes/*.lua file is a facade.
+- Runtime logic is distributed across 40 real Lua files; no Classes/*.lua file is a facade.
 - All 9 classes have real implementations registered under HCOB.Classes.<CLASS>.
 - Core/Init.lua owns the single HCOneButton global namespace and the private
   HCOneButton.Internal environment. SavedVariables remain global only because WoW requires it.
@@ -306,8 +349,8 @@ DEEP ARCHITECTURE REFACTOR
   Hunter/Mage special macro text is delegated to the corresponding class module.
 - Hunter remains a dedicated subsystem: Pet.lua, Ammo.lua, Aspects.lua, PetFood.lua and
   Management.lua. Classes/Hunter.lua orchestrates those services for the Advisor.
-- Systems/Bindings.lua, CombatLog.lua and ProfessionCoach.lua remain independent systems.
-- UI is separated into CoreHUD.lua, Advisor.lua, ActionPanel.lua, Options.lua and DiagnosticPixel.lua.
+- Systems/Bindings.lua, CombatLog.lua, Feedback.lua and ProfessionCoach.lua remain independent systems.
+- UI is separated into CoreHUD.lua, Advisor.lua, WindowManager.lua, ActionPanel.lua, Options.lua, Feedback.lua and DiagnosticPixel.lua.
 - Static data is separated into Data/Spells.lua and Data/PetFoodDB.lua.
 
 CLASS CONTRACT

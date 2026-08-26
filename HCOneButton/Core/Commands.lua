@@ -120,7 +120,7 @@ SlashCmdList.HCOB = function(msg)
             if v then
                 HCOB_DB.actionScale = Clamp(v,0.8,1.5)
                 RefreshButtonState()
-                print("|cff00ff98HCOB:|r actionScale="..tostring(HCOB_DB.actionScale))
+                print("|cff00ff98HCOB:|r Action Panel relative scale="..tostring(HCOB_DB.actionScale))
             else
                 print("|cffffcc00HCOB:|r /hcob actions scale 0.8-1.5")
             end
@@ -145,7 +145,7 @@ SlashCmdList.HCOB = function(msg)
             HCOB_DB.secureActions=true
         end
         if HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.Configure(); HCOB.UI.ActionPanel.SyncVisibility(); HCOB.UI.ActionPanel.UpdateStates() end
-        print("|cff00ff98HCOB:|r clickable actions="..tostring(HCOB_DB.secureActions ~= false).." scale="..tostring(HCOB_DB.actionScale or 1.0))
+        print("|cff00ff98HCOB:|r clickable actions="..tostring(HCOB_DB.secureActions ~= false).." relativeScale="..tostring(HCOB_DB.actionScale or 1.0).." hudScale="..tostring(HCOB_DB.scale or 1.0))
     elseif cmd == "dps" then
         Toggle("showDPSMeter", arg)
         -- Do not touch the SecureActionButton during combat for a simple
@@ -155,7 +155,7 @@ SlashCmdList.HCOB = function(msg)
     elseif cmd == "swing" then Toggle("showSwing", arg)
     elseif cmd == "scale" then
         if InCombatLockdown() then print("|cffff5555HCOB:|r change scale out of combat."); return end
-        local v=tonumber(arg); if v then v=Clamp(v,0.7,1.6); HCOB_DB.scale=v; RefreshButtonState(); print("|cff00ff98HCOB:|r scale="..v) else print("/hcob scale 0.7-1.6") end
+        local v=tonumber(arg); if v then v=Clamp(v,0.7,1.6); HCOB_DB.scale=v; RefreshButtonState(); print("|cff00ff98HCOB:|r HUD scale="..v) else print("/hcob scale 0.7-1.6") end
     elseif cmd == "danger" then
         local v=tonumber(arg); if v then HCOB_DB.dangerHP=Clamp(v,20,70); print("|cff00ff98HCOB:|r dangerHP="..HCOB_DB.dangerHP) end
     elseif cmd == "critical" then

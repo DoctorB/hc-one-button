@@ -119,7 +119,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             if currentFight and HCOB_DB.combatLogging ~= false and not runtimeTelemetryDisabled then SafeRun("TelemetryFinalize", FinalizeCombatTelemetry, "combat_end") end
             activeEnemies = {}; activeTargetCast=nil
             if pendingRebuild then BuildMacros() end
-            if HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.SyncVisibility() end
+            if pendingHUDScale then
+                RefreshButtonState()
+            elseif HCOB.UI.ActionPanel then
+                HCOB.UI.ActionPanel.SyncVisibility()
+            end
             MigrateOldBindings()
         elseif event == "PLAYER_TARGET_CHANGED" then
             activeTargetCast=nil

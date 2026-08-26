@@ -456,7 +456,11 @@ function HCOB.UI.ActionPanel.CreateBindingOptions()
     close:SetSize(90, 25)
     close:SetPoint("BOTTOMRIGHT", -16, 17)
     close:SetText("Close")
-    close:SetScript("OnClick", function() panel:Hide() end)
+    close:SetScript("OnClick", function()
+        local windows = HCOB.UI and HCOB.UI.WindowManager
+        if windows and windows.Close then windows.Close("bindings") else panel:Hide() end
+    end)
+    panel.closeButton = close
 
     panel.capture = CreateFrame("Frame", nil, panel)
     panel.capture:SetAllPoints(panel)
@@ -489,23 +493,33 @@ function HCOB.UI.ActionPanel.CreateBindingOptions()
             self.capture:EnableKeyboard(false)
             self.capture:Hide()
         end
-        self:Hide()
+        local windows = HCOB.UI and HCOB.UI.WindowManager
+        if windows and windows.Close then windows.Close("bindings", false) else self:Hide() end
         print("|cffffcc00HCOB:|r binding configuration closed because combat started.")
     end)
     panel:SetScript("OnShow", function() HCOB.UI.ActionPanel.RefreshBindingOptions() end)
     HCOB.UI.ActionPanel.bindingOptions = panel
+    if HCOB.UI and HCOB.UI.WindowManager and HCOB.UI.WindowManager.Register then
+        HCOB.UI.WindowManager.Register("bindings", panel)
+    end
     return panel
 end
 
-function HCOB.UI.ActionPanel.OpenBindingOptions()
+function HCOB.UI.ActionPanel.OpenBindingOptions(fromOptions)
     if InCombatLockdown() then
         print("|cffffcc00HCOB:|r open panel bindings out of combat.")
         return
     end
     local panel = HCOB.UI.ActionPanel.CreateBindingOptions()
     HCOB.UI.ActionPanel.RefreshBindingOptions()
-    panel:Show()
-    panel:Raise()
+    if panel.closeButton then panel.closeButton:SetText(fromOptions and "Back to Options" or "Close") end
+    local windows = HCOB.UI and HCOB.UI.WindowManager
+    if windows and windows.Open then
+        if fromOptions then windows.OpenChild("bindings", "options") else windows.Open("bindings") end
+    else
+        panel:Show()
+        panel:Raise()
+    end
 end
 
 function HCOB.UI.ActionPanel.BuildMacro(id)

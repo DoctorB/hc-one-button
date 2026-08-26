@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-**Current version:** `1.27.3`  
+**Current version:** `1.27.5`  
 **Target client:** World of Warcraft Classic Era / Hardcore  
 **Interface:** `11509`
 
@@ -11,6 +11,36 @@ HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardc
 The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine classes**, deterministic secure action slots, survival-oriented decision logic, profession guidance, Hunter pet management and detailed combat telemetry.
 
 > **Important:** HCOneButton does **not** automatically execute the Advisor's combat decisions. Protected actions still require a player click/key press through WoW's secure action system.
+
+---
+
+## What's new in 1.27.5
+
+Version `1.27.5` is an **Options Persistence & Profession Coach Toggle** release. The dedicated Options panel stores user preferences in `HCOB_DB`, a WoW SavedVariables table, so changes persist across `/reload`, logout/login and client restarts.
+
+A new **Profession Coach** checkbox is available in Options. Turning it off persists the choice, hides the Profession Coach panel and suspends its event-driven profession refresh/scans until re-enabled. `/hcob prof on|off` controls the same setting, and **Reset defaults** turns the coach back on.
+
+This release does not change Advisor scores, class rotations, deterministic action slots, configured bindings or Diagnostic Pixel Protocol V3.
+
+---
+
+## What's new in 1.27.4
+
+Version `1.27.4` is a **HUD Scale & Window Management** release. It does not change Advisor scores, class rotations, deterministic action slots, bindings or Diagnostic Pixel Protocol V3.
+
+- The main **HUD scale** now resizes the complete combat HUD as one unit: BASE, CoreShell, Advisor, DPS meter, Fixed Action Panel and Profession Coach.
+- `/hcob actions scale` is retained as an optional **relative Action Panel multiplier**; the Action Panel still inherits the primary HUD scale first.
+- The 1x1 Diagnostic Pixel is intentionally excluded from HUD scaling so external slot readers keep an exact diagnostic pixel.
+- Added a small managed-window layer for HCOneButton standalone dialogs. Only one HCOB configuration/report window is shown at a time.
+- Opening **Configure slot bindings...** or **Report a problem...** from Options now hides the Options window instead of stacking a second large dialog directly on top of it.
+- Secondary windows display **Back to Options** when launched from Options and restore Options when closed, including when the standard frame X button is used.
+- Opening those windows directly with slash commands keeps normal standalone Close behavior.
+- Binding configuration closed automatically by combat does not reopen Options during combat.
+- Reset defaults now resets both the primary HUD scale and the optional Action Panel relative scale.
+
+This release is UI/UX-only: combat recommendations and secure action mappings are intentionally unchanged.
+
+Validation for this release includes 40/40 Lua chunks parsing, 41/41 TOC references resolving, managed-window navigation tests, HUD-scale propagation tests, and byte-identical `Classes/`, `Advisor/`, `Hunter/`, `Data/`, `UI/DiagnosticPixel.lua`, `Systems/Bindings.lua` and `Bindings.xml` versus `1.27.3`.
 
 ---
 
@@ -90,7 +120,7 @@ The main HUD contains:
 - a secure **Action Panel** directly below the main HUD;
 - visual states for `OK`, `CAUTION` and `DANGER`.
 
-The HUD is draggable while unlocked and can be scaled independently from the Action Panel.
+The HUD is draggable while unlocked. The primary **HUD scale** resizes BASE, Advisor, telemetry, the Fixed Action Panel and Profession Coach together; `/hcob actions scale` remains available only as an optional relative Action Panel adjustment.
 
 ### Advisor Engine 2.0
 
@@ -133,6 +163,10 @@ Emergency states such as interrupts, critical HP and dangerous multi-pulls remai
 The modular architecture keeps the central Advisor class-agnostic. Each class owns its own combat policy through `Classes/<Class>.lua`, including recommendation candidates, survival reserve, panic/multi-pull behavior, interrupt choice and class-specific secure macro policy.
 
 The shared Advisor is responsible for context, scoring, hysteresis and final selection rather than hard-coding individual spells such as Serpent Sting, Overpower or Life Tap.
+
+### Coherent standalone windows
+
+HCOneButton uses a small internal window manager for its standalone configuration/report dialogs. Options, Fixed Action Panel binding configuration and the feedback/report window no longer stack on top of one another. A child window opened from Options replaces it temporarily and returns to Options when closed.
 
 ### Secure clickable Action Panel
 
@@ -541,7 +575,7 @@ Commands:
 
 ## Profession Coach
 
-Profession Coach is an event-driven module and does not continuously scan professions during combat.
+Profession Coach is an event-driven module and does not continuously scan professions during combat. It can be enabled or disabled persistently from **`/hcob options` → Profession Coach** or with `/hcob prof on|off`. When disabled, its panel is hidden and profession refresh/scans are suspended.
 
 It detects learned Classic professions, including secondary professions such as:
 
@@ -636,6 +670,7 @@ HCOneButton/
 ├── UI/
 │   ├── CoreHUD.lua
 │   ├── Advisor.lua
+│   ├── WindowManager.lua
 │   ├── ActionPanel.lua
 │   ├── Options.lua
 │   ├── Feedback.lua
@@ -769,7 +804,7 @@ Both aliases are supported:
 |---|---|
 | `/hcob actions on` | Enable the secure clickable Action Panel. |
 | `/hcob actions off` | Disable the Action Panel. |
-| `/hcob actions scale 1.0` | Set independent Action Panel scale (`0.8`–`1.5`). |
+| `/hcob actions scale 1.0` | Set an optional relative Action Panel scale multiplier (`0.8`–`1.5`) on top of the primary HUD scale. |
 | `/hcob actions bind on` | Enable/reapply the configured slot bindings. |
 | `/hcob actions bind off` | Stop HCOneButton from automatically applying slot bindings. Existing saved bindings are not restored automatically. |
 | `/hcob actions binds` | Print slot → key → action mapping. |
@@ -803,7 +838,7 @@ Both aliases are supported:
 | `/hcob hide` | Hide HCOneButton. |
 | `/hcob lock` | Lock HUD position. |
 | `/hcob unlock` | Unlock HUD position for dragging. |
-| `/hcob scale 1.0` | Set main HUD scale (`0.7`–`1.6`). Must be changed out of combat. |
+| `/hcob scale 1.0` | Scale the complete combat HUD (`0.7`–`1.6`): BASE, Advisor, DPS, Action Panel and Profession Coach. Must be changed out of combat. |
 
 ### Profession Coach
 

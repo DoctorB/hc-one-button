@@ -1,4 +1,4 @@
--- HCOneButton Profession Coach v1.27.2
+-- HCOneButton Profession Coach v1.27.5
 -- Event-driven profession leveling advisor for WoW Classic Era.
 -- No automatic crafting/gathering: it only recommends the most efficient next action.
 
@@ -428,6 +428,28 @@ end
 -- ---------- UI ----------
 local frame, titleFS, mainFS, detailFS
 local refreshPending=false
+
+function P.ApplyHUDScale(scale)
+    local hudScale = tonumber(scale) or (HCOB_DB and tonumber(HCOB_DB.scale)) or 1.0
+    if hudScale < 0.70 then hudScale = 0.70 elseif hudScale > 1.60 then hudScale = 1.60 end
+    if frame then frame:SetScale(hudScale) end
+end
+
+function P.IsEnabled()
+    return not (HCOB_DB and HCOB_DB.profCoach == false)
+end
+
+function P.SetEnabled(enabled)
+    HCOB_DB = HCOB_DB or {}
+    HCOB_DB.profCoach = enabled and true or false
+    if not HCOB_DB.profCoach then
+        refreshPending = false
+        if frame then frame:Hide() end
+        return
+    end
+    P.Refresh()
+end
+
 local function CreatePanel()
     if frame then return end
     frame=CreateFrame("Frame","HCOneButtonProfessionCoach",UIParent)
@@ -436,6 +458,7 @@ local function CreatePanel()
     if actionAnchor and actionAnchor.GetWidth then coachWidth=math.max(282,actionAnchor:GetWidth() or 282) end
     frame:SetSize(coachWidth,52)
     frame:SetFrameStrata("HIGH")
+    P.ApplyHUDScale(HCOB_DB and HCOB_DB.scale or 1.0)
     local anchor=_G.HCOneButtonFrame
     if actionAnchor then frame:SetPoint("TOPLEFT",actionAnchor,"BOTTOMLEFT",0,-6)
     elseif anchor then frame:SetPoint("TOPLEFT",anchor,"TOPRIGHT",10,-198)
@@ -503,9 +526,11 @@ end
 function P.HandleSlash(arg)
     arg=Norm(arg)
     HCOB_DB=HCOB_DB or {}
-    if arg=="off" then HCOB_DB.profCoach=false; if frame then frame:Hide() end; print("|cff55c8ffHCOB PROF:|r OFF")
-    elseif arg=="on" then HCOB_DB.profCoach=true; P.Refresh(); print("|cff55c8ffHCOB PROF:|r ON")
-    elseif arg=="refresh" then P.Refresh(); print("|cff55c8ffHCOB PROF:|r refresh")
+    if arg=="off" then P.SetEnabled(false); print("|cff55c8ffHCOB PROF:|r OFF")
+    elseif arg=="on" then P.SetEnabled(true); print("|cff55c8ffHCOB PROF:|r ON")
+    elseif arg=="refresh" then
+        if P.IsEnabled() then P.Refresh(); print("|cff55c8ffHCOB PROF:|r refresh")
+        else print("|cffffcc00HCOB PROF:|r Profession Coach is disabled. Use /hcob prof on or enable it in Options.") end
     else P.PrintStatus() end
 end
 
@@ -517,15 +542,19 @@ ef:SetScript("OnEvent",function(_,event)
     if event=="PLAYER_LOGIN" then
         HCOB_DB=HCOB_DB or {}; if HCOB_DB.profCoach==nil then HCOB_DB.profCoach=true end
         state.inCombat = UnitAffectingCombat and UnitAffectingCombat("player") and true or false
-        if C_Timer and C_Timer.After then C_Timer.After(1.0,UpdatePanel) else UpdatePanel() end
+        if P.IsEnabled() then
+            if C_Timer and C_Timer.After then C_Timer.After(1.0,UpdatePanel) else UpdatePanel() end
+        elseif frame then
+            frame:Hide()
+        end
     elseif event=="PLAYER_REGEN_DISABLED" then
         state.inCombat=true
         refreshPending=false
         if frame then frame:Hide() end
     elseif event=="PLAYER_REGEN_ENABLED" then
         state.inCombat=false
-        P.Refresh()
-    else
+        if P.IsEnabled() then P.Refresh() elseif frame then frame:Hide() end
+    elseif P.IsEnabled() then
         P.Refresh()
     end
 end)

@@ -156,26 +156,43 @@ function UI.Create()
     close:SetSize(100, 26)
     close:SetPoint("BOTTOMRIGHT", -22, 24)
     close:SetText("Close")
-    close:SetScript("OnClick", function() edit:ClearFocus(); urlEdit:ClearFocus(); frame:Hide() end)
+    close:SetScript("OnClick", function()
+        edit:ClearFocus(); urlEdit:ClearFocus()
+        local windows = HCOB.UI and HCOB.UI.WindowManager
+        if windows and windows.Close then windows.Close("feedback") else frame:Hide() end
+    end)
+    frame.closeButton = close
 
+    frame:SetScript("OnHide", function() edit:ClearFocus(); urlEdit:ClearFocus() end)
     frame:SetScript("OnShow", function(self)
         if not self.reportEdit:GetText() or self.reportEdit:GetText() == "" then Generate(self, "last") end
     end)
 
     UI.frame = frame
+    if HCOB.UI and HCOB.UI.WindowManager and HCOB.UI.WindowManager.Register then
+        HCOB.UI.WindowManager.Register("feedback", frame)
+    end
     return frame
 end
 
-function UI.Open(mode)
+function UI.Open(mode, fromOptions)
     local frame = UI.Create()
-    frame:Show()
-    frame:Raise()
+    if frame.closeButton then frame.closeButton:SetText(fromOptions and "Back to Options" or "Close") end
+    local windows = HCOB.UI and HCOB.UI.WindowManager
+    if windows and windows.Open then
+        if fromOptions then windows.OpenChild("feedback", "options") else windows.Open("feedback") end
+    else
+        frame:Show()
+        frame:Raise()
+    end
     Generate(frame, mode == "recent" and "recent" or "last")
 end
 
 function UI.Generate(mode, detailed)
     local frame = UI.Create()
     frame.detailedCheck:SetChecked(detailed and true or false)
-    frame:Show(); frame:Raise()
+    if frame.closeButton then frame.closeButton:SetText("Close") end
+    local windows = HCOB.UI and HCOB.UI.WindowManager
+    if windows and windows.Open then windows.Open("feedback") else frame:Show(); frame:Raise() end
     Generate(frame, mode == "recent" and "recent" or "last")
 end
