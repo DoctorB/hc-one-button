@@ -158,7 +158,7 @@ function CreateOptionsPanel()
     local actionBindTitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     actionBindTitle:SetPoint("TOPLEFT", 350, -500)
     actionBindTitle:SetText("Fixed Action Panel bindings")
-    add(CreateCheckBox(panel, "Auto-apply slot bindings", "Automatically apply and save configured bindings to secure Action panel slots. Changes are allowed only out of combat.", function() return HCOB_DB.actionSlotAutoBind ~= false end, function(v)
+    add(CreateCheckBox(panel, "Auto-apply slot bindings", "Automatically apply and save configured bindings to secure Action panel slots. Warning: configured keys replace existing WoW/addon bindings. Changes are allowed only out of combat.", function() return HCOB_DB.actionSlotAutoBind ~= false end, function(v)
         HCOB_DB.actionSlotAutoBind = v
         if v and HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.ApplySlotBindings() end
     end, 350, -520))

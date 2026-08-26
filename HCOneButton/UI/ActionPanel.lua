@@ -123,6 +123,7 @@ function HCOB.UI.ActionPanel.ApplySlotBindings()
     HCOB_DB.actionSlotAppliedKeys = HCOB_DB.actionSlotAppliedKeys or {}
     local visible = tonumber(HCOB.UI.ActionPanel.visibleCount) or 0
     local changed = false
+    local overwritten = {}
     for slot=1,math.min(visible, HCOB.UI.ActionPanel.maxButtons or 20) do
         local key = HCOB.UI.ActionPanel.GetSlotKey(slot)
         local button = HCOB.UI.ActionPanel.buttons and HCOB.UI.ActionPanel.buttons[slot]
@@ -146,6 +147,11 @@ function HCOB.UI.ActionPanel.ApplySlotBindings()
             if current ~= expected and SetBindingClick then
                 if SetBindingClick(key, "HCOneButtonAdvisorAction"..slot, "LeftButton") then
                     changed = true
+                    if current and current ~= "" then
+                        overwritten[#overwritten + 1] = string.format(
+                            "%s (%s)", key:gsub("%-", "+"), tostring(current)
+                        )
+                    end
                 end
             end
             button.bindingKey = key
@@ -181,7 +187,20 @@ function HCOB.UI.ActionPanel.ApplySlotBindings()
         local bindingSet = GetCurrentBindingSet and GetCurrentBindingSet() or 1
         SaveBindings(bindingSet)
     end
-    return true
+
+    if #overwritten > 0 then
+        local shown = {}
+        local limit = math.min(#overwritten, 6)
+        for i = 1, limit do shown[#shown + 1] = overwritten[i] end
+        local remaining = #overwritten - limit
+        local suffix = remaining > 0 and string.format("; +%d more", remaining) or ""
+        print(string.format(
+            "|cffffcc00HCOB BINDING WARNING:|r auto-bind replaced %d existing binding(s): %s%s.",
+            #overwritten, table.concat(shown, ", "), suffix
+        ))
+        print("|cffffcc00HCOB:|r review /hcob actions binds, or use /hcob actions bind off to stop automatic reapplication.")
+    end
+    return true, overwritten
 end
 
 function HCOB.UI.ActionPanel.SetSlotKey(slot, key)
@@ -368,7 +387,7 @@ function HCOB.UI.ActionPanel.CreateBindingOptions()
     hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -7)
     hint:SetWidth(640)
     hint:SetJustifyH("LEFT")
-    hint:SetText("Slots stay fixed per class. Click a binding and press the desired key combination. Defaults are SHIFT+1...SHIFT+0 and CTRL+SHIFT+1...0.")
+    hint:SetText("Slots stay fixed per class. Warning: applying a key replaces its existing WoW/addon binding. Defaults: SHIFT+1...SHIFT+0 and CTRL+SHIFT+1...0.")
 
     panel.classText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     panel.classText:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -10)

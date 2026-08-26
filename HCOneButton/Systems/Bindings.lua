@@ -43,7 +43,7 @@ function BindKey(key)
     local old = GetBindingAction(key)
     if SetBindingClick(key, "HCOneButtonFrame", "LeftButton") then
         SaveCurrentBindings()
-        if old and old ~= "" and old ~= BIND_COMMAND then print("|cffffcc00HCOB:|r " .. key .. " was previously: " .. old) end
+        if old and old ~= "" and old ~= BIND_COMMAND then print("|cffffcc00HCOB BINDING WARNING:|r " .. key .. " replaced existing binding: " .. old .. ".") end
         print("|cff00ff98HCOB:|r " .. key .. " assigned and saved.")
     end
 end
