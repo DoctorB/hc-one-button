@@ -5,7 +5,7 @@ local E = HCOB.Internal
 setfenv(1, E)
 
 function Center()
-    if InCombatLockdown() then print("|cffff5555HCOB:|r fallo out of combat."); return end
+    if InCombatLockdown() then print("|cffff5555HCOB:|r center the HUD out of combat."); return end
     btn:ClearAllPoints(); btn:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
     HCOB_DB.x, HCOB_DB.y = 0, -180; HCOB_DB.visible = true; btn:Show()
 end

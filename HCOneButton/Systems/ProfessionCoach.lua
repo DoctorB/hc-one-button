@@ -256,7 +256,7 @@ local function GatherPlan(key, s)
             local lvl = PlayerLevel()
             local lagTarget = min(300, lvl*5)
             local prio = s.skill < lagTarget and 700 or 300
-            return {priority=prio,title=s.name.." "..s.skill.."/"..s.max,text="Cerca: "..r[3],detail=r[4]}
+            return {priority=prio,title=s.name.." "..s.skill.."/"..s.max,text="Search: "..r[3],detail=r[4]}
         end
     end
 end

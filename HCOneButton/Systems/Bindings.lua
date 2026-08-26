@@ -39,7 +39,7 @@ end
 function BindKey(key)
     if InCombatLockdown() then print("|cffff5555HCOB:|r change bindings out of combat."); return end
     key = NormalizeBindingKey(key)
-    if key == "" then print("|cffffcc00HCOB:|r esempio: /hcob bind BUTTON4 oppure /hcob bind Q"); return end
+    if key == "" then print("|cffffcc00HCOB:|r example: /hcob bind BUTTON4 or /hcob bind Q"); return end
     local old = GetBindingAction(key)
     if SetBindingClick(key, "HCOneButtonFrame", "LeftButton") then
         SaveCurrentBindings()

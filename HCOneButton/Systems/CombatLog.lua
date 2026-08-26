@@ -367,12 +367,12 @@ function PrintLastCombatLog()
     local f = HCOB_CombatLog.fights[#HCOB_CombatLog.fights]
     if not f then print("|cffffcc00HCOB LOG:|r no fights recorded."); return end
     local enemies = (f.enemies and #f.enemies > 0) and table.concat(f.enemies, ", ") or (f.target or "?")
-    print(string.format("|cff00ff98HCOB LOG #%d|r %s | %.1fs | %.1f DPS | dmg %d | presi %d", f.id or 0, enemies, f.duration or 0, f.dps or 0, f.totalDamage or 0, f.damageTaken or 0))
+    print(string.format("|cff00ff98HCOB LOG #%d|r %s | %.1fs | %.1f DPS | dmg %d | taken %d", f.id or 0, enemies, f.duration or 0, f.dps or 0, f.totalDamage or 0, f.damageTaken or 0))
     print(string.format("Min HP %.1f%% | avg %s %.1f | max hit dealt %d / taken %d | max enemies %d", f.hpMinPct or 100, f.powerType or "Power", f.powerAvg or 0, f.maxHitDone or 0, f.maxHitTaken or 0, f.maxEnemies or 1))
     if f.powerType == "RAGE" then
         print(string.format("Rage start/end %.0f/%.0f | >=80: %.1f%% of fight | CAP: %.1f%%", f.powerStart or 0, f.powerEnd or 0, f.powerHighPct or 0, f.powerCapPct or 0))
         if f.schema and f.schema >= 5 then
-            print(string.format("BASE clicks %d | Heroic queued %.1f%% campioni", f.baseClicks or 0, f.heroicQueuedPct or 0))
+            print(string.format("BASE clicks %d | Heroic queued %.1f%% of samples", f.baseClicks or 0, f.heroicQueuedPct or 0))
         end
     end
     if f.schema and f.schema >= 7 then
