@@ -13,6 +13,9 @@ S = HCOB.Data.Spells
 
 
 pendingRebuild = false
+pendingHUDScale = false
+appliedHUDScale = nil
+appliedActionScale = nil
 playerGUID = nil
 activeEnemies = {}
 activeTargetCast = nil

@@ -210,17 +210,36 @@ function ApplyVisualTheme()
 end
 
 function ApplyHUDScale()
+    local hudScale = Clamp(tonumber(HCOB_DB.scale) or 1.0, 0.70, 1.60)
+    local actionFactor = Clamp(tonumber(HCOB_DB.actionScale) or 1.0, 0.80, 1.50)
+    local scaleChanged = appliedHUDScale ~= hudScale or appliedActionScale ~= actionFactor
+
     -- Scaling protected buttons while combat-locked can be rejected/taint-prone.
     -- Options already open only out of combat, but keep this helper safe for
     -- slash commands and any future callers. The saved value is applied on the
     -- next out-of-combat RefreshButtonState().
     if InCombatLockdown and InCombatLockdown() then
+        -- A visual refresh with unchanged scale must not create a false pending
+        -- update. This is especially important for Advisor/diagnostic toggles.
+        if not scaleChanged then
+            if pendingHUDScale then
+                pendingHUDScale = false
+                print("|cffffcc00HCOB:|r queued HUD scale change canceled; the current scale already matches.")
+            end
+            return true
+        end
+
+        if not pendingHUDScale then
+            print(string.format(
+                "|cffffcc00HCOB:|r HUD scale change queued for after combat (HUD %.2f, Action Panel relative %.2f).",
+                hudScale, actionFactor
+            ))
+        end
         pendingHUDScale = true
         return false
     end
 
-    local hudScale = Clamp(tonumber(HCOB_DB.scale) or 1.0, 0.70, 1.60)
-    local actionFactor = Clamp(tonumber(HCOB_DB.actionScale) or 1.0, 0.80, 1.50)
+    local wasPending = pendingHUDScale
     local actionEffectiveScale = hudScale * actionFactor
 
     btn:SetScale(hudScale)
@@ -247,7 +266,15 @@ function ApplyHUDScale()
     end
 
     -- DiagnosticPixel intentionally stays unscaled (currently 8x8) for the external reader.
+    appliedHUDScale = hudScale
+    appliedActionScale = actionFactor
     pendingHUDScale = false
+    if wasPending then
+        print(string.format(
+            "|cff00ff98HCOB:|r queued HUD scale applied (HUD %.2f, Action Panel relative %.2f).",
+            hudScale, actionFactor
+        ))
+    end
     return true
 end
 
