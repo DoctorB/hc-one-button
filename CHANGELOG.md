@@ -2,7 +2,41 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.27.5`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.27.6`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.27.6 — 2026-08-26
+
+### Fixed
+
+- Standardized the remaining mixed Italian/English user-facing strings in Options, Profession Coach, combat-log output and binding help.
+- HUD scale changes deferred by combat lockdown now report when they are queued, canceled or applied.
+- Visual refreshes with an unchanged scale no longer create a false pending scale update.
+- SavedVariables roots and essential nested structures are validated before use. Invalid settings, binding maps and combat-log containers are repaired instead of causing startup/runtime errors.
+- Invalid combat-log entries are discarded individually while valid fight records are preserved.
+
+### Changed
+
+- Auto-bind now reports existing WoW/addon bindings that it replaces, with a compact conflict summary and instructions for reviewing or disabling automatic reapplication.
+- Options, the binding editor and `/hcob bind` now show explicit overwrite warnings.
+- SavedVariables repairs are summarized once at login.
+
+### Documentation
+
+- Moved historical release notes out of the README and into this changelog.
+- Added README navigation, an explicit all-class support summary and operational external-reader instructions for Diagnostic Pixel Protocol V3.
+- Removed the duplicate plaintext release-history file.
+- Included the MIT license in the distributable addon directory so packaged documentation links remain valid.
+
+### Compatibility
+
+- Fresh installations still enable Action Panel auto-bind and apply the deterministic class binding set during `PLAYER_LOGIN`.
+- Advisor scores, class rotations, deterministic slots, configured slot meanings and Diagnostic Pixel Protocol V3 are unchanged.
+
+### Validation
+
+- 40/40 Lua chunks parse with Lua 5.1.5.
+- 41/41 TOC references resolve with no duplicate entry.
+- A malformed-SavedVariables recovery test passes for invalid roots, settings, binding maps, fight lists, counters and session values.
 
 ## 1.27.5 — 2026-08-26
 

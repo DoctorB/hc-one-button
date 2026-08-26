@@ -2,9 +2,9 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-**Current version:** `1.27.5`  
-**Target client:** World of Warcraft Classic Era / Hardcore  
-**Interface:** `11509`
+- **Current version:** `1.27.6`
+- **Target client:** World of Warcraft Classic Era / Hardcore
+- **Interface:** `11509`
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -30,9 +30,9 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.27.5` is the current baseline. It confirms that Options are persisted in `HCOB_DB` and adds a persistent **Profession Coach** toggle shared by the Options panel and `/hcob prof on|off`.
+Version `1.27.6` is a **Reliability & UX Hotfix**. It standardizes the remaining user-facing text in English, reports HUD scale changes deferred by combat lockdown, validates and repairs malformed SavedVariables, and warns when configured keys replace existing WoW/addon bindings.
 
-Advisor scores, class rotations, deterministic action slots, configured bindings and Diagnostic Pixel Protocol V3 are unchanged in this release.
+Fresh installations still enable Action Panel auto-bind by default and apply the deterministic class bindings on login. Advisor scores, class rotations, slot mappings and Diagnostic Pixel Protocol V3 are unchanged.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
@@ -939,11 +939,13 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 
 ## Current baseline validation
 
-The `1.27.5` source baseline currently passes:
+The `1.27.6` source baseline currently passes:
 
 - **40/40 Lua chunks** parsed with Lua 5.1.5 `luac -p`;
 - **41/41 TOC references** resolved (`40 Lua + Bindings.xml`);
 - no duplicate TOC entry;
+- malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
+- fresh-install binding-path verification: auto-bind defaults to enabled and is applied during `PLAYER_LOGIN`;
 - all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants.
 
 Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.
