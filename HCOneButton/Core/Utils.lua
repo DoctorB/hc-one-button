@@ -5,7 +5,25 @@ local E = HCOB.Internal
 setfenv(1, E)
 
 function Default(key, value)
-    if HCOB_DB[key] == nil then HCOB_DB[key] = value end
+    local current = HCOB_DB[key]
+    if current == nil then
+        HCOB_DB[key] = value
+        return
+    end
+
+    if type(value) == "number" and type(current) ~= "number" then
+        local numeric = tonumber(current)
+        if numeric then
+            HCOB_DB[key] = numeric
+            HCOB.RecordSavedVariableRepair("HCOB_DB." .. key)
+            return
+        end
+    end
+
+    if type(current) ~= type(value) then
+        HCOB_DB[key] = value
+        HCOB.RecordSavedVariableRepair("HCOB_DB." .. key)
+    end
 end
 Default("visible", true)
 Default("x", 0)
@@ -32,6 +50,13 @@ Default("profCoach", true)
 Default("secureActions", true)
 Default("actionScale", 1.0)
 Default("actionSlotAutoBind", true)
+
+for _, key in ipairs({"actionSlotKeys", "actionSlotAppliedKeys"}) do
+    if HCOB_DB[key] ~= nil and type(HCOB_DB[key]) ~= "table" then
+        HCOB_DB[key] = nil
+        HCOB.RecordSavedVariableRepair("HCOB_DB." .. key)
+    end
+end
 
 -- v1.11: Heroic Strike must never live in the BASE SPAM macro. A secure macro
 -- cannot test the player's current rage, so putting !Heroic Strike in the base

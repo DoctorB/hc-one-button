@@ -109,6 +109,9 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             lastAdvisorUpdateAt = GetTime()
             advisorEventReady = true
             print("|cff00ff98HC One Button v"..VERSION.." loaded:|r " .. (UnitClass("player") or PLAYER_CLASS) .. " L" .. PlayerLevel() .. ". /hcob help")
+            if HCOB.SavedVariableRepairs and #HCOB.SavedVariableRepairs > 0 then
+                print("|cffffcc00HCOB:|r repaired invalid SavedVariables: " .. table.concat(HCOB.SavedVariableRepairs, ", ") .. ".")
+            end
         elseif event == "PLAYER_REGEN_DISABLED" then
             -- Start empty. The selected target is not proof of engagement; the
             -- combat log will add enemies only after a real damage/miss exchange

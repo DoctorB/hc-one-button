@@ -6,12 +6,31 @@ setfenv(1, E)
 
 function InitCombatLogDB()
     HCOB_CombatLog.version = 10
-    HCOB_CombatLog.fights = HCOB_CombatLog.fights or {}
-    HCOB_CombatLog.totalFights = tonumber(HCOB_CombatLog.totalFights) or 0
-    HCOB_CombatLog.session = HCOB_CombatLog.session or ("HCOneButton " .. VERSION)
+    if type(HCOB_CombatLog.fights) ~= "table" then
+        HCOB_CombatLog.fights = {}
+        HCOB.RecordSavedVariableRepair("HCOB_CombatLog.fights")
+    else
+        for i = #HCOB_CombatLog.fights, 1, -1 do
+            if type(HCOB_CombatLog.fights[i]) ~= "table" then
+                table.remove(HCOB_CombatLog.fights, i)
+                HCOB.RecordSavedVariableRepair("HCOB_CombatLog.fights[]")
+            end
+        end
+    end
+
+    local totalFights = tonumber(HCOB_CombatLog.totalFights)
+    if HCOB_CombatLog.totalFights ~= nil and type(HCOB_CombatLog.totalFights) ~= "number" then
+        HCOB.RecordSavedVariableRepair("HCOB_CombatLog.totalFights")
+    end
+    HCOB_CombatLog.totalFights = math.max(0, math.floor(totalFights or 0))
+
+    if type(HCOB_CombatLog.session) ~= "string" or HCOB_CombatLog.session == "" then
+        if HCOB_CombatLog.session ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CombatLog.session") end
+        HCOB_CombatLog.session = "HCOneButton " .. VERSION
+    end
     -- Only update the automatic session name; a custom name
     -- set with /hcob log session remains untouched.
-    if type(HCOB_CombatLog.session) == "string" and HCOB_CombatLog.session:match("^HCOneButton %d+%.%d+%.%d+$") then
+    if HCOB_CombatLog.session:match("^HCOneButton %d+%.%d+%.%d+$") then
         HCOB_CombatLog.session = "HCOneButton " .. VERSION
     end
 end
