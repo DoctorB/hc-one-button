@@ -34,6 +34,8 @@ Version `1.27.8` is an **Advisor Stability & Range Update**. Normal recommendati
 
 All hostile ranged spells now use one rank-safe castability path shared by the Advisor, BASE, Action Panel and Hunter subsystem. An out-of-range spell is no longer highlighted or emitted by the Diagnostic Pixel as executable: the Advisor displays `OUT OF RANGE / MOVE CLOSER`, BASE turns red, and the Action Panel keeps its range warning. A green BASE border means the ranged action is in range and immediately usable; amber means it is in range but waiting for a resource/cooldown, or that the client cannot provide a reliable range result.
 
+The same `1.27.8` build also hardens binding persistence. Values returned by `GetCurrentBindingSet()` are normalized to the only values accepted by `SaveBindings` (`1` account or `2` character), with temporary/invalid states falling back to account bindings. Saving is guarded so a binding refresh during events such as `PLAYER_TALENT_UPDATE` cannot propagate a `Usage: SaveBindings(1|2)` error through the addon event handler.
+
 Fresh installations still enable Action Panel auto-bind by default and apply the deterministic class bindings on login. Class scoring policies, deterministic slot mappings, SavedVariables schemas, configured bindings and Diagnostic Pixel Protocol V3 encoding are unchanged.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
@@ -635,7 +637,7 @@ HCOneButton/
 
 `Core/*` and `Advisor/*` do not contain per-class decision chains. Class-specific policy belongs to `Classes/<Class>.lua`, while complex Hunter-only services remain in the dedicated `Hunter/` subsystem.
 
-`Core/Range.lua` owns the shared rank-safe range/castability primitives consumed by the Advisor, BASE, Action Panel and Hunter subsystem. The repository-level `tests/advisor_stability_range.lua` harness covers this contract together with display stabilization; it is not loaded by the addon TOC.
+`Core/Range.lua` owns the shared rank-safe range/castability primitives consumed by the Advisor, BASE, Action Panel and Hunter subsystem. Repository-level regression harnesses live in `tests/advisor_stability_range.lua` and `tests/binding_save.lua`; neither is loaded by the addon TOC.
 
 ---
 
@@ -966,8 +968,9 @@ The `1.27.8` source baseline currently passes:
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
 - fresh-install binding-path verification: auto-bind defaults to enabled and is applied during `PLAYER_LOGIN`;
-- all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants.
-- Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, and friendly/melee actions are excluded from ranged warnings.
+- all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants;
+- Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, and friendly/melee actions are excluded from ranged warnings;
+- binding-save regression coverage: account/character binding sets remain unchanged, while `0`, `nil`, invalid values and API failures safely fall back to set `1` without passing an invalid argument to `SaveBindings`.
 
 Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.
 

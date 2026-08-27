@@ -12,6 +12,8 @@ The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface 
 - Normal transitions from idle, buff or another action use the same confirmation path; returning to the current recommendation discards the pending change.
 - Short global-cooldown windows no longer make the current recommendation look invalid and trigger a premature swap.
 - Target changes clear both candidate hysteresis and display stabilization so a new target never inherits a pending recommendation from the previous one.
+- Binding persistence now normalizes `GetCurrentBindingSet()` to `1` (account) or `2` (character) before calling `SaveBindings`; temporary values such as `0`, `nil` or invalid numbers fall back safely to account bindings.
+- Action Panel auto-bind, legacy migration and slash-command binding paths now share the guarded save helper, preventing `PLAYER_TALENT_UPDATE` and similar refresh events from recording `Usage: SaveBindings(1|2)` errors.
 
 ### Range and castability
 
@@ -29,9 +31,10 @@ The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface 
 
 ### Validation
 
-- 40/40 addon Lua chunks and the Advisor stability/range regression harness parse with Lua 5.1.5.
+- 40/40 addon Lua chunks and both regression harnesses parse with Lua 5.1.5.
 - 41/41 TOC references resolve with no duplicates.
 - Automated regression coverage verifies transient/sustained recommendation swaps, danger bypass, invalid-action replacement, global-cooldown stability, ranged ready/out/unknown states, and exclusion of friendly/melee actions.
+- Binding-save regression coverage verifies account/character sets, temporary `0`/`nil`/invalid values, numeric-string compatibility and contained API failures.
 
 ## 1.27.7 — 2026-08-26
 
