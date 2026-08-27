@@ -183,9 +183,14 @@ function HCOB.UI.ActionPanel.ApplySlotBindings()
         HCOB_DB.actionSlotAppliedKeys[slot] = false
     end
 
-    if changed and SaveBindings then
-        local bindingSet = GetCurrentBindingSet and GetCurrentBindingSet() or 1
-        SaveBindings(bindingSet)
+    if changed then
+        if SaveCurrentBindings then
+            SaveCurrentBindings()
+        elseif SaveBindings then
+            -- Systems/Bindings.lua is loaded before runtime events, but keep a
+            -- valid account-set fallback for isolated test/load environments.
+            pcall(SaveBindings, 1)
+        end
     end
 
     if #overwritten > 0 then

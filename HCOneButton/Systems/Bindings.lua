@@ -13,9 +13,27 @@ function NormalizeBindingKey(key)
     return key
 end
 
+function CurrentBindingSet()
+    local bindingSet
+    if GetCurrentBindingSet then
+        local ok, value = pcall(GetCurrentBindingSet)
+        if ok then
+            local numericOK, numeric = pcall(tonumber, value)
+            if numericOK then bindingSet = numeric end
+        end
+    end
+
+    -- SaveBindings accepts exactly 1 (account) or 2 (character). During some
+    -- binding/talent refresh windows Classic can report 0 or another temporary
+    -- value; default those states to the account binding set.
+    return bindingSet == 2 and 2 or 1
+end
+
 function SaveCurrentBindings()
-    local bindingSet = GetCurrentBindingSet and GetCurrentBindingSet() or 1
-    if SaveBindings then SaveBindings(bindingSet) end
+    if not SaveBindings then return false, "SaveBindings unavailable" end
+    local ok, result = pcall(SaveBindings, CurrentBindingSet())
+    if not ok then return false, result end
+    return result ~= false, result
 end
 
 function MigrateOldBindings()
