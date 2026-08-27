@@ -32,7 +32,9 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 Version `1.27.8` is an **Advisor Stability & Range Update**. Normal recommendation changes are now confirmed for `0.20` seconds before replacing a still-valid action, preventing a single transient refresh from flashing a second spell. Danger, caution and interrupt escalations remain immediate, as do changes after the old action becomes genuinely unusable; target changes reset the stabilizer.
 
-All hostile ranged spells now use one rank-safe castability path shared by the Advisor, BASE, Action Panel and Hunter subsystem. An out-of-range spell is no longer highlighted or emitted by the Diagnostic Pixel as executable: the Advisor displays `OUT OF RANGE / MOVE CLOSER`, BASE turns red, and the Action Panel keeps its range warning. A green BASE border means the ranged action is in range and immediately usable; amber means it is in range but waiting for a resource/cooldown, or that the client cannot provide a reliable range result.
+All hostile ranged spells now use one rank-safe castability path shared by the Advisor, BASE, Action Panel and Hunter subsystem. The learned spell's localized name is checked before the rank-1 ID, avoiding false melee/unknown classifications when Classic exposes `0` as the rank-1 maximum range. Ranged class modules also identify their current BASE action explicitly, so pre-pull feedback does not depend exclusively on incomplete client metadata. An out-of-range spell is no longer highlighted or emitted by the Diagnostic Pixel as executable: the Advisor displays `OUT OF RANGE / MOVE CLOSER`, BASE turns red, and the Action Panel keeps its range warning. A green BASE border means the ranged action is in range and immediately usable; amber means it is in range but waiting for a resource/cooldown, or that the client cannot provide a reliable range result.
+
+Warlock BASE no longer issues an unconditional pet attack while out of combat. A valid in-range Shadow Bolt or wand shot starts the pull; subsequent BASE presses, once the player is in combat, send the pet. This prevents the pet from running across an out-of-range gap and beginning a pull after the player spell failed.
 
 The same `1.27.8` build also hardens binding persistence. Values returned by `GetCurrentBindingSet()` are normalized to the only values accepted by `SaveBindings` (`1` account or `2` character), with temporary/invalid states falling back to account bindings. Saving is guarded so a binding refresh during events such as `PLAYER_TALENT_UPDATE` cannot propagate a `Usage: SaveBindings(1|2)` error through the addon event handler.
 
@@ -96,7 +98,7 @@ Emergency states such as interrupts, critical HP and dangerous multi-pulls remai
 
 Normal action/buff/idle transitions must remain consistent across multiple refreshes for `0.20` seconds before the display changes. A single event spike is discarded if the previous recommendation returns. `CAUTION`, `INTERRUPT` and `DANGER` escalation bypasses confirmation, and an action that is truly spent, unusable or out of range is replaced immediately. The short global cooldown is treated as a temporary valid state rather than proof that the recommendation should flicker.
 
-Range handling is spell-based rather than tied to a fixed class list. Mage, Priest, Warlock, Hunter and caster-form/spec Druid or Shaman receive the expected ranged BASE feedback, while any other class using a genuinely ranged hostile spell receives the same protection. Self buffs, heals and melee abilities are deliberately excluded from the generic out-of-range warning.
+Range handling for hostile recommendations is spell-based rather than tied to a fixed class list. In addition, Mage, Priest, Warlock, Hunter and caster-form/spec Druid or Shaman explicitly identify their current ranged BASE action, guaranteeing BASE feedback even when rank-1 client metadata is incomplete. Other genuinely ranged hostile actions receive the same protection through spell metadata. Self buffs, heals and melee abilities are deliberately excluded from the generic out-of-range warning.
 
 ### Class-owned combat policy
 
@@ -126,6 +128,8 @@ For a ranged BASE action, the main button uses the same state consistently:
 - **green:** target in range and action immediately usable;
 - **red:** target outside the spell's actual range;
 - **amber:** target in range but resource/cooldown is unavailable, or the client reports an unknown range.
+
+When no higher-priority recommendation is active, the Advisor mirrors this state as `PULL READY / PRESS BASE`, `OUT OF RANGE / MOVE CLOSER`, `BASE NOT READY / WAIT / RECOVER` or `RANGE UNKNOWN / ADJUST DISTANCE`. Hunter retains its additional dead-zone-aware states.
 
 You can either click the highlighted icon or use its fixed keyboard binding.
 
@@ -370,6 +374,8 @@ The following class layouts are deterministic. Unknown spells keep their slot. E
 | 13 | Shoot |
 | 14 | Drain Soul |
 | 15 | Curse of Weakness |
+
+Warlock BASE uses the equipped wand outside Destruction when available, otherwise Shadow Bolt. Its pet command requires the player to be in combat: the first valid ranged cast begins the pull and a following BASE press engages the pet. Pressing BASE on an out-of-range target while out of combat does not send the pet.
 
 </details>
 
@@ -714,7 +720,7 @@ Remove a specific BASE binding:
 
 The Advisor analyzes the current situation and highlights an action in the Action Panel when applicable.
 
-If the selected hostile ranged spell cannot reach the current target, the Advisor suppresses the executable highlight and Diagnostic Pixel recommendation and shows `OUT OF RANGE / MOVE CLOSER` instead. Move until the BASE/Action Panel state turns green; safety severity remains visible for an out-of-range danger or interrupt recommendation.
+If the selected hostile ranged spell cannot reach the current target, the Advisor suppresses the executable highlight and Diagnostic Pixel recommendation and shows `OUT OF RANGE / MOVE CLOSER` instead. Move until the BASE/Action Panel state turns green and the Advisor reports `PULL READY` or `BASE READY`; safety severity remains visible for an out-of-range danger or interrupt recommendation. Range lookup prefers the localized learned spell name, then falls back to its stored rank-1 ID.
 
 You can execute the recommendation by:
 
@@ -969,7 +975,8 @@ The `1.27.8` source baseline currently passes:
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
 - fresh-install binding-path verification: auto-bind defaults to enabled and is applied during `PLAYER_LOGIN`;
 - all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants;
-- Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, and friendly/melee actions are excluded from ranged warnings;
+- Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, localized learned-spell range overrides incomplete rank-1 metadata, explicit ranged BASE contracts remain protected, and friendly/melee actions are excluded from ranged warnings;
+- Warlock pull-safety regression coverage verifies that BASE pet attack requires combat and the former unconditional out-of-combat pet command is absent;
 - binding-save regression coverage: account/character binding sets remain unchanged, while `0`, `nil`, invalid values and API failures safely fall back to set `1` without passing an invalid argument to `SaveBindings`.
 
 Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.

@@ -14,6 +14,7 @@ The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface 
 - Target changes clear both candidate hysteresis and display stabilization so a new target never inherits a pending recommendation from the previous one.
 - Binding persistence now normalizes `GetCurrentBindingSet()` to `1` (account) or `2` (character) before calling `SaveBindings`; temporary values such as `0`, `nil` or invalid numbers fall back safely to account bindings.
 - Action Panel auto-bind, legacy migration and slash-command binding paths now share the guarded save helper, preventing `PLAYER_TALENT_UPDATE` and similar refresh events from recording `Usage: SaveBindings(1|2)` errors.
+- Warlock BASE no longer sends the pet while out of combat. The first successful Shadow Bolt/wand cast starts the pull, and a following BASE press sends the pet after combat begins, preventing a failed out-of-range cast from becoming a pet-led pull.
 
 ### Range and castability
 
@@ -22,6 +23,9 @@ The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface 
 - An out-of-range ranged recommendation now becomes an explicit `OUT OF RANGE / MOVE CLOSER` state, is removed from the Action Panel highlight and emits no executable Diagnostic Pixel recommendation.
 - Ranged BASE feedback is now available across Mage, Priest, Warlock, Hunter and caster Druid/Shaman states, as well as any other genuinely ranged hostile class action: green is ready, red is out of range, and amber is unavailable/unknown.
 - Existing Hunter and Action Panel range checks now use the same shared implementation, preserving name-first higher-rank handling on Classic.
+- Spell bounds and harmful classification now query the localized learned spell name before the stored rank-1 ID, avoiding false non-ranged results when Classic reports an incomplete `0` maximum range for the ID.
+- Ranged class modules explicitly identify their current BASE action. Advisor and BASE therefore retain ready/out/unavailable/unknown feedback even when generic spell metadata cannot classify that rank reliably.
+- With a hostile target and no higher-priority action, ranged classes now receive explicit `PULL READY`, `OUT OF RANGE`, `BASE NOT READY` or `RANGE UNKNOWN` Advisor feedback; Hunter keeps its specialized dead-zone states.
 
 ### Compatibility
 
@@ -33,7 +37,7 @@ The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface 
 
 - 40/40 addon Lua chunks and both regression harnesses parse with Lua 5.1.5.
 - 41/41 TOC references resolve with no duplicates.
-- Automated regression coverage verifies transient/sustained recommendation swaps, danger bypass, invalid-action replacement, global-cooldown stability, ranged ready/out/unknown states, and exclusion of friendly/melee actions.
+- Automated regression coverage verifies transient/sustained recommendation swaps, danger bypass, invalid-action replacement, global-cooldown stability, localized-name recovery from incomplete rank-1 bounds, explicit ranged BASE ready/out states, Warlock combat-gated pet attack, and exclusion of friendly/melee actions.
 - Binding-save regression coverage verifies account/character sets, temporary `0`/`nil`/invalid values, numeric-string compatibility and contained API failures.
 
 ## 1.27.7 — 2026-08-26
