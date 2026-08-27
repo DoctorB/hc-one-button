@@ -8,20 +8,7 @@ local H = HCOB.Hunter
 
 function HCOB.Hunter.SpellRange(id)
     if not id or not HostileLiveTarget() then return nil end
-    -- Name-first is rank safe on Classic: S.* may contain the rank-1 ID while
-    -- the spellbook contains a higher rank.
-    if IsSpellInRange then
-        local name = SpellName(id)
-        if name then
-            local ok, inRange = pcall(IsSpellInRange, name, "target")
-            if ok and inRange ~= nil and CanAccessValue(inRange) then return (inRange == 1 or inRange == true) and true or false end
-        end
-    end
-    if C_Spell and C_Spell.IsSpellInRange then
-        local ok, inRange = pcall(C_Spell.IsSpellInRange, id, "target")
-        if ok and inRange ~= nil and CanAccessValue(inRange) then return SafeBoolean(inRange, false) end
-    end
-    return nil
+    return HCOB.Advisor.Engine.SpellRange(id, "target")
 end
 
 function HCOB.Hunter.RangedProbe()

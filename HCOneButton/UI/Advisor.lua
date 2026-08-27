@@ -113,7 +113,13 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     local displayId = spellId
     local fallbackTexture
     if not displayId then
-        if kind == "idle" then
+        if keyHint == "MOVE CLOSER" then
+            -- The action is deliberately cleared so the Action Panel and
+            -- diagnostic pixel do not advertise an uncastable spell. Keep the
+            -- BASE spell icon visible so the movement warning remains concrete.
+            displayId = select(1, BaseActionInfo())
+            fallbackTexture = "Interface\\RaidFrame\\ReadyCheck-NotReady"
+        elseif kind == "idle" then
             displayId = select(1, BaseActionInfo())
             fallbackTexture = "Interface\\RaidFrame\\ReadyCheck-Ready"
         elseif kind == "danger" then
@@ -359,6 +365,7 @@ function UpdateDisplayCore(recordTelemetrySample)
     enemyText:SetText(enemies >= 2 and ("x" .. enemies) or "")
     UpdateStatusBars(hpReadable and hp or 0)
     local spellId, title, keyHint, reason, kind = Recommend()
+    spellId, title, keyHint, reason, kind = HCOB.Advisor.Engine.ApplyTargetCastability(spellId, title, keyHint, reason, kind)
     spellId, title, keyHint, reason, kind = HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
     SetDisplay(spellId, title, keyHint, reason, kind)
 

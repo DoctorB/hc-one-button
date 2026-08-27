@@ -692,20 +692,7 @@ end
 
 function HCOB.UI.ActionPanel.InRange(id)
     if not id or not UnitExists("target") or not UnitCanAttack("player","target") then return nil end
-    -- Name-first keeps range checks correct when S.* references rank 1 but a
-    -- higher rank is the one actually known/cast by the player.
-    if IsSpellInRange then
-        local name = SpellName(id)
-        if name then
-            local ok, v = pcall(IsSpellInRange, name, "target")
-            if ok and v ~= nil and CanAccessValue(v) then return v == 1 or v == true end
-        end
-    end
-    if C_Spell and C_Spell.IsSpellInRange then
-        local ok, v = pcall(C_Spell.IsSpellInRange, id, "target")
-        if ok and v ~= nil and CanAccessValue(v) then return SafeBoolean(v, false) end
-    end
-    return nil
+    return HCOB.Advisor.Engine.SpellRange(id, "target")
 end
 
 function HCOB.UI.ActionPanel.Highlight(id)

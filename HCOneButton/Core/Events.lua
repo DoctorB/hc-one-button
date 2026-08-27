@@ -157,6 +157,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         elseif event == "PLAYER_TARGET_CHANGED" then
             activeTargetCast=nil
             if HCOB.Advisor.Engine and HCOB.Advisor.Engine.ResetDynamics then HCOB.Advisor.Engine.ResetDynamics() end
+            if HCOB.Advisor.Engine and HCOB.Advisor.Engine.ResetStabilization then HCOB.Advisor.Engine.ResetStabilization() end
             -- Legal smartness: out of combat we may rebuild the secure macro for
             -- the selected target (e.g. decide whether Rend is worth one GCD).
             if not InCombatLockdown() then BuildMacros() end

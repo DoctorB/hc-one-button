@@ -56,27 +56,55 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
 
     if not state then
         HCOB.Advisor.Engine.displayState = {spellId=spellId,title=title,key=keyHint,reason=reason,kind=kind,priority=priority,signature=signature,since=now}
+        HCOB.Advisor.Engine.pendingDisplayState = nil
         return spellId, title, keyHint, reason, kind
     end
     if state.signature == signature then
         state.reason = reason
         state.key = keyHint
+        HCOB.Advisor.Engine.pendingDisplayState = nil
         return spellId, title, keyHint, reason, kind
     end
 
-    -- Never delay a higher-priority safety/interrupt state.  For normal action
-    -- swaps, keep the previous recommendation for a tiny window only when the
-    -- old spell is still known/ready.  This removes single-frame threshold flicker while keeping ordinary
-    -- recommendations responsive. Higher-priority safety states still bypass it.
-    local age = now - (state.since or 0)
-    local hold = (state.kind == "action" or state.kind == "buff") and 0.12 or 0
-    local oldStillPlausible = state.spellId and IsKnown(state.spellId) and CooldownReady(state.spellId)
-    if priority <= (state.priority or 0) and hold > 0 and age < hold and oldStillPlausible then
-        return state.spellId, state.title, state.key, state.reason, state.kind
+    -- Safety/interrupt escalation is immediate. A normal equal/lower-priority
+    -- swap must instead survive several refreshes before it is shown. The old
+    -- implementation held only the first 0.12s of the *current* state, so one
+    -- transient sample could still flash a second spell at any later time.
+    -- A short remaining cooldown is normally the global cooldown. Treat it as
+    -- plausible during confirmation; a real spent cooldown still replaces the
+    -- old recommendation immediately.
+    local oldCooldownPlausible = state.spellId == nil or CooldownReady(state.spellId)
+        or CooldownRemaining(state.spellId) <= 1.60
+    local oldStillPlausible = state.spellId == nil or (IsKnown(state.spellId)
+        and IsUsable(state.spellId) and oldCooldownPlausible)
+    if state.spellId and oldStillPlausible and HCOB.Advisor.Engine.IsRangedHostileSpell(state.spellId)
+       and HCOB.Advisor.Engine.SpellRange(state.spellId, "target") == false then
+        oldStillPlausible = false
+    end
+
+    local normalSwap = priority < 70 and (state.priority or 0) < 70
+    if normalSwap and oldStillPlausible then
+        local pending = HCOB.Advisor.Engine.pendingDisplayState
+        if not pending or pending.signature ~= signature then
+            HCOB.Advisor.Engine.pendingDisplayState = {signature=signature, since=now}
+            return state.spellId, state.title, state.key, state.reason, state.kind
+        end
+        if (now - (pending.since or now)) < 0.20 then
+            return state.spellId, state.title, state.key, state.reason, state.kind
+        end
     end
 
     HCOB.Advisor.Engine.displayState = {spellId=spellId,title=title,key=keyHint,reason=reason,kind=kind,priority=priority,signature=signature,since=now}
+    HCOB.Advisor.Engine.pendingDisplayState = nil
     return spellId, title, keyHint, reason, kind
+end
+
+
+function HCOB.Advisor.Engine.ResetStabilization()
+    HCOB.Advisor.Engine.displayState = nil
+    HCOB.Advisor.Engine.pendingDisplayState = nil
+    HCOB.Advisor.Engine.lastClassActionId = nil
+    HCOB.Advisor.Engine.lastClassActionAt = nil
 end
 
 

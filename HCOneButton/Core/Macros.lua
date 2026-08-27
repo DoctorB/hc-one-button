@@ -168,14 +168,29 @@ function UpdateBaseVisual()
     border:SetVertexColor(0.42, 0.48, 0.52, 0.95)
 
     local state = class and class.GetBaseVisualState and class:GetBaseVisualState() or nil
+    if not state and HCOB.Advisor.Engine and HCOB.Advisor.Engine.RangedActionState then
+        state = HCOB.Advisor.Engine.RangedActionState(id)
+    end
     if state == "ready" then
+        reasonText:SetText("Target in range -> action ready")
         border:SetVertexColor(0.20, 0.95, 0.35, 1.0)
         glow:SetVertexColor(0.20, 1.0, 0.35)
         glow:SetAlpha(0.72)
         glow:Show()
-    elseif state == "close" or state == "out" then
+    elseif state == "close" then
+        reasonText:SetText("Too close -> create distance")
         border:SetVertexColor(1.0, 0.22, 0.18, 1.0)
         if icon.SetDesaturated then icon:SetDesaturated(true) end
+    elseif state == "out" then
+        reasonText:SetText("Out of range -> move closer")
+        border:SetVertexColor(1.0, 0.22, 0.18, 1.0)
+        if icon.SetDesaturated then icon:SetDesaturated(true) end
+    elseif state == "unavailable" then
+        reasonText:SetText("In range -> waiting for resource/cooldown")
+        border:SetVertexColor(0.95, 0.72, 0.18, 1.0)
+    elseif state == "unknown" then
+        reasonText:SetText("Range unavailable -> adjust distance")
+        border:SetVertexColor(0.95, 0.72, 0.18, 1.0)
     elseif state then
         border:SetVertexColor(0.95, 0.72, 0.18, 1.0)
     end
