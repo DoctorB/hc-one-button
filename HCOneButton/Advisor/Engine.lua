@@ -291,6 +291,9 @@ function Recommend()
         if iid or ititle then return iid, ititle, ikey, ireason, ikind or "idle" end
     end
 
+    local rid, rtitle, rkey, rreason, rkind = HCOB.Advisor.Engine.RangedBaseRecommendation(inCombat, hostile)
+    if rid or rtitle then return rid, rtitle, rkey, rreason, rkind or "idle" end
+
     return nil, "BASE OK", "KEEP SPAMMING", "No urgent manual spell", "idle"
 end
 

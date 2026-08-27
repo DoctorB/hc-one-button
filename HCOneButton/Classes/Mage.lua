@@ -348,6 +348,10 @@ function Class:GetBaseActionInfo(spec)
     return primary, SpellName(primary, "NUKE")
 end
 
+function Class:IsRangedBaseAction(id)
+    return id == Mage.PrimarySpell()
+end
+
 -- Fixed Action Panel macro contract.
 function Class:BuildActionPanelMacro(id)
     if id == S.FROST_NOVA and IsKnown(id) then

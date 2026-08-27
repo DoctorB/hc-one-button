@@ -403,6 +403,10 @@ function Class:GetBaseActionInfo(spec)
     return S.AUTO_SHOT, "PET + HYBRID ATTACK"
 end
 
+function Class:IsRangedBaseAction(id)
+    return id == S.AUTO_SHOT
+end
+
 function Class:GetBaseLabel()
     return "PULL / AUTO"
 end

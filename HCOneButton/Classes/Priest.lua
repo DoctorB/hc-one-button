@@ -283,3 +283,8 @@ function Class:GetBaseActionInfo(spec)
     return S.SMITE, "SMITE"
 end
 
+function Class:IsRangedBaseAction(id)
+    local baseId = self:GetBaseActionInfo(TalentSpec())
+    return id == baseId
+end
+

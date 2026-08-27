@@ -5,12 +5,14 @@ local ready = {}
 local cooldownRemaining = {}
 local harmful = {}
 local maxRange = {}
+local idMaxRange = {}
 local names = {
     [101] = "Ranged A",
     [102] = "Ranged B",
     [103] = "Emergency",
     [201] = "Friendly Heal",
     [301] = "Melee Strike",
+    [401] = "Forced Class Base",
 }
 
 HCOneButton = {
@@ -29,6 +31,7 @@ function SafeBoolean(value, fallback)
     return value == true or value == 1
 end
 function SpellName(id, fallback) return names[id] or fallback end
+function TalentSpec() return 1, "TEST" end
 function IsKnown(id) return names[id] ~= nil end
 function IsUsable(id) return usable[id] ~= false end
 function CooldownReady(id) return ready[id] ~= false end
@@ -49,10 +52,24 @@ function GetSpellInfo(id)
 end
 
 C_Spell = {
-    GetSpellInfo = function(id)
-        return {minRange = 0, maxRange = maxRange[id] or 0}
+    GetSpellInfo = function(identifier)
+        local id = type(identifier) == "number" and identifier or nil
+        if not id then
+            for candidate, name in pairs(names) do
+                if name == identifier then id = candidate break end
+            end
+        end
+        if not id then return nil end
+        local bound = type(identifier) == "number" and idMaxRange[id] or nil
+        return {minRange = 0, maxRange = bound ~= nil and bound or (maxRange[id] or 0)}
     end,
-    IsSpellHarmful = function(id)
+    IsSpellHarmful = function(identifier)
+        local id = type(identifier) == "number" and identifier or nil
+        if not id then
+            for candidate, name in pairs(names) do
+                if name == identifier then id = candidate break end
+            end
+        end
         return harmful[id] == true
     end,
     IsSpellInRange = function()
@@ -70,7 +87,9 @@ function Clamp(value, low, high) return math.max(low, math.min(high, value)) end
 
 maxRange[101], maxRange[102], maxRange[103] = 30, 30, 30
 maxRange[201], maxRange[301] = 40, 5
+maxRange[401] = 0
 harmful[101], harmful[102], harmful[103], harmful[301] = true, true, true, true
+idMaxRange[101] = 0 -- rank-1 ID metadata is incomplete; localized learned name is correct
 
 assert(dofile("HCOneButton/Core/Range.lua") == nil)
 assert(dofile("HCOneButton/Advisor/Engine.lua") == nil)
@@ -84,6 +103,9 @@ end
 -- Shared ranged state: range, usability and cooldown all participate.
 rangeState = true
 expect(Engine.RangedActionState(101), "ready", "ranged ready")
+local rankedMinRange, rankedMaxRange = Engine.SpellRangeBounds(101)
+expect(rankedMinRange, 0, "localized rank-safe min range")
+expect(rankedMaxRange, 30, "localized rank-safe max range")
 local savedCSpell = C_Spell
 C_Spell = nil
 local minRange, legacyMaxRange = Engine.SpellRangeBounds(101)
@@ -99,6 +121,7 @@ rangeState = nil
 expect(Engine.RangedActionState(101), "unknown", "ranged unknown")
 rangeState = false
 expect(Engine.RangedActionState(301), nil, "melee unaffected")
+expect(Engine.RangedActionState(401, true), "out", "class-owned ranged base forced")
 
 -- Only hostile ranged spells become an explicit movement instruction.
 local id, title, key, _, kind = Engine.ApplyTargetCastability(101, "RANGED A", "BASE", "cast", "action")
@@ -110,6 +133,33 @@ id = Engine.ApplyTargetCastability(201, "HEAL", "ALT", "heal", "action")
 expect(id, 201, "friendly spell unaffected")
 id = Engine.ApplyTargetCastability(301, "MELEE", "BASE", "strike", "action")
 expect(id, 301, "melee recommendation unaffected")
+
+-- A class-owned BASE remains protected even when client spell metadata cannot
+-- classify its rank-1 ID as harmful/ranged.
+PLAYER_CLASS = "WARLOCK"
+HCOneButton.Classes.WARLOCK = {
+    GetBaseActionInfo = function() return 401, "FORCED BASE" end,
+    IsRangedBaseAction = function(_, spellId) return spellId == 401 end,
+}
+id, title, key, _, kind = Engine.ApplyTargetCastability(401, "FORCED BASE", "BASE", "cast", "action")
+expect(id, nil, "forced base out of range id")
+expect(title, "OUT OF RANGE", "forced base out of range title")
+expect(kind, "caution", "forced base out of range severity")
+id, title, key, _, kind = Engine.RangedBaseRecommendation(false, true)
+expect(id, nil, "forced base pull id while out")
+expect(title, "OUT OF RANGE", "forced base pull title while out")
+expect(key, "MOVE CLOSER", "forced base pull key while out")
+rangeState = true
+id, title, key, _, kind = Engine.RangedBaseRecommendation(false, true)
+expect(id, 401, "forced base pull id while ready")
+expect(title, "PULL READY", "forced base pull title while ready")
+expect(key, "PRESS BASE", "forced base pull key while ready")
+
+local warlockFile = assert(io.open("HCOneButton/Classes/Warlock.lua", "rb"))
+local warlockSource = warlockFile:read("*a")
+warlockFile:close()
+assert(warlockSource:find('/petattack [combat,harm]', 1, true), "Warlock petattack must require combat")
+assert(not warlockSource:find('AddLine(lines, "/petattack [harm]"', 1, true), "unsafe Warlock petattack returned")
 
 -- A transient normal recommendation never reaches the display.
 rangeState = true

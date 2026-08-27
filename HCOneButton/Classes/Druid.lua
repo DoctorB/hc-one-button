@@ -394,3 +394,8 @@ function Class:GetBaseActionInfo(spec)
     if form == FORM_BEAR then return S.ATTACK, "BEAR AUTO" end
     return S.WRATH, "WRATH"
 end
+
+function Class:IsRangedBaseAction(id)
+    local baseId = self:GetBaseActionInfo(TalentSpec())
+    return id == S.WRATH and id == baseId
+end

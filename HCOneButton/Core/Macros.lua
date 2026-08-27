@@ -169,7 +169,9 @@ function UpdateBaseVisual()
 
     local state = class and class.GetBaseVisualState and class:GetBaseVisualState() or nil
     if not state and HCOB.Advisor.Engine and HCOB.Advisor.Engine.RangedActionState then
-        state = HCOB.Advisor.Engine.RangedActionState(id)
+        local forceRanged = HCOB.Advisor.Engine.IsClassRangedBaseAction
+            and HCOB.Advisor.Engine.IsClassRangedBaseAction(id)
+        state = HCOB.Advisor.Engine.RangedActionState(id, forceRanged)
     end
     if state == "ready" then
         reasonText:SetText("Target in range -> action ready")

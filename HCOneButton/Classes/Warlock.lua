@@ -261,7 +261,10 @@ end
 -- the class owns its base action and modifier spell choices.
 function Class:BuildMainMacro()
         local lines = NewLines()
-        AddLine(lines, "/petattack [harm]", 1)
+        -- Never let the pet turn an out-of-range opener into an accidental
+        -- pull. The first valid ranged cast starts combat; a following BASE
+        -- press then sends the pet.
+        AddLine(lines, "/petattack [combat,harm]", 1)
         local spec = TalentSpec()
         if HasWandEquipped() and IsKnown(S.SHOOT) and spec ~= 3 then
             AddLine(lines, "/cast [harm] !" .. SpellName(S.SHOOT), 1)
@@ -286,5 +289,10 @@ end
 function Class:GetBaseActionInfo(spec)
     if HasWandEquipped() and IsKnown(S.SHOOT) and spec ~= 3 then return S.SHOOT, "PET + WAND" end
     return S.SHADOW_BOLT, "PET + SHADOW BOLT"
+end
+
+function Class:IsRangedBaseAction(id)
+    local baseId = self:GetBaseActionInfo(TalentSpec())
+    return id == baseId
 end
 

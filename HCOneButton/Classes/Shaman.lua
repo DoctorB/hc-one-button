@@ -212,6 +212,11 @@ function Class:GetBaseActionInfo(spec)
     return S.LIGHTNING_BOLT, "LIGHTNING BOLT"
 end
 
+function Class:IsRangedBaseAction(id)
+    local baseId = self:GetBaseActionInfo(TalentSpec())
+    return id == S.LIGHTNING_BOLT and id == baseId
+end
+
 function Class:BuildActionPanelMacro(id)
     if id == S.ROCKBITER_WEAPON or id == S.WINDFURY_WEAPON then return BuildSpellMacro(id) end
     return nil
