@@ -2,7 +2,36 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.27.7`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.27.8 — 2026-08-27
+
+### Fixed
+
+- Normal Advisor changes now require `0.20` seconds of consistent observations before replacing a still-valid action, preventing one-refresh candidate changes from flashing two different spell suggestions.
+- Normal transitions from idle, buff or another action use the same confirmation path; returning to the current recommendation discards the pending change.
+- Short global-cooldown windows no longer make the current recommendation look invalid and trigger a premature swap.
+- Target changes clear both candidate hysteresis and display stabilization so a new target never inherits a pending recommendation from the previous one.
+
+### Range and castability
+
+- Added one rank-safe hostile-spell range query shared by Advisor, BASE, Fixed Action Panel and Hunter behavior.
+- Hostile spells whose actual maximum range exceeds melee distance are checked before the Advisor presents them as executable. Friendly/self spells and melee abilities are excluded.
+- An out-of-range ranged recommendation now becomes an explicit `OUT OF RANGE / MOVE CLOSER` state, is removed from the Action Panel highlight and emits no executable Diagnostic Pixel recommendation.
+- Ranged BASE feedback is now available across Mage, Priest, Warlock, Hunter and caster Druid/Shaman states, as well as any other genuinely ranged hostile class action: green is ready, red is out of range, and amber is unavailable/unknown.
+- Existing Hunter and Action Panel range checks now use the same shared implementation, preserving name-first higher-rank handling on Classic.
+
+### Compatibility
+
+- `CAUTION`, `INTERRUPT` and `DANGER` escalation still bypasses normal recommendation confirmation.
+- A spent, unusable or out-of-range old action can still be replaced immediately.
+- Class candidate scores and rotations, deterministic slots, bindings, SavedVariables schemas and Diagnostic Pixel Protocol V3 encoding are unchanged.
+
+### Validation
+
+- 40/40 addon Lua chunks and the Advisor stability/range regression harness parse with Lua 5.1.5.
+- 41/41 TOC references resolve with no duplicates.
+- Automated regression coverage verifies transient/sustained recommendation swaps, danger bypass, invalid-action replacement, global-cooldown stability, ranged ready/out/unknown states, and exclusion of friendly/melee actions.
 
 ## 1.27.7 — 2026-08-26
 

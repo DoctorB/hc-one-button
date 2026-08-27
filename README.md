@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.27.7`
+- **Current version:** `1.27.8`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -30,9 +30,11 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.27.7` is a **SavedVariables Persistence Hotfix**. It fixes the addon bootstrap so the private runtime environment is rebound to WoW's real `HCOB_DB` and `HCOB_CombatLog` tables when `ADDON_LOADED` fires, before defaults and migrations are applied. This prevents settings such as HUD scale from being written to a temporary bootstrap table and then reverting after `/reload`.
+Version `1.27.8` is an **Advisor Stability & Range Update**. Normal recommendation changes are now confirmed for `0.20` seconds before replacing a still-valid action, preventing a single transient refresh from flashing a second spell. Danger, caution and interrupt escalations remain immediate, as do changes after the old action becomes genuinely unusable; target changes reset the stabilizer.
 
-Fresh installations still enable Action Panel auto-bind by default and apply the deterministic class bindings on login. Advisor scores, class rotations, slot mappings and Diagnostic Pixel Protocol V3 are unchanged.
+All hostile ranged spells now use one rank-safe castability path shared by the Advisor, BASE, Action Panel and Hunter subsystem. An out-of-range spell is no longer highlighted or emitted by the Diagnostic Pixel as executable: the Advisor displays `OUT OF RANGE / MOVE CLOSER`, BASE turns red, and the Action Panel keeps its range warning. A green BASE border means the ranged action is in range and immediately usable; amber means it is in range but waiting for a resource/cooldown, or that the client cannot provide a reliable range result.
+
+Fresh installations still enable Action Panel auto-bind by default and apply the deterministic class bindings on login. Class scoring policies, deterministic slot mappings, SavedVariables schemas, configured bindings and Diagnostic Pixel Protocol V3 encoding are unchanged.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
@@ -68,7 +70,8 @@ It can consider, depending on class:
 - rolling estimated **TTK** (time to kill);
 - rolling estimated **TTD** (time to death);
 - class-specific **Survival Reserve**;
-- current recommendation stability/hysteresis;
+- confirmed recommendation stability/hysteresis;
+- rank-safe hostile-spell range and immediate castability;
 - fight duration and resource efficiency;
 - spec/talent direction where relevant;
 - opener, sustain, finisher, interrupt and emergency priorities.
@@ -88,6 +91,10 @@ Current class coverage:
 | Druid | ✅ Engine 2.0 |
 
 Emergency states such as interrupts, critical HP and dangerous multi-pulls remain hard-priority safety gates.
+
+Normal action/buff/idle transitions must remain consistent across multiple refreshes for `0.20` seconds before the display changes. A single event spike is discarded if the previous recommendation returns. `CAUTION`, `INTERRUPT` and `DANGER` escalation bypasses confirmation, and an action that is truly spent, unusable or out of range is replaced immediately. The short global cooldown is treated as a temporary valid state rather than proof that the recommendation should flicker.
+
+Range handling is spell-based rather than tied to a fixed class list. Mage, Priest, Warlock, Hunter and caster-form/spec Druid or Shaman receive the expected ranged BASE feedback, while any other class using a genuinely ranged hostile spell receives the same protection. Self buffs, heals and melee abilities are deliberately excluded from the generic out-of-range warning.
 
 ### Class-owned combat policy
 
@@ -111,6 +118,12 @@ Each icon can display:
 - red range warning;
 - desaturation when the action is not currently usable;
 - tooltip information.
+
+For a ranged BASE action, the main button uses the same state consistently:
+
+- **green:** target in range and action immediately usable;
+- **red:** target outside the spell's actual range;
+- **amber:** target in range but resource/cooldown is unavailable, or the client reports an unknown range.
 
 You can either click the highlighted icon or use its fixed keyboard binding.
 
@@ -568,7 +581,9 @@ Current high-level structure:
 HCOneButton/
 ├── HCOneButton.toc
 ├── Bindings.xml
-├── README.txt
+├── README.md
+├── CHANGELOG.md
+├── LICENSE
 ├── Core/
 │   ├── Init.lua
 │   ├── State.lua
@@ -619,6 +634,8 @@ HCOneButton/
 ```
 
 `Core/*` and `Advisor/*` do not contain per-class decision chains. Class-specific policy belongs to `Classes/<Class>.lua`, while complex Hunter-only services remain in the dedicated `Hunter/` subsystem.
+
+`Core/Range.lua` owns the shared rank-safe range/castability primitives consumed by the Advisor, BASE, Action Panel and Hunter subsystem. The repository-level `tests/advisor_stability_range.lua` harness covers this contract together with display stabilization; it is not loaded by the addon TOC.
 
 ---
 
@@ -694,6 +711,8 @@ Remove a specific BASE binding:
 ### Advisor
 
 The Advisor analyzes the current situation and highlights an action in the Action Panel when applicable.
+
+If the selected hostile ranged spell cannot reach the current target, the Advisor suppresses the executable highlight and Diagnostic Pixel recommendation and shows `OUT OF RANGE / MOVE CLOSER` instead. Move until the BASE/Action Panel state turns green; safety severity remains visible for an out-of-range danger or interrupt recommendation.
 
 You can execute the recommendation by:
 
@@ -847,7 +866,7 @@ The current implementation renders it as an unscaled **8×8 frame** so it remain
 1. Enable the frame with `/hcob diagpixel on`.
 2. Locate it immediately to the right of the Advisor frame, separated by a 4 px gap. It follows the HUD position but is intentionally excluded from HUD scaling.
 3. Sample any point inside the solid 8×8 frame and read its 8-bit RGB value.
-4. Treat black as no recommendation and white as an Advisor recommendation that has no deterministic Action Panel slot.
+4. Treat black as no executable recommendation—including an Advisor spell deliberately suppressed because it is out of range—and white as an Advisor recommendation that has no deterministic Action Panel slot.
 5. For a normal slot color, verify `G = 96` and `B = 224`, then decode `slot = R / 12`. Valid slots are 1–20.
 6. Resolve the decoded slot through the current class table in [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts).
 
@@ -865,7 +884,7 @@ Special states:
 
 | State | RGB | HEX |
 |---|---|---|
-| None | `0, 0, 0` | `#000000` |
+| No executable recommendation / out of range | `0, 0, 0` | `#000000` |
 | Unmapped Advisor recommendation | `255, 255, 255` | `#FFFFFF` |
 
 Examples:
@@ -939,7 +958,7 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 
 ## Current baseline validation
 
-The `1.27.7` source baseline currently passes:
+The `1.27.8` source baseline currently passes:
 
 - **40/40 Lua chunks** pass syntax parsing in the current validation environment;
 - **41/41 TOC references** resolved (`40 Lua + Bindings.xml`);
@@ -948,6 +967,7 @@ The `1.27.7` source baseline currently passes:
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
 - fresh-install binding-path verification: auto-bind defaults to enabled and is applied during `PLAYER_LOGIN`;
 - all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants.
+- Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, and friendly/melee actions are excluded from ranged warnings.
 
 Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.
 
