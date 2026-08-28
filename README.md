@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.27.8`
+- **Current version:** `1.28.0`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -17,6 +17,8 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ## README contents
 
 - [What HCOneButton does](#what-hconebutton-does)
+- [Pre-pull Safety Advisor and Recovery Gate](#pre-pull-safety-advisor-and-recovery-gate)
+- [Survival consumables strip](#survival-consumables-strip)
 - [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts)
 - [Hunter pet management](#hunter-pet-management)
 - [Installation](#installation)
@@ -30,17 +32,13 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.27.8` is an **Advisor Stability & Range Update**. Normal recommendation changes are now confirmed for `0.20` seconds before replacing a still-valid action, preventing a single transient refresh from flashing a second spell. Danger, caution and interrupt escalations remain immediate, as do changes after the old action becomes genuinely unusable; target changes reset the stabilizer.
+Version `1.28.0` is the **Hardcore Readiness Update**. Before an out-of-combat pull, the Advisor now evaluates current HP, mana/energy, pet condition, recovery inventory and learned primary escape cooldowns on tough targets. It displays `RECOVER FIRST`, `PREPARE`, `HIGH RISK` or `PULL READY` instead of presenting a normal opener while the character is not ready. Elite/world-boss and +3-level warnings retain immediate danger priority; class buffs, openers and range/dead-zone checks resume after the recovery gate passes.
 
-All hostile ranged spells now use one rank-safe castability path shared by the Advisor, BASE, Action Panel and Hunter subsystem. The learned spell's localized name is checked before the rank-1 ID, avoiding false melee/unknown classifications when Classic exposes `0` as the rank-1 maximum range. Ranged class modules also identify their current BASE action explicitly, so pre-pull feedback does not depend exclusively on incomplete client metadata. An out-of-range spell is no longer highlighted or emitted by the Diagnostic Pixel as executable: the Advisor displays `OUT OF RANGE / MOVE CLOSER`, BASE turns red, and the Action Panel keeps its range warning. A green BASE border means the ranged action is in range and immediately usable; amber means it is in range but waiting for a resource/cooldown, or that the client cannot provide a reliable range result.
+The new **Survival consumables strip** provides four secure click buttons for the best usable healing potion, Healthstone, mana potion and bandage currently in the bags. It shows quantities, cooldown sweeps/text, availability and restock state. The Advisor highlights the appropriate healing tool during low-health recovery and combat danger, or a mana potion at critically low mana.
 
-Warlock BASE no longer issues an unconditional pet attack while out of combat. A valid in-range Shadow Bolt or wand shot starts the pull; subsequent BASE presses, once the player is in combat, send the pet. This prevents the pet from running across an out-of-range gap and beginning a pull after the player spell failed.
+Protected item assignments are selected only outside combat and remain frozen throughout combat lockdown. Bag counts, cooldowns and highlights may continue updating visually, but a newly acquired/lower-tier item is not assigned until combat ends. The strip never consumes an item automatically and adds no key binding; every use requires the player's click.
 
-The read-only `/hcob doctor` command opens the existing Report window with a live diagnostic snapshot. It compares the normalized BASE/range state used by HCOneButton with the raw Classic range APIs and includes macro, pet/combat, binding, Action Panel, SavedVariables, Advisor and fail-safe state without changing settings or protected actions.
-
-The same `1.27.8` build also hardens binding persistence. Values returned by `GetCurrentBindingSet()` are normalized to the only values accepted by `SaveBindings` (`1` account or `2` character), with temporary/invalid states falling back to account bindings. Saving is guarded so a binding refresh during events such as `PLAYER_TALENT_UPDATE` cannot propagate a `Usage: SaveBindings(1|2)` error through the addon event handler.
-
-Fresh installations still enable Action Panel auto-bind by default and apply the deterministic class bindings on login. Class scoring policies, deterministic slot mappings, SavedVariables schemas, configured bindings and Diagnostic Pixel Protocol V3 encoding are unchanged.
+The `1.27.8` recommendation stabilizer, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor` remain part of the current baseline. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
@@ -57,9 +55,10 @@ The main HUD contains:
 - HP/resource/swing information;
 - compact live DPS information;
 - a secure **Action Panel** directly below the main HUD;
+- a secure **Survival consumables strip** below the Action Panel;
 - visual states for `OK`, `CAUTION` and `DANGER`.
 
-The HUD is draggable while unlocked. The primary **HUD scale** resizes BASE, Advisor, telemetry, the Fixed Action Panel and Profession Coach together; `/hcob actions scale` remains available only as an optional relative Action Panel adjustment.
+The HUD is draggable while unlocked. The primary **HUD scale** resizes BASE, Advisor, telemetry, the Fixed Action Panel, Survival strip and Profession Coach together; `/hcob actions scale` remains available only as an optional relative Action Panel adjustment.
 
 ### Advisor Engine 2.0
 
@@ -72,6 +71,9 @@ It can consider, depending on class:
 - number of enemies;
 - pet status;
 - cooldown availability;
+- pre-pull HP/resource/pet readiness;
+- healing consumable stock and cooldown state on tough pulls;
+- learned primary escape/control cooldown readiness on tough pulls;
 - melee/ranged pressure;
 - rolling estimated **TTK** (time to kill);
 - rolling estimated **TTD** (time to death);
@@ -101,6 +103,34 @@ Emergency states such as interrupts, critical HP and dangerous multi-pulls remai
 Normal action/buff/idle transitions must remain consistent across multiple refreshes for `0.20` seconds before the display changes. A single event spike is discarded if the previous recommendation returns. `CAUTION`, `INTERRUPT` and `DANGER` escalation bypasses confirmation, and an action that is truly spent, unusable or out of range is replaced immediately. The short global cooldown is treated as a temporary valid state rather than proof that the recommendation should flicker.
 
 Range handling for hostile recommendations is spell-based rather than tied to a fixed class list. In addition, Mage, Priest, Warlock, Hunter and caster-form/spec Druid or Shaman explicitly identify their current ranged BASE action, guaranteeing BASE feedback even when rank-1 client metadata is incomplete. Other genuinely ranged hostile actions receive the same protection through spell metadata. Self buffs, heals and melee abilities are deliberately excluded from the generic out-of-range warning.
+
+### Pre-pull Safety Advisor and Recovery Gate
+
+With a live hostile target selected and the player out of combat, the recovery gate runs before class openers and buffs:
+
+- **`RECOVER FIRST`** when HP is below `85%`, mana is below `40%`, or a living Hunter/Warlock pet is below `70%`;
+- **`PREPARE`** for a partial mana reserve, low energy, a missing level-10+ Hunter/Warlock pet, a pet below `90%`, unavailable healing tools, or all learned primary escape/control options on cooldown before a tough pull;
+- **`HIGH RISK`** for elite/world-boss or +3-level targets, and for a +1-or-harder target when no healing potion, Healthstone or bandage is stocked;
+- **`PULL READY`** only after the applicable recovery checks pass. Ranged classes must additionally pass their real spell-range/castability check; Hunter keeps its dead-zone states.
+
+The gate never blocks input. It changes only the visual recommendation, and can be disabled persistently from **Options → Pre-pull safety gate** or with `/hcob prep off`. Rage is deliberately not treated as a missing pre-pull resource.
+
+### Survival consumables strip
+
+The strip contains four fixed mouse-click actions:
+
+| Slot | Selection policy |
+|---|---|
+| `HEAL` | Strongest healing potion in the bags that the current level can use |
+| `STONE` | Strongest available Healthstone, including improved-rank item variants |
+| `MANA` | Strongest mana potion in the bags that the current level can use |
+| `BANDAGE` | Strongest available bandage |
+
+Each slot shows its current quantity, cooldown and usability. Empty slots retain a level-appropriate reference icon and show `0`, making missing stock visible before a dangerous pull. The strip prefers a bandage for out-of-combat HP recovery, preserves Healthstone/healing potion priority in combat, and avoids recommending a bandage as an emergency combat action. The `Recently Bandaged` lock participates in readiness checks.
+
+The buttons use WoW's protected item-action system. Their selected item ID is refreshed on login, bag/item-data changes, level changes and after combat. If bags change during combat, the old protected assignment remains authoritative until `PLAYER_REGEN_ENABLED`; visual counts and cooldowns can still update safely. HCOneButton never clicks, consumes or binds these items automatically.
+
+Use `/hcob consumables` to print current assignments, `/hcob consumables on|off` to control visibility, or the **Survival consumables strip** checkbox in Options.
 
 ### Class-owned combat policy
 
@@ -735,6 +765,8 @@ The Advisor analyzes the current situation and highlights an action in the Actio
 
 If the selected hostile ranged spell cannot reach the current target, the Advisor suppresses the executable highlight and Diagnostic Pixel recommendation and shows `OUT OF RANGE / MOVE CLOSER` instead. Move until the BASE/Action Panel state turns green and the Advisor reports `PULL READY` or `BASE READY`; safety severity remains visible for an out-of-range danger or interrupt recommendation. Range lookup prefers the localized learned spell name, then falls back to its stored rank-1 ID.
 
+Before combat, `PULL READY` is additionally gated by health, class resource and pet recovery checks. On a tough target, healing stock/cooldown and learned primary escape/control cooldowns also participate. `RECOVER FIRST`, `PREPARE` and `HIGH RISK` are visual warnings only; they never prevent the player from pressing BASE or another action.
+
 You can execute the recommendation by:
 
 - clicking the highlighted secure icon; or
@@ -791,6 +823,9 @@ Both aliases are supported:
 | `/hcob advisor debug` | Print Advisor Engine diagnostic information. |
 | `/hcob smart on` | Enable Smart HUD updates. |
 | `/hcob smart off` | Disable Smart HUD display logic while leaving the secure BASE button active. |
+| `/hcob prep on\|off` | Enable/disable the persistent pre-pull Recovery Gate. |
+| `/hcob consumables` | Print current Survival strip item assignments, quantities and cooldowns. |
+| `/hcob consumables on\|off` | Show/hide the secure Survival consumables strip. Must be changed out of combat. |
 | `/hcob dps on\|off` | Show/hide compact DPS information. |
 | `/hcob swing on\|off` | Show/hide swing timer. |
 | `/hcob sound on\|off` | Enable/disable sound alerts. |
@@ -812,7 +847,7 @@ Both aliases are supported:
 | `/hcob hide` | Hide HCOneButton. |
 | `/hcob lock` | Lock HUD position. |
 | `/hcob unlock` | Unlock HUD position for dragging. |
-| `/hcob scale 1.0` | Scale the complete combat HUD (`0.7`–`1.6`): BASE, Advisor, DPS, Action Panel and Profession Coach. Must be changed out of combat. |
+| `/hcob scale 1.0` | Scale the complete combat HUD (`0.7`–`1.6`): BASE, Advisor, DPS, Action Panel, Survival strip and Profession Coach. Must be changed out of combat. |
 
 ### Profession Coach
 
@@ -934,6 +969,8 @@ WoW restricts protected combat actions. HCOneButton is designed around those res
 - the Advisor may change its visual recommendation during combat;
 - it does **not** dynamically rewrite a secure button into a different spell during combat;
 - the Action Panel therefore uses permanent class-specific spell slots;
+- Survival strip item assignments are also prepared out of combat and remain frozen until combat ends;
+- bag counts, cooldowns and recommendation glows may update visually without rewriting the protected item action;
 - the player still performs the final click/key press.
 
 This separation is intentional and is fundamental to the addon's architecture.
@@ -945,6 +982,7 @@ This separation is intentional and is fundamental to the addon's architecture.
 HCOneButton avoids heavy continuous scans where possible:
 
 - Profession Coach is event-driven;
+- Survival consumable inventory selection is event-driven by login, bag, item-data, level and combat-end events;
 - profession panels hide in combat;
 - Action Panel state/cooldown updates are throttled;
 - combat telemetry is retained with a configurable fight limit; the 1.27 Advisor trace is change-only and capped at 32 entries per fight;
@@ -980,11 +1018,11 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 
 ## Current baseline validation
 
-The `1.27.8` source baseline currently passes:
+The `1.28.0` source baseline currently passes:
 
-- **40/40 Lua chunks** pass syntax parsing in the current validation environment;
-- **7/7 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **41/41 TOC references** resolved (`40 Lua + Bindings.xml`);
+- **43/43 Lua chunks** pass syntax parsing in the current validation environment;
+- **8/8 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **44/44 TOC references** resolved (`43 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
@@ -997,6 +1035,7 @@ The `1.27.8` source baseline currently passes:
 - all nine class modules load in isolation and expose the required Advisor/secure-macro contracts; ranged BASE recognition, hybrid melee transitions, macro size and Warrior/Warlock safety invariants are checked;
 - all nine deterministic Action Panel layouts are checked for stable slot counts, known/unique spell IDs, the 20-slot limit, unique default keys and Diagnostic Pixel V3 encodability;
 - Doctor report coverage verifies BASE/range API probes, macro/pet/binding/SavedVariables diagnostics, slash-command dispatch, error containment/path sanitization, privacy exclusions and absence of SavedVariables mutation;
+- consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
 Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.

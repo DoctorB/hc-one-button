@@ -2,7 +2,45 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.28.0`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.28.0 — 2026-08-28
+
+### Added
+
+- Added the all-class Pre-pull Safety Advisor and Recovery Gate. Before displaying `PULL READY`, it checks player HP, mana/energy where applicable, level-10+ Hunter/Warlock pet condition, and learned primary escape/control cooldowns on tough targets.
+- Added explicit `RECOVER FIRST`, `PREPARE`, `HIGH RISK` and `PULL READY` states. Elite/world-boss and +3-level targets keep immediate danger priority; ranged classes still require the shared spell-range check and Hunter retains its dead-zone states.
+- Added a four-slot Survival consumables strip for the best usable healing potion, Healthstone, mana potion and bandage in the player's bags.
+- Added quantity, cooldown sweep/text, current usability, empty/restock state, tooltips and Advisor-driven highlighting. Out-of-combat recovery prefers a bandage; combat danger prefers Healthstone then healing potion, while critically low mana can highlight a mana potion.
+- Added all standard and improved Classic Healthstone item variants, level-safe potion selection and `Recently Bandaged` awareness.
+- Added persistent **Pre-pull safety gate** and **Survival consumables strip** controls to Options, plus `/hcob prep on|off` and `/hcob consumables [on|off]` commands.
+
+### Secure-action safety
+
+- Survival item buttons use `SecureActionButtonTemplate` and require a real player click. HCOneButton never consumes an item automatically and installs no consumable bindings.
+- Best-item protected attributes are assigned only outside combat. The exact assignment remains frozen during combat lockdown even if a stack is exhausted or the bag changes.
+- Counts, cooldowns, usability and highlights may update visually in combat without changing the protected action. A pending best-item assignment is applied on `PLAYER_REGEN_ENABLED`.
+- Diagnostic Pixel Protocol V3 continues to encode only deterministic class spell slots; item IDs never enter the spell/slot/pixel path.
+
+### Changed
+
+- Melee classes now receive the same universal `PULL READY / PRESS BASE` confirmation as ranged classes once recovery checks and higher-priority class preparation are complete.
+- Missing healing stock becomes `HIGH RISK` for a +1-or-harder normal target. Stocked healing tools and learned primary escape/control abilities still gate a tough pull while their cooldown is unavailable; routine equal/lower-level pulls are not blocked solely by inventory.
+- `PULL READY` reasons now include available HP/mana and healing-tool readiness context.
+- Profession Coach anchors below the Survival strip when it is visible and returns directly below the Action Panel when the strip is disabled.
+- Bag and item-cooldown changes request Advisor refreshes for every class.
+
+### Compatibility
+
+- Rage is not treated as a missing pre-pull resource. Energy produces only a short preparation prompt.
+- Existing class scoring, secure BASE macros, deterministic Action Panel slots/bindings, recommendation stabilization, hostile-spell range handling, Warlock pet pull protection, SavedVariables repair and Doctor behavior remain intact.
+- Both new options default to enabled on fresh installations and persist through `HCOB_DB`.
+
+### Validation
+
+- 43/43 addon Lua chunks parse with Lua 5.1.5.
+- All eight regression harnesses pass through `tests/run.ps1`; 44/44 TOC references resolve without duplicates.
+- New coverage verifies strongest usable item selection, improved Healthstone variants, combat/out-of-combat recovery priority, Recently Bandaged, unavailable-item highlight suppression, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, SavedVariables defaults, secure deferred configuration and melee `PULL READY` integration.
 
 ## 1.27.8 — 2026-08-27
 
