@@ -6,6 +6,12 @@ The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface 
 
 ## 1.27.8 — 2026-08-27
 
+### Added
+
+- Added `/hcob doctor`, a read-only live diagnostic snapshot shown in the existing Report window.
+- Doctor compares the normalized BASE/range decision with raw `IsSpellInRange` and `C_Spell.IsSpellInRange` results and reports learned spell resolution, macro, cooldown/usability, unit/pet combat state, bindings, Action Panel slot, SavedVariables identity, Advisor display and fail-safe errors.
+- Doctor omits character/realm and target identity, zone and equipment IDs; contained API errors are sanitized so local Lua source paths are not exported.
+
 ### Fixed
 
 - Normal Advisor changes now require `0.20` seconds of consistent observations before replacing a still-valid action, preventing one-refresh candidate changes from flashing two different spell suggestions.
@@ -32,16 +38,18 @@ The current release is `1.27.8`, targeting WoW Classic Era / Hardcore interface 
 - `CAUTION`, `INTERRUPT` and `DANGER` escalation still bypasses normal recommendation confirmation.
 - A spent, unusable or out-of-range old action can still be replaced immediately.
 - Class candidate scores and rotations, deterministic slots, bindings, SavedVariables schemas and Diagnostic Pixel Protocol V3 encoding are unchanged.
+- Doctor collection does not rebuild macros, refresh protected frames, save bindings, initialize combat history or mutate SavedVariables.
 
 ### Validation
 
-- 40/40 addon Lua chunks and all six regression harnesses parse with Lua 5.1.5.
+- 40/40 addon Lua chunks and all seven regression harnesses parse with Lua 5.1.5.
 - 41/41 TOC references resolve with no duplicates.
 - Automated regression coverage verifies transient/sustained recommendation swaps, danger bypass, invalid-action replacement, global-cooldown stability, localized-name recovery from incomplete rank-1 bounds, explicit ranged BASE ready/out states, Warlock combat-gated pet attack, and exclusion of friendly/melee actions.
 - Binding-save regression coverage verifies account/character sets, temporary `0`/`nil`/invalid values, numeric-string compatibility and contained API failures.
 - SavedVariables lifecycle coverage exercises `ADDON_LOADED`, the direct `PLAYER_LOGIN` fallback, persistent-table identity, defaults, repairs and login hooks.
 - Class-contract coverage loads all nine modules and validates BASE macro construction, ranged/hybrid BASE classification and the Warrior/Warlock secure-macro safety invariants.
 - Action Panel layout coverage validates stable per-class slot counts, known/unique spell IDs, unique default keys, the 20-slot ceiling and Diagnostic Pixel V3 encodability.
+- Doctor regression coverage validates report fields, raw range API failure containment, slash dispatch, local-path sanitization, privacy exclusions and SavedVariables immutability.
 - Manifest coverage validates TOC order/references, version parity and synchronization of repository/package documentation and license text; `tests/run.ps1` provides the single local entry point.
 
 ## 1.27.7 — 2026-08-26

@@ -36,6 +36,8 @@ All hostile ranged spells now use one rank-safe castability path shared by the A
 
 Warlock BASE no longer issues an unconditional pet attack while out of combat. A valid in-range Shadow Bolt or wand shot starts the pull; subsequent BASE presses, once the player is in combat, send the pet. This prevents the pet from running across an out-of-range gap and beginning a pull after the player spell failed.
 
+The read-only `/hcob doctor` command opens the existing Report window with a live diagnostic snapshot. It compares the normalized BASE/range state used by HCOneButton with the raw Classic range APIs and includes macro, pet/combat, binding, Action Panel, SavedVariables, Advisor and fail-safe state without changing settings or protected actions.
+
 The same `1.27.8` build also hardens binding persistence. Values returned by `GetCurrentBindingSet()` are normalized to the only values accepted by `SaveBindings` (`1` account or `2` character), with temporary/invalid states falling back to account bindings. Saving is guarded so a binding refresh during events such as `PLAYER_TALENT_UPDATE` cannot propagate a `Usage: SaveBindings(1|2)` error through the addon event handler.
 
 Fresh installations still enable Action Panel auto-bind by default and apply the deterministic class bindings on login. Class scoring policies, deterministic slot mappings, SavedVariables schemas, configured bindings and Diagnostic Pixel Protocol V3 encoding are unchanged.
@@ -516,6 +518,7 @@ The report generator intentionally omits character name/realm, target names/GUID
 Commands:
 
 ```text
+/hcob doctor
 /hcob report
 /hcob report recent
 /hcob log export
@@ -524,6 +527,16 @@ Commands:
 ```
 
 `/hcob log export raw` remains available for advanced debugging when the complete `HCOB_CombatLog` SavedVariable is specifically requested.
+
+Use `/hcob doctor` while the suspicious target and character state are still active. The generated snapshot includes:
+
+- current class/spec and class-owned BASE ID, localized name, resolved learned ID/rank and generated secure macro;
+- known, usable, cooldown, minimum/maximum range, normalized range state and both raw Classic range API results;
+- player/target/pet combat state without unit names or GUIDs;
+- main binding, raw/normalized binding set, deterministic Action Panel slot/key and Diagnostic Pixel state;
+- SavedVariables table identity/shape, repairs made during the current load, Advisor display state and recent fail-safe errors.
+
+The Doctor does not rebuild macros, refresh protected frames, save bindings, initialize combat history or mutate SavedVariables. Character/realm names, target names/GUIDs, zone information and equipment IDs are not collected.
 
 ---
 
@@ -792,6 +805,7 @@ Both aliases are supported:
 | `/hcob config` | Alias for `/hcob options`. |
 | `/hcob report` | Open the in-game CurseForge-ready diagnostic report window. |
 | `/hcob feedback` | Alias for `/hcob report`. |
+| `/hcob doctor` | Open a read-only live diagnostic snapshot in the Report window. |
 | `/hcob settings` | Open the Blizzard settings/category bridge. |
 | `/hcob center` | Center the HUD. |
 | `/hcob show` | Show HCOneButton. |
@@ -969,7 +983,7 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 The `1.27.8` source baseline currently passes:
 
 - **40/40 Lua chunks** pass syntax parsing in the current validation environment;
-- **6/6 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **7/7 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **41/41 TOC references** resolved (`40 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
@@ -982,6 +996,7 @@ The `1.27.8` source baseline currently passes:
 - SavedVariables lifecycle coverage verifies normal `ADDON_LOADED` rebinding, direct `PLAYER_LOGIN` fallback, preservation/defaults, malformed-root repair and all login initialization hooks;
 - all nine class modules load in isolation and expose the required Advisor/secure-macro contracts; ranged BASE recognition, hybrid melee transitions, macro size and Warrior/Warlock safety invariants are checked;
 - all nine deterministic Action Panel layouts are checked for stable slot counts, known/unique spell IDs, the 20-slot limit, unique default keys and Diagnostic Pixel V3 encodability;
+- Doctor report coverage verifies BASE/range API probes, macro/pet/binding/SavedVariables diagnostics, slash-command dispatch, error containment/path sanitization, privacy exclusions and absence of SavedVariables mutation;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
 Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.
