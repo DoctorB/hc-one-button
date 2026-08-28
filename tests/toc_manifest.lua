@@ -35,8 +35,11 @@ assert(entries[1] == "Core/Init.lua", "Core/Init.lua must remain the first TOC c
 assert(entries[2] == "Data/Spells.lua", "Data/Spells.lua must load immediately after bootstrap")
 assert(positions["Core/State.lua"] < positions["Core/Utils.lua"], "State must load before Utils")
 assert(positions["Core/Range.lua"] < positions["Advisor/Engine.lua"], "range primitives must load before Advisor Engine")
+assert(positions["Systems/Consumables.lua"] < positions["Advisor/Readiness.lua"], "consumable inventory must load before readiness")
+assert(positions["Advisor/Readiness.lua"] < positions["Advisor/Engine.lua"], "readiness must load before Advisor Engine")
 assert(positions["Advisor/Engine.lua"] < positions["Classes/Warrior.lua"], "Advisor Engine must load before class modules")
 assert(positions["Classes/Druid.lua"] < positions["UI/CoreHUD.lua"], "all class modules must load before UI")
+assert(positions["UI/ActionPanel.lua"] < positions["UI/SurvivalStrip.lua"], "Survival strip must anchor after Action Panel")
 assert(entries[#entries] == "Bindings.xml", "Bindings.xml must remain the final TOC entry")
 
 local tocVersion = assert(toc:match("## Version:%s*([^\r\n]+)"), "TOC version missing")
