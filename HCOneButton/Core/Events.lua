@@ -15,7 +15,7 @@ local events = {
     "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS",
     "COMBAT_LOG_EVENT_UNFILTERED", "UNIT_PET", "PET_BAR_UPDATE", "UNIT_HAPPINESS",
     "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL",
-    "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED",
+    "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED",
     "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
 }
 for _, e in ipairs(events) do pcall(eventFrame.RegisterEvent, eventFrame, e) end
@@ -80,7 +80,7 @@ local function EventNeedsAdvisorRefresh(event, unit)
        or event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" or event == "UNIT_SPELLCAST_CHANNEL_INTERRUPTED" then
         return unit == "target"
     end
-    if (event == "BAG_UPDATE_DELAYED" or event == "GET_ITEM_INFO_RECEIVED") and PLAYER_CLASS == "HUNTER" then return true end
+    if event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" or event == "GET_ITEM_INFO_RECEIVED" then return true end
     return false
 end
 

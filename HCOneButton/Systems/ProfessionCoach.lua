@@ -1,4 +1,4 @@
--- HCOneButton Profession Coach v1.27.8
+-- HCOneButton Profession Coach v1.28.0
 -- Event-driven profession leveling advisor for WoW Classic Era.
 -- No automatic crafting/gathering: it only recommends the most efficient next action.
 
@@ -429,6 +429,23 @@ end
 local frame, titleFS, mainFS, detailFS
 local refreshPending=false
 
+function P.Reanchor()
+    if not frame then return end
+    frame:ClearAllPoints()
+    local survivalAnchor = _G.HCOneButtonSurvivalStrip
+    local actionAnchor = _G.HCOneButtonAdvisorActions
+    local anchor = _G.HCOneButtonFrame
+    if survivalAnchor and survivalAnchor.IsShown and survivalAnchor:IsShown() then
+        frame:SetPoint("TOPLEFT", survivalAnchor, "BOTTOMLEFT", 0, -6)
+    elseif actionAnchor then
+        frame:SetPoint("TOPLEFT", actionAnchor, "BOTTOMLEFT", 0, -6)
+    elseif anchor then
+        frame:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, -198)
+    else
+        frame:SetPoint("CENTER", UIParent, "CENTER", 160, -80)
+    end
+end
+
 function P.ApplyHUDScale(scale)
     local hudScale = tonumber(scale) or (HCOB_DB and tonumber(HCOB_DB.scale)) or 1.0
     if hudScale < 0.70 then hudScale = 0.70 elseif hudScale > 1.60 then hudScale = 1.60 end
@@ -459,10 +476,7 @@ local function CreatePanel()
     frame:SetSize(coachWidth,52)
     frame:SetFrameStrata("HIGH")
     P.ApplyHUDScale(HCOB_DB and HCOB_DB.scale or 1.0)
-    local anchor=_G.HCOneButtonFrame
-    if actionAnchor then frame:SetPoint("TOPLEFT",actionAnchor,"BOTTOMLEFT",0,-6)
-    elseif anchor then frame:SetPoint("TOPLEFT",anchor,"TOPRIGHT",10,-198)
-    else frame:SetPoint("CENTER",UIParent,"CENTER",160,-80) end
+    P.Reanchor()
     frame:EnableMouse(false)
     local bg=frame:CreateTexture(nil,"BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(0.018,0.018,0.022,0.94)
     if HCOB_MakeRectBorder then HCOB_MakeRectBorder(frame,0.25,0.55,0.80,0.90) end
@@ -479,6 +493,7 @@ local function UpdatePanel()
     -- after combat has started.
     if state.inCombat then frame:Hide(); return end
     if UnitAffectingCombat and UnitAffectingCombat("player") then frame:Hide(); return end
+    P.Reanchor()
     local plans=BuildPlans()
     if #plans==0 then frame:Hide(); return end
     local p=plans[1]

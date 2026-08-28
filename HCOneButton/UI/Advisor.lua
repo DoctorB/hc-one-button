@@ -119,6 +119,8 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
             -- BASE spell icon visible so the movement warning remains concrete.
             displayId = select(1, BaseActionInfo())
             fallbackTexture = "Interface\\RaidFrame\\ReadyCheck-NotReady"
+        elseif kind == "caution" then
+            fallbackTexture = "Interface\\RaidFrame\\ReadyCheck-NotReady"
         elseif kind == "idle" then
             displayId = select(1, BaseActionInfo())
             fallbackTexture = "Interface\\RaidFrame\\ReadyCheck-Ready"
@@ -226,7 +228,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         advisor:SetAlpha(0.86)
         if advisorIcon.SetDesaturated then advisorIcon:SetDesaturated(false) end
     elseif baseAction then
-        advisorMode:SetText(PLAYER_CLASS == "HUNTER" and "PULL" or "BASE SPAM")
+        advisorMode:SetText(title == "PULL READY" and "PULL READY" or (PLAYER_CLASS == "HUNTER" and "PULL" or "BASE SPAM"))
         advisorMode:SetTextColor(0.75, 1, 0.75)
         advisorBanner:SetColorTexture(0.04, 0.35, 0.10, 0.96)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
@@ -347,6 +349,10 @@ function UpdateDisplayMinimal(reason)
     UpdateStatusBars(hpReadable and hp or 0)
     UpdateBaseVisual()
     SetDisplay(nil, "ADVISOR OFF", "BASE SPAM OK", reason or "Smart HUD disabled", "idle")
+    if HCOB.UI.SurvivalStrip then
+        HCOB.UI.SurvivalStrip.Highlight(nil)
+        HCOB.UI.SurvivalStrip.UpdateStates()
+    end
     if HCOB_DB.showSwing then UpdateSwingBar() else swingBG:Hide() end
     UpdateDPSMeter()
 end
@@ -368,6 +374,11 @@ function UpdateDisplayCore(recordTelemetrySample)
     spellId, title, keyHint, reason, kind = HCOB.Advisor.Engine.ApplyTargetCastability(spellId, title, keyHint, reason, kind)
     spellId, title, keyHint, reason, kind = HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
     SetDisplay(spellId, title, keyHint, reason, kind)
+    if HCOB.UI.SurvivalStrip and HCOB.Systems and HCOB.Systems.Consumables then
+        local consumableRole = HCOB.Systems.Consumables.RecommendForState(hp, UnitAffectingCombat("player") and true or false)
+        HCOB.UI.SurvivalStrip.Highlight(consumableRole)
+        HCOB.UI.SurvivalStrip.UpdateStates()
+    end
 
     local telemetryReserve = nil
     if currentFight and HCOB_DB.combatLogging ~= false and not runtimeTelemetryDisabled then

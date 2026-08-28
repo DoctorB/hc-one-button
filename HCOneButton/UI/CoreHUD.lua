@@ -264,6 +264,9 @@ function ApplyHUDScale()
             if ab then ab:SetScale(actionEffectiveScale) end
         end
     end
+    if HCOB.UI.SurvivalStrip and HCOB.UI.SurvivalStrip.ApplyScale then
+        HCOB.UI.SurvivalStrip.ApplyScale(hudScale)
+    end
 
     -- Profession Coach is visually attached to the combat HUD and follows the
     -- primary HUD scale. It deliberately does not inherit the Action Panel's
@@ -294,6 +297,7 @@ function RefreshButtonState()
     if HCOB_DB.visible and HCOB_DB.showAdvisor ~= false then advisor:Show() else advisor:Hide() end
     if HCOB_DB.visible and HCOB_DB.showDPSMeter ~= false then dpsMeter:Show() else dpsMeter:Hide() end
     if HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.SyncVisibility() end
+    if HCOB.UI.SurvivalStrip then HCOB.UI.SurvivalStrip.SyncVisibility() end
     if HCOB_DB.visible and HCOB_DB.diagPixel ~= false then diagPixel:Show() else diagPixel:Hide() end
     if HCOB_DB.locked then
         label:SetTextColor(1, 0.97, 0.86)
@@ -391,4 +395,3 @@ btn:HookScript("PostClick", function(self, mouseButton, down)
         currentFight.baseClicks = (tonumber(currentFight.baseClicks) or 0) + 1
     end
 end)
-

@@ -100,7 +100,7 @@ function CreateOptionsPanel()
     -- Standalone window: /hcob options always opens this one, independently
     -- from future changes to the Blizzard Settings API.
     local panel = CreateFrame("Frame", "HCOneButtonOptionsPanel", UIParent, "BasicFrameTemplateWithInset")
-    panel:SetSize(700, 670)
+    panel:SetSize(700, 720)
     panel:SetPoint("CENTER", UIParent, "CENTER", 0, 20)
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
@@ -146,12 +146,26 @@ function CreateOptionsPanel()
         local prof = HCOB.Systems and HCOB.Systems.ProfessionCoach
         if prof and prof.SetEnabled then prof.SetEnabled(v) else HCOB_DB.profCoach = v end
     end, 24, -298))
+    add(CreateCheckBox(panel, "Pre-pull safety gate", "Require healthy HP/resources/pet state before the Advisor displays PULL READY; warns about missing healing stock on tough targets.", function()
+        return HCOB_DB.prePullSafety ~= false
+    end, function(v)
+        HCOB_DB.prePullSafety = v
+        UpdateDisplay()
+    end, 24, -328))
+    add(CreateCheckBox(panel, "Survival consumables strip", "Show secure click buttons for the best healing potion, Healthstone, mana potion and bandage in your bags.", function()
+        return HCOB_DB.showConsumables ~= false
+    end, function(v)
+        HCOB_DB.showConsumables = v
+        if HCOB.UI.SurvivalStrip then HCOB.UI.SurvivalStrip.SyncVisibility() end
+        UpdateDisplay()
+    end, 24, -358))
     add(CreateCheckBox(panel, "HC danger advisor", "Multi-pull and fight trend: enter CAUTION/DANGER before relying on HP threshold alone.", function() return HCOB_DB.hcDangerAdvisor ~= false end, function(v) HCOB_DB.hcDangerAdvisor = v; UpdateDisplay() end, 350, -82))
     if PLAYER_CLASS == "WARRIOR" then
-        add(CreateCheckBox(panel, "Warrior: smart pre-pull Rend", "Out of combat, if the target is equal/near-equal level or elite, prepare one Rend on the opener. Skip trivial mobs.", function() return HCOB_DB.warriorAutoRend ~= false end, function(v) HCOB_DB.warriorAutoRend = v; BuildMacros(); UpdateDisplay() end, 24, -328))
-        add(CreateCheckBox(panel, "Warrior: situational Sunder", "Sunder remains in the Advisor against durable targets; it is not spammed at low levels.", function() return HCOB_DB.warriorSunderBase ~= false end, function(v) HCOB_DB.warriorSunderBase = v; BuildMacros(); UpdateDisplay() end, 24, -358))
+        add(CreateCheckBox(panel, "Warrior: smart pre-pull Rend", "Out of combat, if the target is equal/near-equal level or elite, prepare one Rend on the opener. Skip trivial mobs.", function() return HCOB_DB.warriorAutoRend ~= false end, function(v) HCOB_DB.warriorAutoRend = v; BuildMacros(); UpdateDisplay() end, 24, -388))
+        add(CreateCheckBox(panel, "Warrior: situational Sunder", "Sunder remains in the Advisor against durable targets; it is not spammed at low levels.", function() return HCOB_DB.warriorSunderBase ~= false end, function(v) HCOB_DB.warriorSunderBase = v; BuildMacros(); UpdateDisplay() end, 24, -418))
     end
-    add(CreateCheckBox(panel, "Combat logger", "Store compact statistics from recent fights in SavedVariables. Use /hcob log last for a summary.", function() return HCOB_DB.combatLogging ~= false end, function(v) HCOB_DB.combatLogging = v; if not v and currentFight then FinalizeCombatTelemetry("logging_off") end end, 24, -388))
+    local combatLoggerY = PLAYER_CLASS == "WARRIOR" and -448 or -388
+    add(CreateCheckBox(panel, "Combat logger", "Store compact statistics from recent fights in SavedVariables. Use /hcob log last for a summary.", function() return HCOB_DB.combatLogging ~= false end, function(v) HCOB_DB.combatLogging = v; if not v and currentFight then FinalizeCombatTelemetry("logging_off") end end, 24, combatLoggerY))
 
     add(CreateCheckBox(panel, "Mini DPS meter", "Show current and recent average DPS below the Advisor. Requires Combat logger.", function() return HCOB_DB.showDPSMeter ~= false end, function(v) HCOB_DB.showDPSMeter = v; RefreshButtonState(); UpdateDPSMeter() end, 350, -455))
 
@@ -181,7 +195,7 @@ function CreateOptionsPanel()
 
     local centerBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     centerBtn:SetSize(125, 25)
-    centerBtn:SetPoint("TOPLEFT", 24, -445)
+    centerBtn:SetPoint("TOPLEFT", 24, -480)
     centerBtn:SetText("Center HUD")
     centerBtn:SetScript("OnClick", Center)
 
@@ -219,11 +233,14 @@ function CreateOptionsPanel()
         HCOB_DB.profCoach = true
         HCOB_DB.actionSlotAutoBind = true
         HCOB_DB.actionSlotKeys = nil
+        HCOB_DB.prePullSafety = true
+        HCOB_DB.showConsumables = true
         runtimeSmartDisabled = false
         runtimeCombatLogDisabled = false
         runtimeErrors = {}
         RefreshButtonState()
         if HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.ApplySlotBindings(); HCOB.UI.ActionPanel.RefreshBindingOptions() end
+        if HCOB.UI.SurvivalStrip then HCOB.UI.SurvivalStrip.Configure(); HCOB.UI.SurvivalStrip.SyncVisibility() end
         if HCOB.Systems and HCOB.Systems.ProfessionCoach and HCOB.Systems.ProfessionCoach.SetEnabled then HCOB.Systems.ProfessionCoach.SetEnabled(true) end
         if panel.Refresh then panel:Refresh() end
         UpdateDisplay()
@@ -254,7 +271,7 @@ function CreateOptionsPanel()
     tip:SetPoint("TOPLEFT", reportBtn, "BOTTOMLEFT", 0, -18)
     tip:SetWidth(620)
     tip:SetJustifyH("LEFT")
-    tip:SetText("All options are persisted in HCOB_DB across reload/logout. HUD scale resizes BASE, Advisor, Action Panel, DPS and Profession Coach together. The Profession Coach can be fully disabled here. Secondary configuration windows replace Options and return here when closed. Use Report a problem after a suspicious fight to generate an anonymized CurseForge-ready diagnostic report.")
+    tip:SetText("All options are persisted in HCOB_DB across reload/logout. HUD scale resizes BASE, Advisor, Action Panel, Survival strip, DPS and Profession Coach together. Secure consumable assignments update only out of combat. Secondary configuration windows replace Options and return here when closed. Use Report a problem after a suspicious fight to generate an anonymized CurseForge-ready diagnostic report.")
 
     panel.controls = controls
     panel.Refresh = function(self)

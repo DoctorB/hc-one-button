@@ -3,7 +3,7 @@ local addonName = ...
 
 HCOneButton = type(HCOneButton) == "table" and HCOneButton or {}
 local HCOB = HCOneButton
-HCOB.VERSION = "1.27.8"
+HCOB.VERSION = "1.28.0"
 
 HCOB.Core = type(HCOB.Core) == "table" and HCOB.Core or {}
 HCOB.Data = type(HCOB.Data) == "table" and HCOB.Data or {}
@@ -72,6 +72,8 @@ HCOB.Advisor.Engine = type(HCOB.Advisor.Engine) == "table" and HCOB.Advisor.Engi
 HCOB.Systems.ProfessionCoach = type(HCOB.Systems.ProfessionCoach) == "table" and HCOB.Systems.ProfessionCoach or {}
 HCOB.Systems.Feedback = type(HCOB.Systems.Feedback) == "table" and HCOB.Systems.Feedback or {}
 HCOB.UI.Feedback = type(HCOB.UI.Feedback) == "table" and HCOB.UI.Feedback or {}
+HCOB.UI.SurvivalStrip = type(HCOB.UI.SurvivalStrip) == "table" and HCOB.UI.SurvivalStrip or {}
+HCOB.Systems.Consumables = type(HCOB.Systems.Consumables) == "table" and HCOB.Systems.Consumables or {}
 
 _G.BINDING_HEADER_HCOB = "HC One Button"
 _G["BINDING_NAME_CLICK HCOneButtonFrame:LeftButton"] = "HC One Button"

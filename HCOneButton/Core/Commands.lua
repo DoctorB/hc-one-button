@@ -46,6 +46,23 @@ SlashCmdList.HCOB = function(msg)
         elseif arg == "debug" then
             HCOB.Advisor.Engine.DebugPrint()
         else print("|cffffcc00HCOB:|r /hcob advisor on|off|debug") end
+    elseif cmd == "prep" then
+        if arg == "on" or arg == "off" then
+            HCOB_DB.prePullSafety = arg == "on"
+            UpdateDisplay()
+            print("|cff00ff98HCOB:|r pre-pull safety gate " .. string.upper(arg) .. ".")
+        else
+            print("|cff00ff98HCOB:|r pre-pull safety gate=" .. tostring(HCOB_DB.prePullSafety ~= false) .. " | /hcob prep on|off")
+        end
+    elseif cmd == "consumables" or cmd == "survival" then
+        if arg == "on" or arg == "off" then
+            if InCombatLockdown() then print("|cffff5555HCOB:|r change the Survival strip out of combat."); return end
+            HCOB_DB.showConsumables = arg == "on"
+            if HCOB.UI.SurvivalStrip then HCOB.UI.SurvivalStrip.Configure(); HCOB.UI.SurvivalStrip.SyncVisibility() end
+            print("|cff00ff98HCOB:|r Survival consumables strip " .. string.upper(arg) .. ".")
+        elseif HCOB.Systems.Consumables and HCOB.Systems.Consumables.PrintStatus then
+            HCOB.Systems.Consumables.PrintStatus()
+        end
     elseif cmd == "diagpixel" then
         if arg == "on" or arg == "off" then
             HCOB_DB.diagPixel = (arg == "on")
@@ -147,6 +164,7 @@ SlashCmdList.HCOB = function(msg)
             HCOB_DB.secureActions=true
         end
         if HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.Configure(); HCOB.UI.ActionPanel.SyncVisibility(); HCOB.UI.ActionPanel.UpdateStates() end
+        if HCOB.UI.SurvivalStrip then HCOB.UI.SurvivalStrip.Configure(); HCOB.UI.SurvivalStrip.SyncVisibility(); HCOB.UI.SurvivalStrip.UpdateStates() end
         print("|cff00ff98HCOB:|r clickable actions="..tostring(HCOB_DB.secureActions ~= false).." relativeScale="..tostring(HCOB_DB.actionScale or 1.0).." hudScale="..tostring(HCOB_DB.scale or 1.0))
     elseif cmd == "dps" then
         Toggle("showDPSMeter", arg)
@@ -166,12 +184,13 @@ SlashCmdList.HCOB = function(msg)
         local _, localizedClass = UnitClass("player"); local si,sn=TalentSpec()
         local macro=btn:GetAttribute("macrotext1") or ""
         print("|cff00ff98HCOB v"..VERSION..":|r "..tostring(localizedClass).." L"..PlayerLevel().." spec="..tostring(sn).."("..si..") macro="..#macro.."/"..MACRO_LIMIT)
-        print("SmartHUD="..tostring(HCOB_DB.smartDisplay ~= false).." safeMode="..tostring(runtimeSmartDisabled).." combatLogSafe="..tostring(runtimeCombatLogDisabled).." telemetrySafe="..tostring(runtimeTelemetryDisabled).." errors="..#runtimeErrors.." heroicBase=false heroicKnown="..tostring(IsKnown(S.HEROIC_STRIKE)).." hsRage="..tostring(HCOB_DB.warriorHeroicRage or 35).." autoRend="..tostring(currentWarriorAutoRend).." sunderAdaptive="..tostring(HCOB_DB.warriorSunderBase ~= false).." dpsMeter="..tostring(HCOB_DB.showDPSMeter ~= false).." hcDanger="..tostring(HCOB_DB.hcDangerAdvisor ~= false))
+        print("SmartHUD="..tostring(HCOB_DB.smartDisplay ~= false).." safeMode="..tostring(runtimeSmartDisabled).." combatLogSafe="..tostring(runtimeCombatLogDisabled).." telemetrySafe="..tostring(runtimeTelemetryDisabled).." errors="..#runtimeErrors.." heroicBase=false heroicKnown="..tostring(IsKnown(S.HEROIC_STRIKE)).." hsRage="..tostring(HCOB_DB.warriorHeroicRage or 35).." autoRend="..tostring(currentWarriorAutoRend).." sunderAdaptive="..tostring(HCOB_DB.warriorSunderBase ~= false).." dpsMeter="..tostring(HCOB_DB.showDPSMeter ~= false).." hcDanger="..tostring(HCOB_DB.hcDangerAdvisor ~= false).." prePull="..tostring(HCOB_DB.prePullSafety ~= false).." survivalStrip="..tostring(HCOB_DB.showConsumables ~= false))
         PrintKeys()
     else
         print("|cff00ff98HC One Button v"..VERSION.."|r - all Classic Era classes")
         print("/hcob bind BUTTON4 | Q   /hcob keys   /hcob bindtest [BUTTON4]   /hcob unbind BUTTON4")
-        print("/hcob plan   /hcob mods   /hcob status   /hcob hunter   /hcob ammo   /hcob petfood   /hcob petskills   /hcob prof [on|off|refresh]   /hcob actions on|off|scale 1.0|bind on|off|binds")
+        print("/hcob plan   /hcob mods   /hcob status   /hcob hunter   /hcob ammo   /hcob petfood   /hcob petskills   /hcob prof [on|off|refresh]")
+        print("/hcob prep on|off   /hcob consumables [on|off]   /hcob actions on|off|scale 1.0|bind on|off|binds")
         print("/hcob center   /hcob show|hide   /hcob lock|unlock   /hcob options   /hcob report   /hcob doctor   /hcob settings")
         print("/hcob scale 1.1")
         print("/hcob danger 35   /hcob critical 20   /hcob sound on|off   /hcob swing on|off   /hcob dps on|off")

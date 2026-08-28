@@ -51,6 +51,8 @@ function InitializeSavedVariables()
     Default("secureActions", true)
     Default("actionScale", 1.0)
     Default("actionSlotAutoBind", true)
+    Default("prePullSafety", true)
+    Default("showConsumables", true)
 
     for _, key in ipairs({"actionSlotKeys", "actionSlotAppliedKeys"}) do
         if HCOB_DB[key] ~= nil and type(HCOB_DB[key]) ~= "table" then

@@ -218,6 +218,7 @@ function Recommend()
     local playerLevel = PlayerLevel()
     local targetLevel = hostile and SafeUnitLevel("target", playerLevel) or playerLevel
     local classification = hostile and SafeUnitClassification("target", "normal") or "normal"
+    if inCombat or not hostile then HCOB.Advisor.Engine.lastPrePullReadiness = nil end
 
     if inCombat and hp <= (HCOB_DB.criticalHP or 20) then
         local id, title, key, reason = PanicRecommendation()
@@ -271,9 +272,17 @@ function Recommend()
     if not inCombat and hostile then
         local diff = targetLevel - playerLevel
         if classification == "elite" or classification == "rareelite" or classification == "worldboss" then
-            return nil, "ELITE!", "EVALUATE PULL", "Hardcore: " .. classification, "danger"
+            return nil, "HIGH RISK", "EVALUATE PULL", "Hardcore target: " .. classification, "danger"
         elseif diff >= 3 then
-            return nil, "+" .. diff .. " LEVEL", "EVALUATE PULL", "Target is above your level", "danger"
+            return nil, "HIGH RISK", "EVALUATE PULL", "Target is +" .. diff .. " levels above you", "danger"
+        end
+
+        local _, prepTitle, prepKey, prepReason, prepKind = HCOB.Advisor.Engine.PrePullRecommendation({
+            playerLevel=playerLevel, targetLevel=targetLevel, classification=classification,
+            targetTough=classification == "elite" or classification == "rareelite" or classification == "worldboss" or targetLevel >= playerLevel + 1,
+        })
+        if prepTitle then
+            return nil, prepTitle, prepKey, prepReason, prepKind
         end
     end
 
@@ -293,6 +302,12 @@ function Recommend()
 
     local rid, rtitle, rkey, rreason, rkind = HCOB.Advisor.Engine.RangedBaseRecommendation(inCombat, hostile)
     if rid or rtitle then return rid, rtitle, rkey, rreason, rkind or "idle" end
+
+    if not inCombat and hostile then
+        local readiness = HCOB.Advisor.Engine.lastPrePullReadiness
+        return nil, "PULL READY", "PRESS BASE",
+            readiness and readiness.summary or "Recovery checks passed", "idle"
+    end
 
     return nil, "BASE OK", "KEEP SPAMMING", "No urgent manual spell", "idle"
 end

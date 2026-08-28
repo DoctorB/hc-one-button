@@ -171,8 +171,10 @@ function HCOB.Advisor.Engine.RangedBaseRecommendation(inCombat, hostile)
     local state = HCOB.Advisor.Engine.RangedActionState(id, true)
     local name = SpellName(id, "BASE")
     if state == "ready" then
+        local readiness = HCOB.Advisor.Engine.lastPrePullReadiness
+        local readyText = readiness and readiness.ready and (" | " .. tostring(readiness.summary or "recovery checks passed")) or ""
         return id, inCombat and "BASE READY" or "PULL READY", "PRESS BASE",
-            name .. " can reach the current target", "idle"
+            name .. " can reach the current target" .. readyText, "idle"
     elseif state == "out" then
         return nil, "OUT OF RANGE", "MOVE CLOSER",
             name .. " cannot reach the current target", "caution"

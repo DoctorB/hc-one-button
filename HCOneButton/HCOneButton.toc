@@ -1,8 +1,8 @@
 ## Interface: 11509
 ## Title: HC One Button
-## Notes: Hardcore combat assistant with Advisor Engine 2.0, deterministic secure action slots, Hunter management, profession coach and combat telemetry for WoW Classic Era.
+## Notes: Hardcore combat assistant with pre-pull readiness, secure survival consumables, Advisor Engine 2.0, deterministic action slots, Hunter management and telemetry for WoW Classic Era.
 ## Author: DoctorB
-## Version: 1.27.8
+## Version: 1.28.0
 ## SavedVariables: HCOB_DB, HCOB_CombatLog
 
 Core/Init.lua
@@ -16,9 +16,12 @@ Core/Range.lua
 Core/Auras.lua
 Core/Macros.lua
 
+Systems/Consumables.lua
+
 Advisor/Dynamics.lua
 Advisor/Threat.lua
 Advisor/Survival.lua
+Advisor/Readiness.lua
 Advisor/Engine.lua
 
 Hunter/Pet.lua
@@ -41,6 +44,7 @@ UI/CoreHUD.lua
 UI/Advisor.lua
 UI/WindowManager.lua
 UI/ActionPanel.lua
+UI/SurvivalStrip.lua
 UI/Options.lua
 UI/Feedback.lua
 UI/DiagnosticPixel.lua
