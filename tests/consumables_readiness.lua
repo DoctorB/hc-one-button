@@ -44,7 +44,10 @@ function UnitPowerPct() return powerPct, true end
 function UnitExists(unit) return unit == "pet" and petExists or unit == "player" end
 function UnitIsDead(unit) return unit == "pet" and petDead end
 function SpellName(_, fallback) return fallback end
-function AuraByName(_, name) return name == "Recently Bandaged" and recentlyBandaged or false end
+function AuraByName(_, name)
+    if name == "Recently Bandaged" and recentlyBandaged then return true, 42 end
+    return false, 0
+end
 
 assert(dofile("HCOneButton/Systems/Consumables.lua") == nil)
 assert(dofile("HCOneButton/Advisor/Readiness.lua") == nil)
@@ -63,6 +66,21 @@ local potion = C.FindBest("healingPotion")
 expect(potion.id, 1710, "highest usable healing potion")
 expect(potion.count, 2, "selected potion count")
 expect(C.FindExpected("healingPotion").id, 1710, "level-appropriate empty icon")
+
+-- When both Classic item cooldown paths exist, an active result must win over
+-- a transient ready result so shared potion cooldown feedback cannot flicker.
+local legacyGetItemCooldown = GetItemCooldown
+C_Item = {GetItemCooldown=function(id)
+    if id == 1710 then return {startTime=90, duration=30, isEnabled=true} end
+end}
+GetItemCooldown = function() return 0, 0, 1 end
+local potionStart, potionDuration, potionEnabled, potionRemaining = C.GetCooldown(1710)
+expect(potionStart, 90, "active item cooldown start")
+expect(potionDuration, 30, "active item cooldown duration")
+expect(potionEnabled, true, "active item cooldown enabled")
+expect(potionRemaining, 20, "active item cooldown wins over transient ready API")
+C_Item = nil
+GetItemCooldown = legacyGetItemCooldown
 
 -- All improved Healthstone item variants are recognized.
 counts[19013] = 1
@@ -124,6 +142,11 @@ local stocked, ready = C.HealingCooldownState()
 expect(stocked, true, "bandage stock detected")
 expect(ready, false, "Recently Bandaged prevents ready state")
 expect(C.SelectHealingRole(false), nil, "Recently Bandaged item is not highlighted")
+local bandageStart, bandageDuration, bandageEnabled, bandageRemaining = C.GetRoleCooldown("bandage", 1251)
+expect(bandageDuration, 60, "Recently Bandaged visual cooldown duration")
+expect(bandageRemaining, 42, "Recently Bandaged visual cooldown remaining")
+expect(bandageEnabled, true, "Recently Bandaged visual cooldown enabled")
+expect(bandageStart, 82, "Recently Bandaged visual cooldown start")
 
 counts[1251], counts[1710], recentlyBandaged = nil, 1, false
 C.Refresh()
@@ -200,6 +223,8 @@ assert(source:find('SecureActionButtonTemplate', 1, true), "survival buttons mus
 assert(source:find('button:SetAttribute("type1", "item")', 1, true), "secure item action missing")
 assert(source:find('Strip.pendingConfigure = true', 1, true), "combat-deferred assignment missing")
 assert(source:find('button.assignedItemID', 1, true), "visual state must follow frozen secure assignment")
+assert(source:find('Consumables.GetRoleCooldown(button.role, itemID)', 1, true), "button must include role-specific cooldown locks")
+assert(source:find('"UNIT_AURA"', 1, true), "bandage lock must refresh from player auras")
 assert(not source:find("UseContainerItem", 1, true), "survival strip must never use an item automatically")
 
 print("consumables/readiness regression: PASS")
