@@ -90,7 +90,7 @@ function Strip.UpdateStates()
         local itemID = button.assignedItemID
         local count = itemID and Consumables.GetItemCount(itemID) or 0
         local startTime, duration, enabled, remaining = 0, 0, false, 0
-        if itemID then startTime, duration, enabled, remaining = Consumables.GetCooldown(itemID) end
+        if itemID then startTime, duration, enabled, remaining = Consumables.GetRoleCooldown(button.role, itemID) end
         local usable = count > 0 and enabled and remaining <= 0.05
         if usable and IsUsableItem then
             local ok, value = pcall(IsUsableItem, itemID)
@@ -98,8 +98,7 @@ function Strip.UpdateStates()
         end
         if button.role == "healthstone" or button.role == "healingPotion" or button.role == "bandage" then
             healingStock = healingStock or count > 0
-            local bandageLocked = button.role == "bandage" and Consumables.IsRecentlyBandaged()
-            healingCooldownReady = healingCooldownReady or (count > 0 and enabled and remaining <= 0.05 and not bandageLocked)
+            healingCooldownReady = healingCooldownReady or (count > 0 and enabled and remaining <= 0.05)
         end
         if button.recommended and usable then recommendedUsable = true end
 
@@ -179,7 +178,7 @@ local function ShowTooltip(button)
     local count = button.assignedItemID and Consumables.GetItemCount(button.assignedItemID) or 0
     GameTooltip:AddLine("Quantity: " .. tostring(count), count > 0 and 0.45 or 1, count > 0 and 1 or 0.30, count > 0 and 0.45 or 0.25)
     if button.assignedItemID then
-        local _, _, _, remaining = Consumables.GetCooldown(button.assignedItemID)
+        local _, _, _, remaining = Consumables.GetRoleCooldown(button.role, button.assignedItemID)
         if remaining > 0.05 then
             GameTooltip:AddLine("Cooldown: " .. CooldownText(remaining), 1, 0.72, 0.25)
         else
@@ -278,10 +277,11 @@ end
 Strip.CreateFrames()
 
 local eventFrame = CreateFrame("Frame")
-for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_LEVEL_UP", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED"}) do
+for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_LEVEL_UP", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "UNIT_AURA", "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "ACTIONBAR_UPDATE_COOLDOWN"}) do
     pcall(eventFrame.RegisterEvent, eventFrame, event)
 end
-eventFrame:SetScript("OnEvent", function(_, event)
+eventFrame:SetScript("OnEvent", function(_, event, unit)
+    if event == "UNIT_AURA" and unit ~= "player" then return end
     if event == "PLAYER_REGEN_DISABLED" then
         Consumables.RefreshCountsOnly()
         Strip.UpdateStates()

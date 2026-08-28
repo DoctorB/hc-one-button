@@ -174,33 +174,74 @@ end
 
 function C.GetCooldown(itemID)
     if not itemID then return 0, 0, false, 0 end
-    local startTime, duration, enabled
-    if C_Container and C_Container.GetItemCooldown then
-        local ok, a, b, c = pcall(C_Container.GetItemCooldown, itemID)
-        if ok then startTime, duration, enabled = a, b, c end
-    end
-    if startTime == nil and C_Item and C_Item.GetItemCooldown then
-        local ok, info = pcall(C_Item.GetItemCooldown, itemID)
-        if ok and type(info) == "table" then
-            startTime, duration, enabled = info.startTime, info.duration, info.isEnabled
+    local now = (GetTime and GetTime()) or 0
+    local bestStart, bestDuration, bestEnabled, bestRemaining
+
+    -- Query every supported item API and keep the strongest active cooldown.
+    -- Some Classic clients expose both paths while one of them briefly returns
+    -- a ready state during a shared potion/Healthstone cooldown transition.
+    local function Consider(startTime, duration, enabled)
+        if startTime == nil and duration == nil and enabled == nil then return end
+        startTime, duration = tonumber(startTime) or 0, tonumber(duration) or 0
+        enabled = enabled ~= false and enabled ~= 0
+        local remaining = 0
+        if enabled and startTime > 0 and duration > 0 then
+            remaining = math.max(0, startTime + duration - now)
+        end
+        if bestRemaining == nil
+            or (enabled and not bestEnabled)
+            or (enabled == bestEnabled and remaining > bestRemaining) then
+            bestStart, bestDuration = startTime, duration
+            bestEnabled, bestRemaining = enabled, remaining
         end
     end
-    if startTime == nil and GetItemCooldown then
+
+    if C_Item and C_Item.GetItemCooldown then
+        local ok, a, b, c = pcall(C_Item.GetItemCooldown, itemID)
+        if ok and type(a) == "table" then
+            Consider(a.startTime, a.duration, a.isEnabled)
+        elseif ok then
+            Consider(a, b, c)
+        end
+    end
+    if GetItemCooldown then
         local ok, a, b, c = pcall(GetItemCooldown, itemID)
-        if ok then startTime, duration, enabled = a, b, c end
+        if ok then Consider(a, b, c) end
     end
-    startTime, duration = tonumber(startTime) or 0, tonumber(duration) or 0
-    if enabled == false or enabled == 0 then return startTime, duration, false, 0 end
-    local remaining = 0
-    if startTime > 0 and duration > 0 then
-        remaining = math.max(0, startTime + duration - ((GetTime and GetTime()) or 0))
+
+    -- Preserve the previous permissive fallback on clients where neither API
+    -- is available; IsUsableItem remains the secondary authority.
+    if bestRemaining == nil then return 0, 0, true, 0 end
+    return bestStart, bestDuration, bestEnabled, bestRemaining
+end
+
+function C.RecentlyBandagedState()
+    if not AuraByName then return false, 0 end
+    local name = SpellName and SpellName(11196, "Recently Bandaged") or "Recently Bandaged"
+    local active, remaining = AuraByName("player", name, "HARMFUL", false)
+    if active ~= true then return false, 0 end
+    remaining = tonumber(remaining) or 0
+    -- AuraByName uses 999 when the client hides duration metadata. The lock is
+    -- known to last one minute, so retain clear feedback in that fallback case.
+    if remaining <= 0 or remaining > 60 then remaining = 60 end
+    return true, remaining
+end
+
+function C.GetRoleCooldown(role, itemID)
+    local startTime, duration, enabled, remaining = C.GetCooldown(itemID)
+    if role == "bandage" then
+        local locked, auraRemaining = C.RecentlyBandagedState()
+        if locked and auraRemaining > remaining then
+            duration, remaining, enabled = 60, auraRemaining, true
+            startTime = ((GetTime and GetTime()) or 0) - (duration - remaining)
+        end
     end
-    return startTime, duration, true, remaining
+    return startTime, duration, enabled, remaining
 end
 
 function C.IsImmediatelyUsable(item)
     if not item or not item.available or (tonumber(item.count) or 0) <= 0 then return false end
-    local _, _, enabled, remaining = C.GetCooldown(item.id)
+    local _, _, enabled, remaining = C.GetRoleCooldown(item.role, item.id)
     if not enabled or remaining > 0.05 then return false end
     if IsUsableItem then
         local ok, usable = pcall(IsUsableItem, item.id)
@@ -218,10 +259,8 @@ function C.HasHealingStock()
 end
 
 function C.IsRecentlyBandaged()
-    if not AuraByName then return false end
-    local name = SpellName and SpellName(11196, "Recently Bandaged") or "Recently Bandaged"
-    local active = AuraByName("player", name, "HARMFUL", false)
-    return active == true
+    local active = C.RecentlyBandagedState()
+    return active
 end
 
 function C.HealingCooldownState()
@@ -230,9 +269,8 @@ function C.HealingCooldownState()
         local item = C.GetRole(role)
         if item and item.available then
             stocked = true
-            local _, _, enabled, remaining = C.GetCooldown(item.id)
-            local locked = role == "bandage" and C.IsRecentlyBandaged()
-            if enabled and remaining <= 0.05 and not locked then ready = true end
+            local _, _, enabled, remaining = C.GetRoleCooldown(role, item.id)
+            if enabled and remaining <= 0.05 then ready = true end
             if remaining and (shortest == nil or remaining < shortest) then shortest = remaining end
         end
     end
@@ -279,7 +317,7 @@ function C.PrintStatus()
         local item = C.GetRole(role)
         local remaining = 0
         if item then
-            local _, _, _, value = C.GetCooldown(item.id)
+            local _, _, _, value = C.GetRoleCooldown(role, item.id)
             remaining = value
         end
         print(string.format("  %-7s %s x%d%s", C.roleLabels[role] or role,
