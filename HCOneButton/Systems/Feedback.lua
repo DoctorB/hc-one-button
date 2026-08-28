@@ -207,6 +207,248 @@ local function TruncateReport(text)
     return text:sub(1, F.MAX_REPORT_CHARS - 140) .. "\n\n[REPORT TRUNCATED BY HCOneButton TO KEEP THE ISSUE COPY/PASTE MANAGEABLE]\n"
 end
 
+local function DoctorError(value, maxLen)
+    local message = CleanText(value, maxLen or 160)
+    return message:match(":%d+:%s*(.+)$") or message
+end
+
+local function DoctorValue(fn, ...)
+    if type(fn) ~= "function" then return nil, "unavailable" end
+    local ok, value = pcall(fn, ...)
+    if not ok then return nil, "ERROR: " .. DoctorError(value, 160) end
+    if value ~= nil and type(value) ~= "table" and CanAccessValue then
+        local accessOK, readable = pcall(CanAccessValue, value)
+        if accessOK and readable == false then return nil, "restricted" end
+    end
+    return value, nil
+end
+
+local function DoctorText(value, problem)
+    if problem then return problem end
+    if value == nil then return "nil" end
+    return CleanText(value, 180)
+end
+
+local function DoctorBoolean(fn, ...)
+    local value, problem = DoctorValue(fn, ...)
+    if problem then return problem end
+    return tostring(value == true or value == 1)
+end
+
+local function DoctorBindings(command)
+    if not GetBindingKey then return "unavailable" end
+    local ok, first, second = pcall(GetBindingKey, command)
+    if not ok then return "ERROR: " .. DoctorError(first, 160) end
+    local keys = {}
+    if first and first ~= "" then keys[#keys+1] = tostring(first) end
+    if second and second ~= "" then keys[#keys+1] = tostring(second) end
+    return #keys > 0 and table.concat(keys, ", ") or "<none>"
+end
+
+local function DoctorSpellResolution(id, name)
+    local resolvedId, rank
+    if C_Spell and C_Spell.GetSpellInfo and name then
+        local ok, info = pcall(C_Spell.GetSpellInfo, name)
+        if ok and type(info) == "table" then resolvedId = tonumber(info.spellID) end
+    end
+    if GetSpellInfo and (name or id) then
+        local ok, _, legacyRank, _, _, _, _, legacyId = pcall(GetSpellInfo, name or id)
+        if ok then
+            if legacyRank and legacyRank ~= "" then rank = CleanText(legacyRank, 40) end
+            if not resolvedId then resolvedId = tonumber(legacyId) end
+        end
+    end
+    return resolvedId, rank
+end
+
+-- Read-only live snapshot for API behavior that cannot be reproduced by the
+-- offline harnesses. It intentionally does not call InitCombatLogDB, rebuild
+-- macros, save bindings, refresh frames or mutate SavedVariables.
+function F.GenerateDoctorReport()
+    local lines, warnings = {}, {}
+    local function Warn(text) warnings[#warnings+1] = text end
+
+    local localizedClass = DoctorValue(UnitClass, "player")
+    local level = DoctorValue(PlayerLevel)
+    local specIndex, specName = nil, nil
+    if TalentSpec then
+        local ok, index, name = pcall(TalentSpec)
+        if ok then specIndex, specName = index, name else Warn("TalentSpec failed: " .. CleanText(index, 120)) end
+    end
+
+    local clientVersion, clientBuild, interfaceVersion = nil, nil, nil
+    if GetBuildInfo then
+        local ok, version, build, _, interface = pcall(GetBuildInfo)
+        if ok then clientVersion, clientBuild, interfaceVersion = version, build, interface end
+    end
+
+    local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
+    local baseId, baseDescription
+    if class and class.GetBaseActionInfo then
+        local ok, id, description = pcall(class.GetBaseActionInfo, class, specIndex)
+        if ok then baseId, baseDescription = id, description else Warn("GetBaseActionInfo failed: " .. CleanText(id, 120)) end
+    else
+        Warn("active class BASE contract unavailable")
+    end
+
+    local baseName, baseNameProblem = DoctorValue(SpellName, baseId, "Unknown")
+    local resolvedId, learnedRank = DoctorSpellResolution(baseId, baseName)
+    if not baseId then Warn("BASE spell ID unavailable") end
+
+    local engine = HCOB.Advisor and HCOB.Advisor.Engine
+    local forceRanged = false
+    if engine and engine.IsClassRangedBaseAction and baseId then
+        local ok, result = pcall(engine.IsClassRangedBaseAction, baseId)
+        if ok then forceRanged = result == true else Warn("class ranged-BASE probe failed: " .. CleanText(result, 120)) end
+    end
+
+    local minRange, maxRange, rangeBoundsProblem
+    if engine and engine.SpellRangeBounds and baseId then
+        local ok, minimum, maximum = pcall(engine.SpellRangeBounds, baseId)
+        if ok then minRange, maxRange = minimum, maximum else rangeBoundsProblem = "ERROR: " .. CleanText(minimum, 160) end
+    else
+        rangeBoundsProblem = "unavailable"
+    end
+
+    local sharedRange, sharedRangeProblem
+    if engine and engine.SpellRange and baseId then
+        sharedRange, sharedRangeProblem = DoctorValue(engine.SpellRange, baseId, "target")
+    else
+        sharedRangeProblem = "unavailable"
+    end
+
+    local rangedState, rangedStateProblem
+    if engine and engine.RangedActionState and baseId then
+        rangedState, rangedStateProblem = DoctorValue(engine.RangedActionState, baseId, forceRanged)
+    else
+        rangedStateProblem = "unavailable"
+    end
+
+    local legacyRange, legacyRangeProblem = nil, "unavailable"
+    if baseName then legacyRange, legacyRangeProblem = DoctorValue(IsSpellInRange, baseName, "target") end
+    local cSpellRange, cSpellRangeProblem = nil, "unavailable"
+    if C_Spell and C_Spell.IsSpellInRange and baseId then
+        cSpellRange, cSpellRangeProblem = DoctorValue(C_Spell.IsSpellInRange, baseId, "target")
+    end
+    if legacyRangeProblem and legacyRangeProblem:find("^ERROR:") then Warn("legacy range API failed") end
+    if cSpellRangeProblem and cSpellRangeProblem:find("^ERROR:") then Warn("C_Spell range API failed") end
+
+    local known, knownProblem = DoctorValue(IsKnown, baseId)
+    local usable, usableProblem = DoctorValue(IsUsable, baseId)
+    local cooldown, cooldownProblem = DoctorValue(CooldownRemaining, baseId)
+
+    local macro, macroProblem
+    if btn and btn.GetAttribute then
+        macro, macroProblem = DoctorValue(btn.GetAttribute, btn, "macrotext1")
+    else
+        macroProblem = "secure BASE frame unavailable"
+    end
+    macro = type(macro) == "string" and macro or ""
+    if macro == "" then Warn("BASE macro unavailable or empty") end
+
+    local bindingCommand = BIND_COMMAND or "CLICK HCOneButtonFrame:LeftButton"
+    local rawBindingSet, rawBindingProblem = DoctorValue(GetCurrentBindingSet)
+    local normalizedBindingSet, normalizedBindingProblem = DoctorValue(CurrentBindingSet)
+    local panel = HCOB.UI and HCOB.UI.ActionPanel
+    local baseSlot = ActionSlotForSpell(baseId)
+    local baseSlotKey, baseSlotKeyProblem
+    if panel and panel.GetSlotKey and baseSlot then
+        baseSlotKey, baseSlotKeyProblem = DoctorValue(panel.GetSlotKey, baseSlot)
+    else
+        baseSlotKeyProblem = baseSlot and "unavailable" or "not mapped"
+    end
+
+    local panelConfigured = 0
+    if panel and type(panel.buttons) == "table" then
+        for _, button in ipairs(panel.buttons) do
+            if button and button.configured then panelConfigured = panelConfigured + 1 end
+        end
+    end
+
+    local dbRoot = type(HCOB_DB) == "table" and HCOB_DB or nil
+    local logRoot = type(HCOB_CombatLog) == "table" and HCOB_CombatLog or nil
+    local dbPublicIdentity = dbRoot ~= nil and HCOB.DB == dbRoot
+    local dbPrivateIdentity = dbRoot ~= nil and HCOB.Internal.HCOB_DB == dbRoot
+    local logPublicIdentity = logRoot ~= nil and HCOB.CombatLog == logRoot
+    local logPrivateIdentity = logRoot ~= nil and HCOB.Internal.HCOB_CombatLog == logRoot
+    if not dbPublicIdentity or not dbPrivateIdentity then Warn("HCOB_DB identity mismatch") end
+    if not logPublicIdentity or not logPrivateIdentity then Warn("HCOB_CombatLog identity mismatch") end
+
+    Add(lines, "HCOneButton Doctor Report")
+    Add(lines, "=========================")
+    Add(lines, "Addon version: " .. tostring(VERSION))
+    Add(lines, "Interface: " .. tostring(interfaceVersion or 11509))
+    Add(lines, "Client: " .. CleanText(clientVersion or "?", 30) .. " build " .. CleanText(clientBuild or "?", 20))
+    Add(lines, "Class: " .. tostring(PLAYER_CLASS or localizedClass or "?") .. " | Level: " .. DoctorText(level) .. " | Spec: " .. CleanText(specName or "Unknown", 32) .. " (tab " .. tostring(specIndex or 0) .. ")")
+    Add(lines, "Locale: " .. tostring(GetLocale and GetLocale() or "?"))
+    Add(lines, "Privacy: character name/realm, target names/GUIDs, zone and equipment IDs are not collected.")
+    Add(lines, "Snapshot is read-only: no settings, bindings, macros or SavedVariables were changed.")
+    Add(lines, "")
+
+    Add(lines, "BASE action:")
+    Add(lines, "  ID/name: " .. tostring(baseId or "nil") .. " / " .. DoctorText(baseName, baseNameProblem))
+    Add(lines, "  Resolved learned ID/rank: " .. tostring(resolvedId or "?") .. " / " .. tostring(learnedRank or "not exposed"))
+    Add(lines, "  Description: " .. CleanText(baseDescription or "?", 80))
+    Add(lines, "  Known/usable/cooldown: " .. DoctorText(known, knownProblem) .. " / " .. DoctorText(usable, usableProblem) .. " / " .. DoctorText(cooldown, cooldownProblem))
+    Add(lines, "  Class declares ranged BASE: " .. tostring(forceRanged))
+    Add(lines, "  Bounds min/max: " .. (rangeBoundsProblem or (tostring(minRange or "nil") .. " / " .. tostring(maxRange or "nil"))))
+    Add(lines, "  Shared range/state: " .. DoctorText(sharedRange, sharedRangeProblem) .. " / " .. DoctorText(rangedState, rangedStateProblem))
+    Add(lines, "  Raw IsSpellInRange(name): " .. DoctorText(legacyRange, legacyRangeProblem))
+    Add(lines, "  Raw C_Spell.IsSpellInRange(ID): " .. DoctorText(cSpellRange, cSpellRangeProblem))
+    Add(lines, "  Macro length: " .. tostring(#macro) .. "/" .. tostring(MACRO_LIMIT or 255))
+    if macro ~= "" then
+        for line in macro:gmatch("[^\r\n]+") do Add(lines, "    " .. CleanText(line, 240)) end
+    else
+        Add(lines, "    " .. tostring(macroProblem or "empty"))
+    end
+    Add(lines, "")
+
+    Add(lines, "Live units:")
+    Add(lines, "  Player combat/lockdown: " .. DoctorBoolean(UnitAffectingCombat, "player") .. " / " .. DoctorBoolean(InCombatLockdown))
+    Add(lines, "  Target exists/hostile/dead: " .. DoctorBoolean(UnitExists, "target") .. " / " .. DoctorBoolean(UnitCanAttack, "player", "target") .. " / " .. DoctorBoolean(UnitIsDead, "target"))
+    Add(lines, "  Pet exists/dead/combat/has target: " .. DoctorBoolean(UnitExists, "pet") .. " / " .. DoctorBoolean(UnitIsDead, "pet") .. " / " .. DoctorBoolean(UnitAffectingCombat, "pet") .. " / " .. DoctorBoolean(UnitExists, "pettarget"))
+    Add(lines, "")
+
+    Add(lines, "Bindings and Action Panel:")
+    Add(lines, "  Main command/keys: " .. bindingCommand .. " / " .. DoctorBindings(bindingCommand))
+    Add(lines, "  Binding set raw/normalized: " .. DoctorText(rawBindingSet, rawBindingProblem) .. " / " .. DoctorText(normalizedBindingSet, normalizedBindingProblem))
+    Add(lines, "  Auto-bind/secure actions: " .. tostring(dbRoot and dbRoot.actionSlotAutoBind ~= false) .. " / " .. tostring(dbRoot and dbRoot.secureActions ~= false))
+    Add(lines, "  BASE panel slot/key: " .. tostring(baseSlot or "unmapped") .. " / " .. DoctorText(baseSlotKey, baseSlotKeyProblem))
+    Add(lines, "  Panel visible/configured slots: " .. tostring(panel and panel.visibleCount or "?") .. " / " .. tostring(panel and type(panel.buttons) == "table" and panelConfigured or "?"))
+    Add(lines, "  Diagnostic Pixel enabled: " .. tostring(dbRoot and dbRoot.diagPixel ~= false))
+    Add(lines, "")
+
+    Add(lines, "SavedVariables:")
+    Add(lines, "  Ready/root types: " .. tostring(savedVariablesReady) .. " / " .. type(HCOB_DB) .. " / " .. type(HCOB_CombatLog))
+    Add(lines, "  DB public/private identity: " .. tostring(dbPublicIdentity) .. " / " .. tostring(dbPrivateIdentity))
+    Add(lines, "  Log public/private identity: " .. tostring(logPublicIdentity) .. " / " .. tostring(logPrivateIdentity))
+    Add(lines, "  Binding map types: " .. type(dbRoot and dbRoot.actionSlotKeys) .. " / " .. type(dbRoot and dbRoot.actionSlotAppliedKeys))
+    Add(lines, "  Saved fights/total: " .. tostring(logRoot and type(logRoot.fights) == "table" and #logRoot.fights or 0) .. " / " .. tostring(logRoot and logRoot.totalFights or 0))
+    Add(lines, "  Repairs this load: " .. tostring(HCOB.SavedVariableRepairs and #HCOB.SavedVariableRepairs or 0))
+    if HCOB.SavedVariableRepairs and #HCOB.SavedVariableRepairs > 0 then
+        Add(lines, "    " .. CleanText(table.concat(HCOB.SavedVariableRepairs, ", "), 500))
+    end
+    Add(lines, "")
+
+    Add(lines, "Advisor snapshot:")
+    local display = engine and engine.displayState
+    if display then
+        Add(lines, "  ID/title/kind: " .. tostring(display.spellId or "nil") .. " / " .. CleanText(display.title or "?", 60) .. " / " .. CleanText(display.kind or "?", 24))
+        Add(lines, "  Key/reason: " .. CleanText(display.key or "?", 32) .. " / " .. CleanText(display.reason or "?", 180))
+        Add(lines, "  Action slot: " .. tostring(ActionSlotForSpell(display.spellId) or "unmapped"))
+    else
+        Add(lines, "  No stabilized Advisor display state is available yet.")
+    end
+    Add(lines, "")
+
+    AddRuntimeErrors(lines)
+    Add(lines, "")
+    Add(lines, "Doctor summary: " .. (#warnings == 0 and "OK" or ("WARN (" .. #warnings .. ")")))
+    for _, warning in ipairs(warnings) do Add(lines, "  - " .. warning) end
+    Add(lines, "Issue page: " .. F.ISSUE_URL)
+    return TruncateReport(table.concat(lines, "\n"))
+end
+
 function F.GenerateReport(mode, detailed)
     InitCombatLogDB()
     mode = mode == "recent" and "recent" or "last"

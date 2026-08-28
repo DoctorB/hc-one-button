@@ -30,11 +30,21 @@ end
 
 local function Generate(frame, mode)
     local feedback = HCOB.Systems and HCOB.Systems.Feedback
-    if not feedback or not feedback.GenerateReport then
+    mode = mode == "doctor" and "doctor" or (mode == "recent" and "recent" or "last")
+    if not feedback or (mode == "doctor" and not feedback.GenerateDoctorReport) or (mode ~= "doctor" and not feedback.GenerateReport) then
         frame.status:SetText("Feedback system unavailable. Try /reload.")
         return
     end
-    SetReportText(frame, feedback.GenerateReport(mode, DetailedChecked(frame)), false)
+    frame.reportMode = mode
+    if frame.regenerateButton then frame.regenerateButton:SetText(mode == "doctor" and "Refresh Doctor" or "Refresh Last Fight") end
+    if frame.heading then frame.heading:SetText(mode == "doctor" and "HCOneButton Doctor" or "Report a Problem / Send Feedback") end
+    if frame.detailedCheck and frame.detailedCheck.SetEnabled then frame.detailedCheck:SetEnabled(mode ~= "doctor") end
+    if mode == "doctor" then
+        SetReportText(frame, feedback.GenerateDoctorReport(), false)
+        frame.status:SetText("Read-only Doctor snapshot generated. Select the report and press Ctrl+C to share it.")
+    else
+        SetReportText(frame, feedback.GenerateReport(mode, DetailedChecked(frame)), false)
+    end
 end
 
 function UI.Create()
@@ -56,6 +66,7 @@ function UI.Create()
     local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 22, -38)
     title:SetText("Report a Problem / Send Feedback")
+    frame.heading = title
 
     local intro = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     intro:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
@@ -150,7 +161,8 @@ function UI.Create()
     regenerate:SetSize(140, 26)
     regenerate:SetPoint("LEFT", selectReport, "RIGHT", 10, 0)
     regenerate:SetText("Refresh Last Fight")
-    regenerate:SetScript("OnClick", function() Generate(frame, "last") end)
+    regenerate:SetScript("OnClick", function() Generate(frame, frame.reportMode or "last") end)
+    frame.regenerateButton = regenerate
 
     local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     close:SetSize(100, 26)
@@ -185,7 +197,7 @@ function UI.Open(mode, fromOptions)
         frame:Show()
         frame:Raise()
     end
-    Generate(frame, mode == "recent" and "recent" or "last")
+    Generate(frame, mode == "doctor" and "doctor" or (mode == "recent" and "recent" or "last"))
 end
 
 function UI.Generate(mode, detailed)
@@ -194,5 +206,5 @@ function UI.Generate(mode, detailed)
     if frame.closeButton then frame.closeButton:SetText("Close") end
     local windows = HCOB.UI and HCOB.UI.WindowManager
     if windows and windows.Open then windows.Open("feedback") else frame:Show(); frame:Raise() end
-    Generate(frame, mode == "recent" and "recent" or "last")
+    Generate(frame, mode == "doctor" and "doctor" or (mode == "recent" and "recent" or "last"))
 end
