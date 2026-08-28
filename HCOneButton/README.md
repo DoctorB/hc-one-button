@@ -643,7 +643,7 @@ HCOneButton/
 
 `Core/*` and `Advisor/*` do not contain per-class decision chains. Class-specific policy belongs to `Classes/<Class>.lua`, while complex Hunter-only services remain in the dedicated `Hunter/` subsystem.
 
-`Core/Range.lua` owns the shared rank-safe range/castability primitives consumed by the Advisor, BASE, Action Panel and Hunter subsystem. Repository-level regression harnesses live in `tests/advisor_stability_range.lua` and `tests/binding_save.lua`; neither is loaded by the addon TOC.
+`Core/Range.lua` owns the shared rank-safe range/castability primitives consumed by the Advisor, BASE, Action Panel and Hunter subsystem. Repository-level Lua 5.1 regression harnesses live in `tests/` and are never loaded by the addon TOC. Run the complete syntax and regression suite from the repository root with `./tests/run.ps1`; explicit interpreter paths can be supplied through `-LuaPath` and `-LuacPath` when Lua 5.1 is not discoverable automatically.
 
 ---
 
@@ -969,6 +969,7 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 The `1.27.8` source baseline currently passes:
 
 - **40/40 Lua chunks** pass syntax parsing in the current validation environment;
+- **6/6 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **41/41 TOC references** resolved (`40 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
@@ -977,7 +978,11 @@ The `1.27.8` source baseline currently passes:
 - all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants;
 - Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, localized learned-spell range overrides incomplete rank-1 metadata, explicit ranged BASE contracts remain protected, and friendly/melee actions are excluded from ranged warnings;
 - Warlock pull-safety regression coverage verifies that BASE pet attack requires combat and the former unconditional out-of-combat pet command is absent;
-- binding-save regression coverage: account/character binding sets remain unchanged, while `0`, `nil`, invalid values and API failures safely fall back to set `1` without passing an invalid argument to `SaveBindings`.
+- binding-save regression coverage: account/character binding sets remain unchanged, while `0`, `nil`, invalid values and API failures safely fall back to set `1` without passing an invalid argument to `SaveBindings`;
+- SavedVariables lifecycle coverage verifies normal `ADDON_LOADED` rebinding, direct `PLAYER_LOGIN` fallback, preservation/defaults, malformed-root repair and all login initialization hooks;
+- all nine class modules load in isolation and expose the required Advisor/secure-macro contracts; ranged BASE recognition, hybrid melee transitions, macro size and Warrior/Warlock safety invariants are checked;
+- all nine deterministic Action Panel layouts are checked for stable slot counts, known/unique spell IDs, the 20-slot limit, unique default keys and Diagnostic Pixel V3 encodability;
+- TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
 Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.
 
