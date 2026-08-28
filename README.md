@@ -126,7 +126,7 @@ The strip contains four fixed mouse-click actions:
 | `MANA` | Strongest mana potion in the bags that the current level can use |
 | `BANDAGE` | Strongest available bandage |
 
-Each slot shows its current quantity, cooldown and usability. Empty slots retain a level-appropriate reference icon and show `0`, making missing stock visible before a dangerous pull. The strip prefers a bandage for out-of-combat HP recovery, preserves Healthstone/healing potion priority in combat, and avoids recommending a bandage as an emergency combat action. The `Recently Bandaged` lock participates in readiness checks.
+Each slot shows its current quantity, cooldown and usability. Empty slots retain a level-appropriate reference icon and show `0`, making missing stock visible before a dangerous pull. The strip prefers a bandage for out-of-combat HP recovery, preserves Healthstone/healing potion priority in combat, and avoids recommending a bandage as an emergency combat action. The `Recently Bandaged` lock drives the bandage's unavailable state and full 60-second visual countdown as well as participating in readiness checks.
 
 The buttons use WoW's protected item-action system. Their selected item ID is refreshed on login, bag/item-data changes, level changes and after combat. If bags change during combat, the old protected assignment remains authoritative until `PLAYER_REGEN_ENABLED`; visual counts and cooldowns can still update safely. HCOneButton never clicks, consumes or binds these items automatically.
 

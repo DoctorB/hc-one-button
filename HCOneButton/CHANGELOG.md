@@ -30,6 +30,11 @@ The current release is `1.28.0`, targeting WoW Classic Era / Hardcore interface 
 - Profession Coach anchors below the Survival strip when it is visible and returns directly below the Action Panel when the strip is disabled.
 - Bag and item-cooldown changes request Advisor refreshes for every class.
 
+### Fixed
+
+- Using a bandage now immediately desaturates its Survival button and displays the full `Recently Bandaged` countdown instead of making the button look ready again.
+- Healing, mana potion and Healthstone cooldown feedback now reconciles both available Classic item-cooldown API paths and retains the active shared cooldown during transient ready-state updates.
+
 ### Compatibility
 
 - Rage is not treated as a missing pre-pull resource. Energy produces only a short preparation prompt.
