@@ -78,14 +78,14 @@ local function EventNeedsAdvisorRefresh(event, unit)
     if event == "UNIT_TARGET" then return unit == "target" or unit == "pet" end
     if event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_SUCCEEDED"
        or event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" or event == "UNIT_SPELLCAST_CHANNEL_INTERRUPTED" then
-        return unit == "target"
+        return unit == "target" or unit == "player"
     end
     if event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" or event == "GET_ITEM_INFO_RECEIVED" then return true end
     return false
 end
 
 eventFrame:SetScript("OnEvent", function(_, event, ...)
-    local eventArg1, eventArg2 = ...
+    local eventArg1, eventArg2, eventArg3 = ...
 
     local function EnsureSavedVariablesReady()
         if savedVariablesReady then return true end
@@ -116,6 +116,10 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             -- fallback for test harnesses or unusual load paths that omit it,
             -- and make the persistent tables ready before class login hooks.
             EnsureSavedVariablesReady()
+        end
+
+        if event == "UNIT_SPELLCAST_SUCCEEDED" and eventArg1 == "player" and AcknowledgeDiagnosticPixelCast then
+            AcknowledgeDiagnosticPixelCast(eventArg3)
         end
 
         local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]

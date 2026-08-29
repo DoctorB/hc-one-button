@@ -29,6 +29,8 @@ function InitializeSavedVariables()
     Default("visible", true)
     Default("x", 0)
     Default("y", -180)
+    Default("hudPoint", "CENTER")
+    Default("hudRelativePoint", "CENTER")
     Default("scale", 1.0)
     Default("dangerHP", 35)
     Default("criticalHP", 20)
@@ -130,6 +132,59 @@ function SafeString(value, fallback)
     local ok, text = pcall(tostring, value)
     if ok then return text end
     return fallback
+end
+
+local validHUDPoints = {
+    TOPLEFT=true, TOP=true, TOPRIGHT=true,
+    LEFT=true, CENTER=true, RIGHT=true,
+    BOTTOMLEFT=true, BOTTOM=true, BOTTOMRIGHT=true,
+}
+
+local function PersistentSettingsDB()
+    -- SavedVariables are serialized from the TOC-declared global. Rebind a
+    -- stale private reference defensively so drag-stop can never write only to
+    -- a bootstrap/runtime table and lose the position on /reload.
+    local globalDB = _G and rawget(_G, "HCOB_DB") or nil
+    if type(globalDB) == "table" then
+        if HCOB.DB ~= globalDB or HCOB_DB ~= globalDB then
+            HCOB.DB = globalDB
+            E.HCOB_DB = globalDB
+            HCOB_DB = globalDB
+        end
+        return globalDB
+    end
+    if type(HCOB.DB) == "table" then return HCOB.DB end
+    return type(HCOB_DB) == "table" and HCOB_DB or nil
+end
+
+local function ValidHUDPoint(value, fallback)
+    value = SafeString(value, nil)
+    if value and validHUDPoints[value] then return value end
+    return fallback
+end
+
+function ReadHUDPosition()
+    local db = PersistentSettingsDB()
+    if not db then return "CENTER", "CENTER", 0, -180 end
+    local point = ValidHUDPoint(db.hudPoint, "CENTER")
+    local relativePoint = ValidHUDPoint(db.hudRelativePoint, point)
+    return point, relativePoint, SafeNumber(db.x, 0), SafeNumber(db.y, -180)
+end
+
+function SaveHUDPosition(frame)
+    if not frame or type(frame.GetPoint) ~= "function" then return false end
+    local ok, point, _, relativePoint, x, y = pcall(frame.GetPoint, frame, 1)
+    if not ok then return false end
+    point = ValidHUDPoint(point, nil)
+    relativePoint = ValidHUDPoint(relativePoint, point)
+    x, y = SafeNumber(x, nil), SafeNumber(y, nil)
+    if not point or not relativePoint or x == nil or y == nil then return false end
+
+    local db = PersistentSettingsDB()
+    if not db then return false end
+    db.hudPoint, db.hudRelativePoint = point, relativePoint
+    db.x, db.y = x, y
+    return true
 end
 
 function SafeUnitGUID(unit)

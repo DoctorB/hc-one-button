@@ -211,8 +211,9 @@ end
 
 function RestoreHUDPosition()
     if InCombatLockdown and InCombatLockdown() then return false end
+    local point, relativePoint, x, y = ReadHUDPosition()
     btn:ClearAllPoints()
-    btn:SetPoint("CENTER", UIParent, "CENTER", tonumber(HCOB_DB.x) or 0, tonumber(HCOB_DB.y) or -180)
+    btn:SetPoint(point, UIParent, relativePoint, x, y)
     return true
 end
 
@@ -361,8 +362,7 @@ end
 btn:SetScript("OnDragStart", function(self) if not InCombatLockdown() and not HCOB_DB.locked then self:StartMoving() end end)
 btn:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
-    local _, _, _, px, py = self:GetPoint(1)
-    HCOB_DB.x, HCOB_DB.y = px, py
+    SaveHUDPosition(self)
 end)
 
 function ModifierLine(key, value)

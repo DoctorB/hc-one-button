@@ -198,6 +198,60 @@ function ClassRecommendation(inCombat, hostile, targetHP)
     return nil
 end
 
+local function PlayerCastInfo(api, channel)
+    if not api then return nil end
+    local ok, name, startTimeMS, endTimeMS, spellID
+    if channel then
+        ok, name, _, _, startTimeMS, endTimeMS, _, _, spellID = pcall(api, "player")
+    else
+        ok, name, _, _, startTimeMS, endTimeMS, _, _, _, spellID = pcall(api, "player")
+    end
+    if not ok or name == nil then return nil end
+    return {
+        name=SafeString(name, channel and "Current channel" or "Current cast"),
+        spellID=SafeNumber(spellID, nil),
+        startTimeMS=SafeNumber(startTimeMS, nil),
+        endTimeMS=SafeNumber(endTimeMS, nil),
+        channel=channel and true or false,
+    }
+end
+
+local function HelpfulPlayerCast(cast)
+    if not cast then return false end
+    local function IsHelpful(identifier)
+        if identifier ~= nil and C_Spell and C_Spell.IsSpellHelpful then
+            local ok, helpful = pcall(C_Spell.IsSpellHelpful, identifier)
+            if ok and helpful ~= nil and CanAccessValue(helpful) and SafeBoolean(helpful, false) then return true end
+        end
+        if identifier ~= nil and IsHelpfulSpell then
+            local ok, helpful = pcall(IsHelpfulSpell, identifier)
+            if ok and helpful ~= nil and CanAccessValue(helpful) and SafeBoolean(helpful, false) then return true end
+        end
+        return false
+    end
+    return IsHelpful(cast.spellID) or IsHelpful(cast.name)
+end
+
+function HCOB.Advisor.Engine.PlayerRecoveryHold()
+    -- Any active channel should be allowed to finish: bandages are channels,
+    -- and interrupting another channel with a rotation prompt is equally poor
+    -- guidance. Ordinary casts are held only when the spell is helpful/healing.
+    local cast = PlayerCastInfo(UnitChannelInfo, true)
+    if cast then
+        cast.recovery = HelpfulPlayerCast(cast)
+            or (HCOB.Systems and HCOB.Systems.Consumables
+                and HCOB.Systems.Consumables.IsRecentlyBandaged
+                and HCOB.Systems.Consumables.IsRecentlyBandaged())
+        return cast
+    end
+    cast = PlayerCastInfo(UnitCastingInfo, false)
+    if cast and HelpfulPlayerCast(cast) then
+        cast.recovery = true
+        return cast
+    end
+    return nil
+end
+
 function Recommend()
     -- Recommendation-local candidate snapshots must never leak across an early
     -- safety/interrupt return. SelectCandidate repopulates these when class
@@ -214,6 +268,14 @@ function Recommend()
     if inCombat and (not hpReadable or not powerReadable or (hostile and not targetReadable)) then
         return nil, "DATA LIMITED", "BASE SPAM ONLY",
             "Protected combat data is unavailable; smart recommendations are paused", "caution"
+    end
+    if inCombat then
+        local hold = HCOB.Advisor.Engine.PlayerRecoveryHold()
+        if hold then
+            local title = hold.recovery and "RECOVERY ACTIVE" or "CHANNEL ACTIVE"
+            return nil, title, "LET IT FINISH",
+                (hold.name or "Current action") .. " is in progress; wait before resuming the rotation", "caution"
+        end
     end
     local playerLevel = PlayerLevel()
     local targetLevel = hostile and SafeUnitLevel("target", playerLevel) or playerLevel
