@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.28.0`
+- **Current version:** `1.28.1`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -32,7 +32,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.28.0` is the **Hardcore Readiness Update**. Before an out-of-combat pull, the Advisor now evaluates current HP, mana/energy, pet condition, recovery inventory and learned primary escape cooldowns on tough targets. It displays `RECOVER FIRST`, `PREPARE`, `HIGH RISK` or `PULL READY` instead of presenting a normal opener while the character is not ready. Elite/world-boss and +3-level warnings retain immediate danger priority; class buffs, openers and range/dead-zone checks resume after the recovery gate passes.
+Version `1.28.1` is the **Recovery & Reader Reliability Update**. It preserves the `1.28.0` Hardcore Readiness feature set while fixing exact HUD-position persistence, pausing Advisor/Action Panel/Diagnostic Pixel output during healing casts and channels, and adding a rank-safe `60 ms` black acknowledgement edge after an encoded spell succeeds. External readers running at 50 Hz can now distinguish consecutive recommendation cycles even when the next suggestion uses the same slot/color.
 
 The new **Survival consumables strip** provides four secure click buttons for the best usable healing potion, Healthstone, mana potion and bandage currently in the bags. It shows quantities, cooldown sweeps/text, availability and restock state. The Advisor highlights the appropriate healing tool during low-health recovery and combat danger, or a mana potion at critically low mana.
 
@@ -58,7 +58,7 @@ The main HUD contains:
 - a secure **Survival consumables strip** below the Action Panel;
 - visual states for `OK`, `CAUTION` and `DANGER`.
 
-The HUD is draggable while unlocked. The primary **HUD scale** resizes BASE, Advisor, telemetry, the Fixed Action Panel, Survival strip and Profession Coach together; `/hcob actions scale` remains available only as an optional relative Action Panel adjustment.
+The HUD is draggable while unlocked. Its complete anchor and offsets are persisted immediately to `HCOB_DB`, so `/reload` restores the exact dragged position even when WoW changes the frame's anchor type while moving it. The primary **HUD scale** resizes BASE, Advisor, telemetry, the Fixed Action Panel, Survival strip and Profession Coach together; `/hcob actions scale` remains available only as an optional relative Action Panel adjustment.
 
 ### Advisor Engine 2.0
 
@@ -923,9 +923,11 @@ The current implementation renders it as an unscaled **8×8 frame** so it remain
 1. Enable the frame with `/hcob diagpixel on`.
 2. Locate it immediately to the right of the Advisor frame, separated by a 4 px gap. It follows the HUD position but is intentionally excluded from HUD scaling.
 3. Sample any point inside the solid 8×8 frame and read its 8-bit RGB value.
-4. Treat black as no executable recommendation—including an Advisor spell deliberately suppressed because it is out of range—and white as an Advisor recommendation that has no deterministic Action Panel slot.
+4. Treat black as no executable recommendation—including an Advisor spell deliberately suppressed because it is out of range or while the player is finishing a healing cast/channel—and white as an Advisor recommendation that has no deterministic Action Panel slot.
 5. For a normal slot color, verify `G = 96` and `B = 224`, then decode `slot = R / 12`. Valid slots are 1–20.
 6. Resolve the decoded slot through the current class table in [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts).
+
+When the player successfully executes the spell currently encoded by the pixel, HCOneButton emits black for at least `60 ms` before publishing the latest recommendation. A 50 Hz reader therefore observes approximately three `nil` samples between completed and subsequent suggestions. This acknowledgement edge is also emitted when the next recommendation resolves to the same deterministic slot; external readers should treat `color → black → color` as two distinct recommendation cycles. Exact spell IDs and higher ranks are matched through the localized spell name.
 
 Protocol v3 is **slot-only**. It intentionally does not encode class or spell names.
 
@@ -1018,10 +1020,10 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 
 ## Current baseline validation
 
-The `1.28.0` source baseline currently passes:
+The `1.28.1` source baseline currently passes:
 
 - **43/43 Lua chunks** pass syntax parsing in the current validation environment;
-- **8/8 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **9/9 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **44/44 TOC references** resolved (`43 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
@@ -1036,6 +1038,7 @@ The `1.28.0` source baseline currently passes:
 - all nine deterministic Action Panel layouts are checked for stable slot counts, known/unique spell IDs, the 20-slot limit, unique default keys and Diagnostic Pixel V3 encodability;
 - Doctor report coverage verifies BASE/range API probes, macro/pet/binding/SavedVariables diagnostics, slash-command dispatch, error containment/path sanitization, privacy exclusions and absence of SavedVariables mutation;
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
+- Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
 Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). A short in-game smoke test is still required because WoW secure-frame, binding and UI behavior cannot be reproduced completely by static validation.

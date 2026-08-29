@@ -2,7 +2,26 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.28.0`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.28.1`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.28.1 — 2026-08-29
+
+### Fixed
+
+- HUD dragging now persists the complete anchor pair and offsets directly to the TOC-declared SavedVariables root; `/reload` restores the exact moved position instead of reinterpreting its coordinates as a centered anchor.
+- While the player is channeling (including a bandage) or casting a helpful spell in combat, the Advisor displays `LET IT FINISH`, clears the Action Panel highlight and emits black/no-action through Diagnostic Pixel until the recovery action ends.
+- After the currently encoded Advisor spell succeeds, Diagnostic Pixel emits a rank-safe `60 ms` black acknowledgement edge before the latest recommendation. A 50 Hz reader can distinguish consecutive suggestions even when they resolve to the same slot/color.
+
+### Compatibility
+
+- The acknowledgement edge changes only the temporal signal: Diagnostic Pixel Protocol V3 slot colors and deterministic class mappings are unchanged.
+- Advisor class priorities, secure BASE/Action Panel behavior, Pre-pull Safety, Survival consumables and SavedVariables from `1.28.0` remain compatible.
+
+### Validation
+
+- 43/43 addon Lua chunks parse with Lua 5.1.5.
+- All nine regression harnesses pass through `tests/run.ps1`; 44/44 TOC references resolve without duplicates.
+- New coverage verifies global SavedVariables position rebinding with full anchors, immediate recovery/channel hold behavior, stabilization bypass to a nil pixel, rank-safe cast acknowledgement and the observable same-slot black edge at 50 Hz.
 
 ## 1.28.0 — 2026-08-28
 
