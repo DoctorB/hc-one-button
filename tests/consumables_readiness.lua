@@ -4,7 +4,7 @@ local playerHP, petHP = 100, 100
 local powerToken, powerPct = "MANA", 100
 local petExists, petDead = false, false
 local recentlyBandaged = false
-local playerChannel, playerHelpfulCast = false, false
+local playerChannel, playerHelpfulCast, playerDamageCast = false, false, false
 local counts, cooldowns = {}, {}
 
 HCOneButton = {
@@ -57,6 +57,9 @@ end
 function UnitCastingInfo(unit)
     if unit == "player" and playerHelpfulCast then
         return "Lesser Heal", nil, nil, now * 1000, (now + 2.5) * 1000, false, 1, false, 2050
+    end
+    if unit == "player" and playerDamageCast then
+        return "Frostbolt", nil, nil, now * 1000, (now + 3) * 1000, false, 2, false, 116
     end
 end
 function IsHelpfulSpell(identifier)
@@ -190,6 +193,7 @@ function SafeUnitLevel() return targetLevel end
 function SafeUnitClassification() return targetClassification end
 function CountActiveEnemies() return 0 end
 function ActiveTargetCast() return nil end
+function FightDynamics() return nil end
 function TalentSpec() return 1, "TEST" end
 function IsKnown() return true end
 function IsUsable() return true end
@@ -221,8 +225,9 @@ local _, readyTitle, readyKey = HCOneButton.Internal.Recommend()
 expect(readyTitle, "PULL READY", "universal melee pull-ready fallback")
 expect(readyKey, "PRESS BASE", "pull-ready input")
 
--- Starting a bandage/channel or a helpful cast while in combat immediately
--- clears the spell recommendation. A nil spell makes Diagnostic Pixel black.
+-- Any active player cast/channel immediately clears the next rotation
+-- recommendation. A nil spell makes Diagnostic Pixel black until the real
+-- cast duration ends or the cast is interrupted.
 function UnitAffectingCombat() return true end
 HCOneButton.Classes.MAGE.GetRecommendation = function() return 999, "ROTATION", "BASE", "damage", "action" end
 playerChannel = true
@@ -241,7 +246,15 @@ holdID, holdTitle, holdKey = HCOneButton.Internal.Recommend()
 expect(holdID, nil, "helpful cast clears rotation spell")
 expect(holdTitle, "RECOVERY ACTIVE", "helpful cast recovery title")
 expect(holdKey, "LET IT FINISH", "helpful cast instruction")
-playerHelpfulCast = false
+playerHelpfulCast, playerDamageCast = false, true
+holdID, holdTitle, holdKey = HCOneButton.Internal.Recommend()
+expect(holdID, nil, "offensive cast clears next rotation spell")
+expect(holdTitle, "CAST ACTIVE", "offensive cast title")
+expect(holdKey, "LET IT FINISH", "offensive cast instruction")
+playerDamageCast = false
+holdID, holdTitle = HCOneButton.Internal.Recommend()
+expect(holdID, 999, "rotation resumes after offensive cast ends")
+expect(holdTitle, "ROTATION", "post-cast recommendation title")
 function UnitAffectingCombat() return false end
 HCOneButton.Advisor.Engine.ResetStabilization()
 HCOneButton.Classes.MAGE.GetRecommendation = function() return nil end

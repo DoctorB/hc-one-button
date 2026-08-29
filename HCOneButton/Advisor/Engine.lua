@@ -233,9 +233,10 @@ local function HelpfulPlayerCast(cast)
 end
 
 function HCOB.Advisor.Engine.PlayerRecoveryHold()
-    -- Any active channel should be allowed to finish: bandages are channels,
-    -- and interrupting another channel with a rotation prompt is equally poor
-    -- guidance. Ordinary casts are held only when the spell is helpful/healing.
+    -- The Advisor must not advance the rotation while the player is still
+    -- executing the previous action. UnitCastingInfo/UnitChannelInfo keep the
+    -- hold aligned with the spell's real cast duration, including haste and
+    -- interruption, instead of assuming every recommended spell is instant.
     local cast = PlayerCastInfo(UnitChannelInfo, true)
     if cast then
         cast.recovery = HelpfulPlayerCast(cast)
@@ -245,8 +246,8 @@ function HCOB.Advisor.Engine.PlayerRecoveryHold()
         return cast
     end
     cast = PlayerCastInfo(UnitCastingInfo, false)
-    if cast and HelpfulPlayerCast(cast) then
-        cast.recovery = true
+    if cast then
+        cast.recovery = HelpfulPlayerCast(cast)
         return cast
     end
     return nil
@@ -269,13 +270,12 @@ function Recommend()
         return nil, "DATA LIMITED", "BASE SPAM ONLY",
             "Protected combat data is unavailable; smart recommendations are paused", "caution"
     end
-    if inCombat then
-        local hold = HCOB.Advisor.Engine.PlayerRecoveryHold()
-        if hold then
-            local title = hold.recovery and "RECOVERY ACTIVE" or "CHANNEL ACTIVE"
-            return nil, title, "LET IT FINISH",
-                (hold.name or "Current action") .. " is in progress; wait before resuming the rotation", "caution"
-        end
+    local hold = HCOB.Advisor.Engine.PlayerRecoveryHold()
+    if hold then
+        local title = hold.recovery and "RECOVERY ACTIVE"
+            or (hold.channel and "CHANNEL ACTIVE" or "CAST ACTIVE")
+        return nil, title, "LET IT FINISH",
+            (hold.name or "Current action") .. " is in progress; wait before resuming the rotation", "caution"
     end
     local playerLevel = PlayerLevel()
     local targetLevel = hostile and SafeUnitLevel("target", playerLevel) or playerLevel
