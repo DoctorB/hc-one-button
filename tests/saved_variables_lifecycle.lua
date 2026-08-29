@@ -81,6 +81,10 @@ local bootstrapDB = environment.HCOneButton.DB
 local persistentDB = {
     visible = false,
     scale = "1.25",
+    x = 125,
+    y = -75,
+    hudPoint = "TOPLEFT",
+    hudRelativePoint = "BOTTOMLEFT",
     actionSlotKeys = "invalid",
     customValue = "preserve me",
 }
@@ -106,6 +110,24 @@ expect(persistentDB.showConsumables, true, "fresh Survival strip default install
 expect(persistentDB.warriorHeroicSpam, false, "unsafe legacy heroic spam disabled")
 assert(contains(environment.HCOneButton.SavedVariableRepairs, "HCOB_DB.scale"), "scale repair was not recorded")
 assert(contains(environment.HCOneButton.SavedVariableRepairs, "HCOB_DB.actionSlotKeys"), "binding-map repair was not recorded")
+
+local point, relativePoint, x, y = environment.HCOneButton.Internal.ReadHUDPosition()
+expect(point, "TOPLEFT", "saved HUD point restored")
+expect(relativePoint, "BOTTOMLEFT", "saved HUD relative point restored")
+expect(x, 125, "saved HUD x restored")
+expect(y, -75, "saved HUD y restored")
+
+local movedFrame = {}
+function movedFrame:GetPoint()
+    return "BOTTOMRIGHT", environment.UIParent, "TOPRIGHT", -42.5, 86.25
+end
+environment.HCOneButton.Internal.HCOB_DB = {}
+assert(environment.HCOneButton.Internal.SaveHUDPosition(movedFrame), "HUD drag position was not saved")
+expect(persistentDB.hudPoint, "BOTTOMRIGHT", "drag point persisted to global DB")
+expect(persistentDB.hudRelativePoint, "TOPRIGHT", "drag relative point persisted to global DB")
+expect(persistentDB.x, -42.5, "drag x persisted to global DB")
+expect(persistentDB.y, 86.25, "drag y persisted to global DB")
+expect(environment.HCOneButton.Internal.HCOB_DB, persistentDB, "stale private DB rebound during drag save")
 
 fire(eventFrame, "PLAYER_LOGIN")
 for _, name in ipairs({"spells", "combatlog", "position", "theme", "options", "macros", "bindings", "refresh", "display"}) do

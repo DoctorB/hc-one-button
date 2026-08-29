@@ -4,6 +4,7 @@ local playerHP, petHP = 100, 100
 local powerToken, powerPct = "MANA", 100
 local petExists, petDead = false, false
 local recentlyBandaged = false
+local playerChannel, playerHelpfulCast = false, false
 local counts, cooldowns = {}, {}
 
 HCOneButton = {
@@ -48,6 +49,23 @@ function AuraByName(_, name)
     if name == "Recently Bandaged" and recentlyBandaged then return true, 42 end
     return false, 0
 end
+function UnitChannelInfo(unit)
+    if unit == "player" and playerChannel then
+        return "First Aid", nil, nil, now * 1000, (now + 8) * 1000, false, false, 3273
+    end
+end
+function UnitCastingInfo(unit)
+    if unit == "player" and playerHelpfulCast then
+        return "Lesser Heal", nil, nil, now * 1000, (now + 2.5) * 1000, false, 1, false, 2050
+    end
+end
+function IsHelpfulSpell(identifier)
+    return identifier == 2050 or identifier == "Lesser Heal"
+end
+function CanAccessValue(value) return value ~= nil end
+function SafeNumber(value, fallback) return tonumber(value) or fallback end
+function SafeString(value, fallback) return type(value) == "string" and value or fallback end
+function SafeBoolean(value, fallback) return value == nil and (fallback and true or false) or (value and true or false) end
 
 assert(dofile("HCOneButton/Systems/Consumables.lua") == nil)
 assert(dofile("HCOneButton/Advisor/Readiness.lua") == nil)
@@ -183,6 +201,7 @@ function HasWandEquipped() return false end
 function Clamp(value, low, high) return math.max(low, math.min(high, value)) end
 HCOneButton.Advisor.Engine.kindPriority = {idle=0,buff=20,action=40,caution=70,interrupt=90,danger=100}
 HCOneButton.Advisor.Engine.RangedBaseRecommendation = function() return nil end
+HCOneButton.Advisor.Engine.IsRangedHostileSpell = function() return false end
 HCOneButton.Classes.MAGE = {
     GetRecommendation = function() return 999, "OPENER", "BASE", "class opener", "action" end,
     GetBuffRecommendation = function() return nil end,
@@ -201,6 +220,31 @@ HCOneButton.Classes.MAGE.GetRecommendation = function() return nil end
 local _, readyTitle, readyKey = HCOneButton.Internal.Recommend()
 expect(readyTitle, "PULL READY", "universal melee pull-ready fallback")
 expect(readyKey, "PRESS BASE", "pull-ready input")
+
+-- Starting a bandage/channel or a helpful cast while in combat immediately
+-- clears the spell recommendation. A nil spell makes Diagnostic Pixel black.
+function UnitAffectingCombat() return true end
+HCOneButton.Classes.MAGE.GetRecommendation = function() return 999, "ROTATION", "BASE", "damage", "action" end
+playerChannel = true
+local holdID, holdTitle, holdKey, _, holdKind = HCOneButton.Internal.Recommend()
+expect(holdID, nil, "active channel clears rotation spell")
+expect(holdTitle, "CHANNEL ACTIVE", "active channel title")
+expect(holdKey, "LET IT FINISH", "active channel instruction")
+expect(holdKind, "caution", "active channel bypasses display stabilization")
+HCOneButton.Advisor.Engine.ResetStabilization()
+HCOneButton.Advisor.Engine.Stabilize(999, "ROTATION", "BASE", "damage", "action")
+holdID, holdTitle, holdKey, _, holdKind = HCOneButton.Advisor.Engine.Stabilize(HCOneButton.Internal.Recommend())
+expect(holdID, nil, "channel hold immediately clears stabilized pixel spell")
+expect(holdTitle, "CHANNEL ACTIVE", "channel hold immediately replaces stabilized rotation")
+playerChannel, playerHelpfulCast = false, true
+holdID, holdTitle, holdKey = HCOneButton.Internal.Recommend()
+expect(holdID, nil, "helpful cast clears rotation spell")
+expect(holdTitle, "RECOVERY ACTIVE", "helpful cast recovery title")
+expect(holdKey, "LET IT FINISH", "helpful cast instruction")
+playerHelpfulCast = false
+function UnitAffectingCombat() return false end
+HCOneButton.Advisor.Engine.ResetStabilization()
+HCOneButton.Classes.MAGE.GetRecommendation = function() return nil end
 
 targetLevel = 33
 local _, riskTitle = HCOneButton.Internal.Recommend()
