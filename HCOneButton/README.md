@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.28.1`
+- **Current version:** `1.28.2`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -32,13 +32,13 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.28.1` is the **Recovery & Reader Reliability Update**. It preserves the `1.28.0` Hardcore Readiness feature set while fixing exact HUD-position persistence, pausing Advisor/Action Panel/Diagnostic Pixel output during healing casts and channels, and adding a rank-safe `60 ms` black acknowledgement edge after an encoded spell succeeds. External readers running at 50 Hz can now distinguish consecutive recommendation cycles even when the next suggestion uses the same slot/color.
+Version `1.28.2` is the **Cast Timing & Paladin Safety Update**. The Advisor, Action Panel highlight and Diagnostic Pixel now wait for every active player cast or channel—not only healing actions—before advancing the rotation. Paladin Divine Shield is reserved for genuine lethal pressure instead of being selected automatically by every danger-trend or healthy 3+ enemy warning.
 
 The new **Survival consumables strip** provides four secure click buttons for the best usable healing potion, Healthstone, mana potion and bandage currently in the bags. It shows quantities, cooldown sweeps/text, availability and restock state. The Advisor highlights the appropriate healing tool during low-health recovery and combat danger, or a mana potion at critically low mana.
 
 Protected item assignments are selected only outside combat and remain frozen throughout combat lockdown. Bag counts, cooldowns and highlights may continue updating visually, but a newly acquired/lower-tier item is not assigned until combat ends. The strip never consumes an item automatically and adds no key binding; every use requires the player's click.
 
-The `1.27.8` recommendation stabilizer, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor` remain part of the current baseline. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
+The `1.28.1` exact HUD-position persistence and rank-safe `60 ms` Diagnostic Pixel acknowledgement edge remain part of the current baseline, together with the recommendation stabilizer, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor`. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
@@ -100,6 +100,8 @@ Current class coverage:
 
 Emergency states such as interrupts, critical HP and dangerous multi-pulls remain hard-priority safety gates.
 
+While `UnitCastingInfo` or `UnitChannelInfo` reports an active player action, the Advisor displays `LET IT FINISH`, clears the Action Panel highlight and emits black/no-action through Diagnostic Pixel. Rotation evaluation resumes only after the real cast/channel ends or is interrupted, so haste, pushback and non-instant offensive spells do not produce an early next suggestion.
+
 Normal action/buff/idle transitions must remain consistent across multiple refreshes for `0.20` seconds before the display changes. A single event spike is discarded if the previous recommendation returns. `CAUTION`, `INTERRUPT` and `DANGER` escalation bypasses confirmation, and an action that is truly spent, unusable or out of range is replaced immediately. The short global cooldown is treated as a temporary valid state rather than proof that the recommendation should flicker.
 
 Range handling for hostile recommendations is spell-based rather than tied to a fixed class list. In addition, Mage, Priest, Warlock, Hunter and caster-form/spec Druid or Shaman explicitly identify their current ranged BASE action, guaranteeing BASE feedback even when rank-1 client metadata is incomplete. Other genuinely ranged hostile actions receive the same protection through spell metadata. Self buffs, heals and melee abilities are deliberately excluded from the generic out-of-range warning.
@@ -137,6 +139,8 @@ Use `/hcob consumables` to print current assignments, `/hcob consumables on|off`
 The modular architecture keeps the central Advisor class-agnostic. Each class owns its own combat policy through `Classes/<Class>.lua`, including recommendation candidates, survival reserve, panic/multi-pull behavior, interrupt choice and class-specific secure macro policy.
 
 The shared Advisor is responsible for context, scoring, hysteresis and final selection rather than hard-coding individual spells such as Serpent Sting, Overpower or Life Tap.
+
+For Paladin, Divine Shield is immediate at `25%` HP or lower. From `26%` through `35%`, it requires concrete lethal pressure: at least two active enemies, Survival Reserve at `28` or lower, or a confident estimated TTD of `6` seconds or less. Above `35%`, an unfavorable trend or a healthy 3+ enemy pull preserves Divine Shield and prefers Divine Protection, Hammer of Justice, healing or escape guidance. Lay on Hands retains priority at `18%` HP or lower.
 
 ### Coherent standalone windows
 
@@ -923,7 +927,7 @@ The current implementation renders it as an unscaled **8×8 frame** so it remain
 1. Enable the frame with `/hcob diagpixel on`.
 2. Locate it immediately to the right of the Advisor frame, separated by a 4 px gap. It follows the HUD position but is intentionally excluded from HUD scaling.
 3. Sample any point inside the solid 8×8 frame and read its 8-bit RGB value.
-4. Treat black as no executable recommendation—including an Advisor spell deliberately suppressed because it is out of range or while the player is finishing a healing cast/channel—and white as an Advisor recommendation that has no deterministic Action Panel slot.
+4. Treat black as no executable recommendation—including an Advisor spell deliberately suppressed because it is out of range or while the player is finishing any cast/channel—and white as an Advisor recommendation that has no deterministic Action Panel slot.
 5. For a normal slot color, verify `G = 96` and `B = 224`, then decode `slot = R / 12`. Valid slots are 1–20.
 6. Resolve the decoded slot through the current class table in [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts).
 
@@ -1020,10 +1024,10 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 
 ## Current baseline validation
 
-The `1.28.1` source baseline currently passes:
+The `1.28.2` source baseline currently passes:
 
 - **43/43 Lua chunks** pass syntax parsing in the current validation environment;
-- **9/9 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **10/10 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **44/44 TOC references** resolved (`43 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
@@ -1038,6 +1042,8 @@ The `1.28.1` source baseline currently passes:
 - all nine deterministic Action Panel layouts are checked for stable slot counts, known/unique spell IDs, the 20-slot limit, unique default keys and Diagnostic Pixel V3 encodability;
 - Doctor report coverage verifies BASE/range API probes, macro/pet/binding/SavedVariables diagnostics, slash-command dispatch, error containment/path sanitization, privacy exclusions and absence of SavedVariables mutation;
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
+- active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
+- Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 

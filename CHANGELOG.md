@@ -2,7 +2,31 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.28.1`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.28.2`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.28.2 — 2026-08-31
+
+### Fixed
+
+- Advisor rotation timing now follows every active player cast and channel reported by the client. Non-instant offensive spells clear the Action Panel highlight and Diagnostic Pixel just like healing casts, and the next recommendation appears only after completion or interruption.
+- Paladin Divine Shield is no longer the unconditional first response to every global danger state. Healthy 3+ enemy warnings and moderate unfavorable-fight trends now preserve the cooldown.
+
+### Changed
+
+- Divine Shield remains immediate at `25%` HP or lower. From `26%` through `35%`, it requires at least two active enemies, Survival Reserve at `28` or lower, or a confident TTD estimate of `6` seconds or less.
+- Lay on Hands keeps priority at `18%` HP or lower. Less severe Paladin danger states prefer Divine Protection, Hammer of Justice, a usable heal or escape guidance instead of prematurely spending Divine Shield or Lay on Hands.
+- The Paladin 3+ enemy warning is now `3+ MOBS - STABILIZE`; it no longer tells the player to bubble regardless of current HP.
+
+### Compatibility
+
+- No deterministic Action Panel slot, default binding, secure macro, SavedVariables shape or Diagnostic Pixel Protocol V3 color changed.
+- The `1.28.1` HUD-position, recovery hold and `60 ms` pixel acknowledgement fixes remain compatible.
+
+### Validation
+
+- 43/43 addon Lua chunks parse with Lua 5.1.5.
+- All ten regression harnesses pass through `tests/run.ps1`; 44/44 TOC references resolve without duplicates.
+- New Paladin policy coverage verifies the immediate and conditional Divine Shield boundaries, TTD/reserve/multi-pull pressure, Lay on Hands priority and moderate-danger fallbacks. Active-cast coverage now includes a non-instant offensive spell and post-cast rotation resumption.
 
 ## 1.28.1 — 2026-08-29
 
