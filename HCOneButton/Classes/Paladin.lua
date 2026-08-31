@@ -7,6 +7,11 @@ HCOB.Classes.PALADIN = Class
 Class.classToken = "PALADIN"
 Class.fallbackSpec = 3
 
+local DIVINE_SHIELD_IMMEDIATE_HP = 25
+local DIVINE_SHIELD_PRESSURE_HP = 35
+local DIVINE_SHIELD_FORECAST_SECONDS = 6
+local DIVINE_SHIELD_CRITICAL_RESERVE = 28
+
 local function BestSeal()
     if IsKnown(S.SEAL_COMMAND) and MainhandSpeed() >= 3.2 then return S.SEAL_COMMAND end
     if IsKnown(S.SEAL_RIGHTEOUSNESS) then return S.SEAL_RIGHTEOUSNESS end
@@ -129,22 +134,49 @@ function Class:GetSurvivalReserve(ctx)
     return score
 end
 
-function Class:GetPanicRecommendation()
-        local hp = UnitHealthPct("player")
-        if hp <= 18 and IsKnown(S.LAY_ON_HANDS) and CooldownReady(S.LAY_ON_HANDS) and IsUsable(S.LAY_ON_HANDS) then return S.LAY_ON_HANDS, "LAY ON HANDS", "ALL MODS", "Extreme emergency: immediately recover HP" end
-        if IsKnown(S.DIVINE_SHIELD) and CooldownReady(S.DIVINE_SHIELD) and IsUsable(S.DIVINE_SHIELD) then return S.DIVINE_SHIELD, "DIVINE SHIELD", "CAST MANUALLY", "Immunity: create time for healing/escape" end
-        if IsKnown(S.DIVINE_PROTECTION) and CooldownReady(S.DIVINE_PROTECTION) and IsUsable(S.DIVINE_PROTECTION) then return S.DIVINE_PROTECTION, "DIVINE PROTECTION", "ALT+CTRL", "Reduce pressure and prepare healing/escape" end
-        if IsKnown(S.LAY_ON_HANDS) and CooldownReady(S.LAY_ON_HANDS) and IsUsable(S.LAY_ON_HANDS) then return S.LAY_ON_HANDS, "LAY ON HANDS", "ALL MODS", "Immediate last resort" end
+function Class:GetPanicRecommendation(ctx)
+        ctx = type(ctx) == "table" and ctx or {}
+        local hp = SafeNumber(ctx.hp, nil) or UnitHealthPct("player")
+        local enemies = SafeNumber(ctx.enemies, nil) or CountActiveEnemies()
+        local reserve = SafeNumber(ctx.reserve, nil)
+        if reserve == nil then reserve = select(1, HCOB.Advisor.Engine.SurvivalReserve()) end
+        local dyn = ctx.dynamics or HCOB.Advisor.Engine.lastDynamics
+        local forecastEmergency = dyn and (dyn.confidence or 0) >= 0.48
+            and dyn.ttd and dyn.ttd < math.huge and dyn.ttd <= DIVINE_SHIELD_FORECAST_SECONDS
+        local pressureEmergency = enemies >= 2 or reserve <= DIVINE_SHIELD_CRITICAL_RESERVE or forecastEmergency
+        local shieldEmergency = hp <= DIVINE_SHIELD_IMMEDIATE_HP
+            or (hp <= DIVINE_SHIELD_PRESSURE_HP and pressureEmergency)
+
+        if hp <= 18 and IsKnown(S.LAY_ON_HANDS) and CooldownReady(S.LAY_ON_HANDS) and IsUsable(S.LAY_ON_HANDS) then
+            return S.LAY_ON_HANDS, "LAY ON HANDS", "ALL MODS", "Extreme emergency: immediately recover HP"
+        end
+        if shieldEmergency and IsKnown(S.DIVINE_SHIELD) and CooldownReady(S.DIVINE_SHIELD) and IsUsable(S.DIVINE_SHIELD) then
+            return S.DIVINE_SHIELD, "DIVINE SHIELD", "CAST MANUALLY", "Immediate lethal pressure: use immunity to recover or escape"
+        end
+        local protectionNeeded = hp <= DIVINE_SHIELD_PRESSURE_HP or enemies >= 3 or forecastEmergency
+        if protectionNeeded and IsKnown(S.DIVINE_PROTECTION) and CooldownReady(S.DIVINE_PROTECTION) and IsUsable(S.DIVINE_PROTECTION) then
+            return S.DIVINE_PROTECTION, "DIVINE PROTECTION", "ALT+CTRL", "Reduce pressure while preserving Divine Shield for a lethal emergency"
+        end
+        if hp <= DIVINE_SHIELD_IMMEDIATE_HP and IsKnown(S.LAY_ON_HANDS) and CooldownReady(S.LAY_ON_HANDS) and IsUsable(S.LAY_ON_HANDS) then
+            return S.LAY_ON_HANDS, "LAY ON HANDS", "ALL MODS", "Immediate last resort with no immunity ready"
+        end
+        if IsKnown(S.HAMMER_JUSTICE) and CooldownReady(S.HAMMER_JUSTICE) and IsUsable(S.HAMMER_JUSTICE) then
+            return S.HAMMER_JUSTICE, "HAMMER OF JUSTICE", "ALT", "Stun the target and create a safe healing or escape window"
+        end
         local heal = HCOB.Advisor.Engine.PaladinHealSpell(true)
-        if heal then return heal, SpellName(heal,"HEAL"), "CAST MANUALLY", "No immunity ready: try to stabilize" end
+        if heal then return heal, SpellName(heal,"HEAL"), "CAST MANUALLY", "Stabilize HP while preserving major emergency cooldowns" end
         return nil, "RUN!", "PREPARE ESCAPE", "No immediate Paladin defensive available"
 end
 
 function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
         local manaPct = HCOB.Advisor.Engine.ManaPct()
         if enemies >= 3 or hp <= 45 then
-            local id, _, key, reason = self:GetPanicRecommendation()
-            return id, enemies >= 3 and "3+ MOBS - BUBBLE" or "MULTI - STABILIZE", key or "ALL MODS", reason or "Bubble/heal/escape", "danger"
+            local reserve = select(1, HCOB.Advisor.Engine.SurvivalReserve())
+            local id, _, key, reason = self:GetPanicRecommendation({
+                source="multi", enemies=enemies, hp=hp, targetHP=targetHP,
+                reserve=reserve, dynamics=HCOB.Advisor.Engine.lastDynamics,
+            })
+            return id, enemies >= 3 and "3+ MOBS - STABILIZE" or "MULTI - STABILIZE", key or "ALL MODS", reason or "Control/heal/escape", "danger"
         end
         if IsKnown(S.CONSECRATION) and CooldownReady(S.CONSECRATION) and IsUsable(S.CONSECRATION) and manaPct >= 58 and hp >= 70 then
             return S.CONSECRATION, "MULTI x2 - CONSECRATION", "CTRL", "Only on a stable pull: spend mana to finish both", "caution"

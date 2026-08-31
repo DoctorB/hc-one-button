@@ -50,10 +50,10 @@ function HCOB.Advisor.Engine.SurvivalReserve()
 end
 
 
-function PanicRecommendation()
+function PanicRecommendation(context)
     local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
     if class and class.GetPanicRecommendation then
-        return class:GetPanicRecommendation()
+        return class:GetPanicRecommendation(context)
     end
     return nil, "RUN!", "PREPARE ESCAPE", "No immediate class defensive available"
 end
@@ -66,7 +66,9 @@ function MultiPullRecommendation(enemies, hp, targetHP)
         return class:GetMultiPullRecommendation(enemies, hp, targetHP)
     end
     if enemies >= 3 or hp <= 50 then
-        local id, _, key, reason = PanicRecommendation()
+        local id, _, key, reason = PanicRecommendation({
+            source="multi", enemies=enemies, hp=hp, targetHP=targetHP,
+        })
         return id, enemies >= 3 and "3+ MOBS - PANIC" or "MULTI - GET OUT",
             key or "ALL MODS", reason or "Create distance", "danger"
     end

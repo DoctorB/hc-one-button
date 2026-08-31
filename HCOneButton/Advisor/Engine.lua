@@ -277,17 +277,22 @@ function Recommend()
         return nil, title, "LET IT FINISH",
             (hold.name or "Current action") .. " is in progress; wait before resuming the rotation", "caution"
     end
+    local enemies = CountActiveEnemies()
     local playerLevel = PlayerLevel()
     local targetLevel = hostile and SafeUnitLevel("target", playerLevel) or playerLevel
     local classification = hostile and SafeUnitClassification("target", "normal") or "normal"
     if inCombat or not hostile then HCOB.Advisor.Engine.lastPrePullReadiness = nil end
 
     if inCombat and hp <= (HCOB_DB.criticalHP or 20) then
-        local id, title, key, reason = PanicRecommendation()
+        local id, title, key, reason = PanicRecommendation({
+            source="critical_hp", hp=hp, enemies=enemies, targetHP=targetHP,
+        })
         return id, title or "CRITICAL", key or "ALL MODS", reason or "Escape / potion", "danger"
     end
     if inCombat and hp <= (HCOB_DB.dangerHP or 35) then
-        local id, title, key, reason = PanicRecommendation()
+        local id, title, key, reason = PanicRecommendation({
+            source="danger_hp", hp=hp, enemies=enemies, targetHP=targetHP,
+        })
         return id, title or "DANGER", key or "ALL MODS", reason or "Consider escaping", "danger"
     end
 
@@ -300,7 +305,6 @@ function Recommend()
         if id then return id, title, key, (cast.name or "Enemy cast") .. " - " .. reason, "interrupt" end
     end
 
-    local enemies = CountActiveEnemies()
     if inCombat and enemies >= 2 and HCOB_DB.hcDangerAdvisor ~= false then
         local mid, mtitle, mkey, mreason, mkind = MultiPullRecommendation(enemies, hp, targetHP)
         if mtitle then return mid, mtitle, mkey, mreason, mkind end
@@ -315,7 +319,10 @@ function Recommend()
             local reserve, reserveLabel = HCOB.Advisor.Engine.SurvivalReserve()
             local trendText = string.format("You ~%.0fs / mob ~%.0fs | conf %.0f%% | reserve %.0f %s", dyn.ttd, dyn.ttk, (dyn.confidence or 0)*100, reserve or 0, reserveLabel or "?")
             if trend == "danger" then
-                local id, _, key, reason = PanicRecommendation()
+                local id, _, key, reason = PanicRecommendation({
+                    source="trend", hp=hp, enemies=enemies, targetHP=targetHP,
+                    reserve=reserve, dynamics=dyn,
+                })
                 return id, "FIGHT WORSENING", key or "ALL MODS", trendText .. ": " .. (reason or "create distance"), "danger"
             elseif trend == "caution" then
                 local class = ActiveClassModule()
