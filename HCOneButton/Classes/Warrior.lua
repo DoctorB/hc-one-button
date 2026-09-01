@@ -7,6 +7,52 @@ HCOB.Classes.WARRIOR = Class
 Class.classToken = "WARRIOR"
 Class.fallbackSpec = 1
 
+local function CurrentRage()
+    local pType = UnitPowerType("player")
+    return SafeUnitPower("player", pType, 0) or 0
+end
+
+-- A caution/escape plan must not leave the Warrior sitting near the Rage cap.
+-- Keep enough Rage for Hamstring/control, but let a high-value spender pass
+-- through before returning to the escape recommendation.
+local function EscapeRageSpendRecommendation(ctx)
+    ctx = type(ctx) == "table" and ctx or {}
+    local rage = CurrentRage()
+    local targetHP = SafeNumber(ctx.targetHP, 100) or 100
+    local reserve = SafeNumber(ctx.reserve, 100) or 100
+    local enemies = SafeNumber(ctx.enemies, 1) or 1
+    local configured = tonumber(HCOB_DB.warriorHeroicRage) or 35
+    local threshold = math.max(40, configured + 5)
+    if reserve < 35 then threshold = threshold + 5 end
+    if targetHP <= 35 then threshold = math.max(35, threshold - 5) end
+    if rage < threshold then return nil end
+
+    local reason = string.format(
+        "Spend excess Rage (%d / %d) before continuing the escape plan",
+        rage, threshold
+    )
+    if IsKnown(S.EXECUTE) and targetHP <= 20 and IsUsable(S.EXECUTE) then
+        return S.EXECUTE, "EXECUTE - THEN EXIT", "CAST MANUALLY", reason, "caution"
+    end
+    if IsKnown(S.OVERPOWER) and CooldownReady(S.OVERPOWER) and IsUsable(S.OVERPOWER) then
+        return S.OVERPOWER, "OVERPOWER - THEN EXIT", "CAST MANUALLY", reason, "caution"
+    end
+    if IsKnown(S.MORTAL_STRIKE) and CooldownReady(S.MORTAL_STRIKE) and IsUsable(S.MORTAL_STRIKE) then
+        return S.MORTAL_STRIKE, "MORTAL STRIKE - EXIT", "CAST MANUALLY", reason, "caution"
+    end
+    if IsKnown(S.BLOODTHIRST) and CooldownReady(S.BLOODTHIRST) and IsUsable(S.BLOODTHIRST) then
+        return S.BLOODTHIRST, "BLOODTHIRST - EXIT", "CAST MANUALLY", reason, "caution"
+    end
+    if IsKnown(S.WHIRLWIND) and CooldownReady(S.WHIRLWIND) and IsUsable(S.WHIRLWIND) then
+        return S.WHIRLWIND, "WHIRLWIND - THEN EXIT", "CAST MANUALLY", reason, "caution"
+    end
+    local heroicKnown = IsKnown(S.HEROIC_STRIKE) or knownSpellNames[SpellName(S.HEROIC_STRIKE) or ""] == true
+    if heroicKnown and IsUsable(S.HEROIC_STRIKE) then
+        return S.HEROIC_STRIKE, "HEROIC STRIKE - EXIT", "ALT+SHIFT", reason, "caution"
+    end
+    return nil
+end
+
 function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local candidates = {}
     if not inCombat and hostile and IsKnown(S.CHARGE) and CooldownReady(S.CHARGE) and IsUsable(S.CHARGE) then
@@ -14,8 +60,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     end
     if not inCombat or not hostile then return HCOB.Advisor.Engine.SelectCandidate(candidates) end
 
-    local pType = UnitPowerType("player")
-    local rage = SafeUnitPower("player", pType, 0) or 0
+    local rage = CurrentRage()
     local hp = UnitHealthPct("player")
     local enemies = CountActiveEnemies()
     local level = PlayerLevel()
@@ -147,6 +192,10 @@ function Class:GetBuffRecommendation(inCombat)
 end
 
 function Class:GetCautionRecommendation(ctx)
+    local id, title, key, reason, kind = EscapeRageSpendRecommendation({
+        targetHP=ctx.targetHP, reserve=ctx.reserve, enemies=1,
+    })
+    if id then return id, title, key, ctx.text .. ": " .. reason, kind end
     if IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not HasMyTargetDebuff(S.HAMSTRING) then
         return S.HAMSTRING, "UNFAVORABLE FIGHT", "ALT", ctx.text .. ": prepare Hamstring + distance", "caution"
     end
@@ -205,6 +254,15 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
             if not hasDemo then
                 return S.DEMO_SHOUT, "MULTI x2 - DEBUFF", "CAST MANUALLY", "Demoralizing Shout reduces melee damage", "caution"
             end
+        end
+
+        local reserve = select(1, HCOB.Advisor.Engine.SurvivalReserve())
+        local spendID, _, spendKey, spendReason = EscapeRageSpendRecommendation({
+            targetHP=targetHP, reserve=reserve, enemies=enemies,
+        })
+        if spendID then
+            local kind = hp <= 68 and "danger" or "caution"
+            return spendID, "MULTI x2 - SPEND RAGE", spendKey, spendReason .. "; then create distance", kind
         end
 
         if hp <= 68 then
