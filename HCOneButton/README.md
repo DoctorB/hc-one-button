@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.28.2`
+- **Current version:** `1.28.3`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -32,13 +32,13 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.28.2` is the **Cast Timing & Paladin Safety Update**. The Advisor, Action Panel highlight and Diagnostic Pixel now wait for every active player cast or channel—not only healing actions—before advancing the rotation. Paladin Divine Shield is reserved for genuine lethal pressure instead of being selected automatically by every danger-trend or healthy 3+ enemy warning.
+Version `1.28.3` is the **Warrior Rage & Escape Balance Update**. Preventive escape guidance no longer suppresses Warrior damage indefinitely: when Rage becomes excessive, the Advisor spends it through the best available high-value attack and then returns to the escape plan. Genuine panic, critically low HP and 3+ enemy pulls retain absolute survival priority.
 
-The new **Survival consumables strip** provides four secure click buttons for the best usable healing potion, Healthstone, mana potion and bandage currently in the bags. It shows quantities, cooldown sweeps/text, availability and restock state. The Advisor highlights the appropriate healing tool during low-health recovery and combat danger, or a mana potion at critically low mana.
+The **Survival consumables strip** provides four secure click buttons for the best usable healing potion, Healthstone, mana potion and bandage currently in the bags. It shows quantities, cooldown sweeps/text, availability and restock state. The Advisor highlights the appropriate healing tool during low-health recovery and combat danger, or a mana potion at critically low mana.
 
 Protected item assignments are selected only outside combat and remain frozen throughout combat lockdown. Bag counts, cooldowns and highlights may continue updating visually, but a newly acquired/lower-tier item is not assigned until combat ends. The strip never consumes an item automatically and adds no key binding; every use requires the player's click.
 
-The `1.28.1` exact HUD-position persistence and rank-safe `60 ms` Diagnostic Pixel acknowledgement edge remain part of the current baseline, together with the recommendation stabilizer, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor`. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
+The `1.28.2` active-cast timing and Paladin Divine Shield policy remain part of the current baseline, together with exact HUD-position persistence, the rank-safe `60 ms` Diagnostic Pixel acknowledgement edge, recommendation stabilization, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor`. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
@@ -141,6 +141,8 @@ The modular architecture keeps the central Advisor class-agnostic. Each class ow
 The shared Advisor is responsible for context, scoring, hysteresis and final selection rather than hard-coding individual spells such as Serpent Sting, Overpower or Life Tap.
 
 For Paladin, Divine Shield is immediate at `25%` HP or lower. From `26%` through `35%`, it requires concrete lethal pressure: at least two active enemies, Survival Reserve at `28` or lower, or a confident estimated TTD of `6` seconds or less. Above `35%`, an unfavorable trend or a healthy 3+ enemy pull preserves Divine Shield and prefers Divine Protection, Hammer of Justice, healing or escape guidance. Lay on Hands retains priority at `18%` HP or lower.
+
+For Warrior, preventive `UNFAVORABLE FIGHT` and controlled two-target escape guidance preserves enough Rage for Hamstring/control but no longer allows Rage to accumulate unused. Excess Rage passes through `Execute`, `Overpower`, `Mortal Strike`, `Bloodthirst`, `Whirlwind` or `Heroic Strike` in that priority order before escape guidance resumes. The threshold starts at the greater of `40` or the configured `/hcob hsrage` value plus `5`, rises when Survival Reserve is critical and falls near the target's execute range. HP at `50%` or lower during a multi-pull and every 3+ enemy panic continue to preempt offensive spending.
 
 ### Coherent standalone windows
 
@@ -872,7 +874,7 @@ Both aliases are supported:
 
 | Command | Description |
 |---|---|
-| `/hcob hsrage N` | Set Heroic Strike recommendation threshold (`20`–`70` rage). |
+| `/hcob hsrage N` | Set the Heroic Strike threshold (`20`–`70` Rage); preventive escape logic uses this value with a small safety margin before dumping excess Rage. |
 | `/hcob rendspam on\|off` | Enable/disable intelligent pre-pull Rend preparation. |
 | `/hcob sunder on\|off` | Enable/disable Warrior base Sunder behavior where applicable. |
 | `/hcob hsspam` | Compatibility command; Heroic Strike BASE spam remains intentionally disabled. |
@@ -1024,10 +1026,10 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 
 ## Current baseline validation
 
-The `1.28.2` source baseline currently passes:
+The `1.28.3` source baseline currently passes:
 
 - **43/43 Lua chunks** pass syntax parsing in the current validation environment;
-- **10/10 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **11/11 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **44/44 TOC references** resolved (`43 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
@@ -1044,6 +1046,7 @@ The `1.28.2` source baseline currently passes:
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
+- Warrior escape-Rage coverage verifies low-Rage Hamstring priority, excess-Rage spending, proc/core/queued-strike ordering, controlled two-target spending and strict panic preemption at low HP or 3+ enemies;
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 

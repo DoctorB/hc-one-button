@@ -2,7 +2,31 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.28.2`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.28.3`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.28.3 — 2026-09-01
+
+### Fixed
+
+- Warrior preventive escape guidance no longer preempts the complete damage rotation indefinitely and leaves generated Rage unused. Once Rage is excessive, the Advisor recommends a high-value spender and then returns to the escape plan.
+- Controlled two-target pulls can spend excess Rage after Thunder Clap and Demoralizing Shout setup instead of remaining permanently on a non-action `PREPARE ESCAPE` state.
+
+### Changed
+
+- The preventive escape Rage threshold starts at the greater of `40` or `/hcob hsrage + 5`. It adds a safety margin below `35` Survival Reserve and relaxes near the target's execute range.
+- Excess-Rage priority is `Execute`, `Overpower`, `Mortal Strike`, `Bloodthirst`, `Whirlwind`, then `Heroic Strike`, so procs and efficient core attacks are used before a queued swing dump.
+- Low-Rage caution still prepares Hamstring first. Multi-pulls at `50%` HP or lower, 3+ enemy pulls and genuine panic states continue to preempt offensive spending.
+
+### Compatibility
+
+- `/hcob hsrage` remains persistent and keeps its existing `20`–`70` range. No SavedVariables shape, deterministic Action Panel slot, default binding, secure macro or Diagnostic Pixel Protocol V3 color changed.
+- All `1.28.2` cast-timing and Paladin survival behavior remains compatible.
+
+### Validation
+
+- 43/43 addon Lua chunks parse with Lua 5.1.5.
+- All eleven regression harnesses pass through `tests/run.ps1`; 44/44 TOC references resolve without duplicates.
+- New Warrior coverage verifies low-Rage escape priority, excess-Rage spenders, proc/core/queued-strike ordering, controlled two-target behavior and strict low-HP/3+ enemy panic preemption.
 
 ## 1.28.2 — 2026-08-31
 
