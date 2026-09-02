@@ -2,7 +2,34 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.28.3`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.28.4`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.28.4 — 2026-09-02
+
+### Fixed
+
+- Maintained self auras no longer generate idle/out-of-combat Advisor and Diagnostic Pixel requests. Battle Shout, long class buffs, Paladin seals, Hunter aspects and Shaman weapon imbues now remain manual outside combat.
+- Active auras no longer re-enter the combat rotation because of a short Classic `UNIT_AURA` miss. A bounded shared observation cache keeps a previously confirmed player or pet aura stable for the API race without hiding a genuine removal.
+- A successful aura refresh now overrides the stale near-expiry aura frame that can remain visible immediately after the cast, preventing the same refresh from being requested again.
+- Mage Mana Shield, Priest Power Word: Shield/Renew, Rogue Slice and Dice and Hunter Mend Pet now explicitly suppress recommendations while their aura is already active.
+
+### Changed
+
+- Missing maintenance auras are handled in combat by their class policy. Healthy active auras are ignored; finite long buffs become refreshable only in their final `10` seconds.
+- The combat-only policy covers Warrior Battle Shout; Paladin Blessing of Might and seals; Priest Inner Fire/Fortitude and protective auras; Mage armor, Arcane Intellect and shields; Warlock Demon Armor/Skin; Druid Mark of the Wild; Shaman Lightning Shield/weapon imbues; Hunter aspects/Mend Pet; and Rogue Slice and Dice.
+- Paladin Crusader-seal setup now begins after combat starts on a suitable durable target instead of occupying the pre-pull reader.
+- Proc auras, Stealth, Druid forms, class openers and hostile target debuffs remain contextual mechanics and are not treated as idle maintenance reminders.
+
+### Compatibility
+
+- SavedVariables, deterministic Action Panel slots/default bindings, secure macros and Diagnostic Pixel Protocol V3 colors are unchanged.
+- The `1.28.3` Warrior Rage/escape balance and all earlier cast-timing, range, consumable and survival behavior remain compatible.
+
+### Validation
+
+- 43/43 addon Lua chunks parse with Lua 5.1.5.
+- All fourteen regression harnesses pass through `tests/run.ps1`; 44/44 TOC references resolve without duplicates.
+- New coverage verifies the combat/OOC policy and final-ten-second boundary across Paladin, Priest, Mage, Warlock, Druid, Shaman and Warrior, plus rank-safe cast acknowledgement, stale refresh metadata and bounded player/pet aura debouncing.
 
 ## 1.28.3 — 2026-09-01
 
