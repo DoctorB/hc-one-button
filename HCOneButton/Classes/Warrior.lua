@@ -7,6 +7,14 @@ HCOB.Classes.WARRIOR = Class
 Class.classToken = "WARRIOR"
 Class.fallbackSpec = 1
 
+local BATTLE_SHOUT_REFRESH_SECONDS = 10
+
+local function BattleShoutState()
+    local active, remaining = StablePlayerBuff(S.BATTLE_SHOUT)
+    remaining = SafeNumber(remaining, 999) or 999
+    return active and true or false, remaining
+end
+
 local function CurrentRage()
     local pType = UnitPowerType("player")
     return SafeUnitPower("player", pType, 0) or 0
@@ -125,11 +133,22 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    -- Battle Shout only if there is enough fight left to repay rage/GCD.
-    if IsKnown(S.BATTLE_SHOUT) and not HasPlayerBuff(S.BATTLE_SHOUT) and IsUsable(S.BATTLE_SHOUT) and rage >= 10 and targetHP >= 55 then
-        local worth = estimatedTTK and estimatedTTK >= 10 or (not estimatedTTK and targetHP >= 68)
+    -- Battle Shout is combat-only maintenance. Apply it when genuinely missing
+    -- and refresh only in its final ten seconds; out-of-combat Advisor paths
+    -- never request it.
+    local hasBattleShout, battleShoutRemaining = BattleShoutState()
+    if IsKnown(S.BATTLE_SHOUT)
+       and (not hasBattleShout or battleShoutRemaining <= BATTLE_SHOUT_REFRESH_SECONDS)
+       and IsUsable(S.BATTLE_SHOUT) and rage >= 10 then
+        local worth = not hasBattleShout
+            or (estimatedTTK and estimatedTTK >= 10)
+            or (not estimatedTTK and targetHP >= 68)
         if worth then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.BATTLE_SHOUT, "BATTLE SHOUT", "SHIFT", "AP buff while the fight still has time left | " .. context, 65 - riskPenalty * 0.25, "buff")
+            local shoutReason = hasBattleShout
+                and ("Refresh before expiry (" .. math.floor(battleShoutRemaining) .. "s)")
+                or "Battle Shout missing in combat"
+            local shoutScore = hasBattleShout and 65 or 84
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.BATTLE_SHOUT, "BATTLE SHOUT", "SHIFT", shoutReason .. " | " .. context, shoutScore - riskPenalty * 0.25, "buff")
         end
     end
 
@@ -185,10 +204,7 @@ end
 
 -- Advisor class contract extensions.
 function Class:GetBuffRecommendation(inCombat)
-    if inCombat or not IsKnown(S.BATTLE_SHOUT) then return nil end
-    local has, remain = HasPlayerBuff(S.BATTLE_SHOUT)
-    if not has then return S.BATTLE_SHOUT, "BUFF", "SHIFT", SpellName(S.BATTLE_SHOUT) .. " missing" end
-    if remain < 12 then return S.BATTLE_SHOUT, "BUFF SOON", "SHIFT", "Expires in " .. math.floor(remain) .. "s" end
+    return nil
 end
 
 function Class:GetCautionRecommendation(ctx)

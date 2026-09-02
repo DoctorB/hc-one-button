@@ -66,6 +66,15 @@ function Class:GetCandidates(ctx)
     local petHP = ctx.pet.hp or 0
     local context = ContextText(ctx)
 
+    local armor = API.IsKnown(S.DEMON_ARMOR) and S.DEMON_ARMOR or S.DEMON_SKIN
+    if armor and API.IsKnown(armor) and API.IsUsable(armor) then
+        local hasArmor, armorRemaining = API.StablePlayerBuff(armor)
+        if not hasArmor or armorRemaining <= 10 then
+            local reason = hasArmor and ("Refresh before expiry (" .. math.floor(armorRemaining) .. "s)") or (API.SpellName(armor) .. " missing in combat")
+            Engine.AddCandidate(candidates, armor, "DEMON ARMOR", "SHIFT", reason .. " | " .. context, hasArmor and 64 or 84, "buff")
+        end
+    end
+
     -- Nightfall is a short proc window. Consume Shadow Trance before a normal
     -- filler or wand recommendation can hide the instant Shadow Bolt.
     local shadowTrance = API.HasPlayerBuff(S.SHADOW_TRANCE)
@@ -193,12 +202,7 @@ end
 
 -- Advisor class contract extensions.
 function Class:GetBuffRecommendation(inCombat)
-    if inCombat then return nil end
-    local id = API.IsKnown(S.DEMON_ARMOR) and S.DEMON_ARMOR or S.DEMON_SKIN
-    if not id or not API.IsKnown(id) then return nil end
-    local has, remain = API.HasPlayerBuff(id)
-    if not has then return id, "BUFF", "SHIFT", API.SpellName(id) .. " missing" end
-    if remain < 12 then return id, "BUFF SOON", "SHIFT", "Expires in " .. math.floor(remain) .. "s" end
+    return nil
 end
 
 function Class:GetCautionRecommendation(ctx)

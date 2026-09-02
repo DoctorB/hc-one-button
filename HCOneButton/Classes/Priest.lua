@@ -11,12 +11,6 @@ local Engine = HCOB.Advisor.Engine
 local API = HCOB.Core.ClassAPI
 local S = HCOB.Data.Spells
 
-local function CoreBuffsReady()
-    if API.IsKnown(S.INNER_FIRE) and not API.HasPlayerBuff(S.INNER_FIRE) then return false end
-    if API.IsKnown(S.FORTITUDE) and not API.HasPlayerBuff(S.FORTITUDE) then return false end
-    return true
-end
-
 local function ContextText(ctx, spiritTap)
     local text = string.format(
         "HP %.0f%% | mana %.0f%% | reserve %.0f %s",
@@ -32,22 +26,12 @@ function Class:GetCandidates(ctx)
     local candidates = {}
     local mana = ctx.player.mana
     local targetHP = ctx.target.hp
-    local shielded = API.HasPlayerBuff(S.POWER_WORD_SHIELD)
+    local shielded = API.StablePlayerBuff(S.POWER_WORD_SHIELD)
     local weakened = Engine.PlayerHasDebuff(S.WEAKENED_SOUL)
 
-    -- Out of combat, missing long buffs are intentionally left to
-    -- BuffRecommendation first. Once prepared, Advisor can stage a safe opener.
+    -- Openers remain available out of combat, but self auras are never part of
+    -- the idle/pre-pull recommendation stream.
     if not ctx.inCombat and ctx.hostile then
-        if not CoreBuffsReady() then return candidates end
-
-        if API.IsKnown(S.POWER_WORD_SHIELD) and API.IsUsable(S.POWER_WORD_SHIELD)
-           and not shielded and not weakened and mana >= 55 then
-            local score = ctx.target.tough and 95 or 88
-            Engine.AddCandidate(candidates, S.POWER_WORD_SHIELD, "PRE-SHIELD", "ALT",
-                ctx.target.tough and "Pre-pull absorption before a difficult target" or "Pre-pull absorption prevents pushback and preserves control",
-                score, "opener")
-        end
-
         if ctx.spec == 3 and API.IsKnown(S.MIND_BLAST) and API.CooldownReady(S.MIND_BLAST)
            and API.IsUsable(S.MIND_BLAST) and mana >= 45 then
             Engine.AddCandidate(candidates, S.MIND_BLAST, "MIND BLAST OPENER", "ALT+SHIFT",
@@ -71,6 +55,19 @@ function Class:GetCandidates(ctx)
     local ttk = ctx.combat.ttk
     local spiritTap = API.HasPlayerBuff(S.SPIRIT_TAP)
     local context = ContextText(ctx, spiritTap)
+
+    local hasInner, innerRemaining = API.StablePlayerBuff(S.INNER_FIRE)
+    if API.IsKnown(S.INNER_FIRE) and API.IsUsable(S.INNER_FIRE)
+       and (not hasInner or innerRemaining <= 10) then
+        local reason = hasInner and ("Refresh before expiry (" .. math.floor(innerRemaining) .. "s)") or "Inner Fire missing in combat"
+        Engine.AddCandidate(candidates, S.INNER_FIRE, "INNER FIRE", "CAST MANUALLY", reason .. " | " .. context, hasInner and 65 or 86, "buff")
+    end
+    local hasFortitude, fortitudeRemaining = API.StablePlayerBuff(S.FORTITUDE)
+    if API.IsKnown(S.FORTITUDE) and API.IsUsable(S.FORTITUDE)
+       and (not hasFortitude or fortitudeRemaining <= 10) then
+        local reason = hasFortitude and ("Refresh before expiry (" .. math.floor(fortitudeRemaining) .. "s)") or "Fortitude missing in combat"
+        Engine.AddCandidate(candidates, S.FORTITUDE, "FORTITUDE", "CAST MANUALLY", reason .. " | " .. context, hasFortitude and 63 or 84, "buff")
+    end
 
     if ctx.player.grouped and ctx.target.onPlayer and reserve <= 58 and API.IsKnown(S.FADE)
        and API.CooldownReady(S.FADE) and API.IsUsable(S.FADE) then
@@ -107,7 +104,7 @@ function Class:GetCandidates(ctx)
         end
     end
 
-    local renew = API.HasPlayerBuff(S.RENEW)
+    local renew = API.StablePlayerBuff(S.RENEW)
     if API.IsKnown(S.RENEW) and API.IsUsable(S.RENEW) and not renew
        and hp <= 78 and mana >= 30 and targetHP >= 32 then
         local longEnough = not ttk or ttk >= 8
@@ -183,21 +180,11 @@ end
 
 -- Advisor class contract extensions.
 function Class:GetBuffRecommendation(inCombat)
-    if inCombat then return nil end
-    if API.IsKnown(S.INNER_FIRE) then
-        local hasInner, innerRemain = API.HasPlayerBuff(S.INNER_FIRE)
-        if not hasInner then return S.INNER_FIRE, "INNER FIRE", "CAST MANUALLY", "Armor buff missing" end
-        if innerRemain < 20 then return S.INNER_FIRE, "INNER FIRE SOON", "CAST MANUALLY", "Expires in " .. math.floor(innerRemain) .. "s" end
-    end
-    if API.IsKnown(S.FORTITUDE) then
-        local hasFort, fortRemain = API.HasPlayerBuff(S.FORTITUDE)
-        if not hasFort then return S.FORTITUDE, "FORTITUDE", "CAST MANUALLY", "Health buff missing" end
-        if fortRemain < 20 then return S.FORTITUDE, "FORTITUDE SOON", "CAST MANUALLY", "Expires in " .. math.floor(fortRemain) .. "s" end
-    end
+    return nil
 end
 
 function Class:GetCautionRecommendation(ctx)
-    if API.IsKnown(S.POWER_WORD_SHIELD) and API.IsUsable(S.POWER_WORD_SHIELD) and not API.HasPlayerBuff(S.POWER_WORD_SHIELD) and not Engine.PlayerHasDebuff(S.WEAKENED_SOUL) then
+    if API.IsKnown(S.POWER_WORD_SHIELD) and API.IsUsable(S.POWER_WORD_SHIELD) and not API.StablePlayerBuff(S.POWER_WORD_SHIELD) and not Engine.PlayerHasDebuff(S.WEAKENED_SOUL) then
         return S.POWER_WORD_SHIELD, "UNFAVORABLE FIGHT", "ALT", ctx.text .. ": Shield before incoming damage accelerates", "caution"
     end
     local heal = Engine.PriestHealSpell(ctx.hp <= 45)
@@ -210,12 +197,12 @@ function Class:GetSurvivalReserve(ctx)
     local hp, mana = ctx.hp, ctx.mana
     local score
         score = hp * 0.52 + mana * 0.18 + 8
-        local shielded = HasPlayerBuff(S.POWER_WORD_SHIELD)
+        local shielded = StablePlayerBuff(S.POWER_WORD_SHIELD)
         local weakened = HCOB.Advisor.Engine.PlayerHasDebuff(S.WEAKENED_SOUL)
         if shielded then score = score + 10
         elseif IsKnown(S.POWER_WORD_SHIELD) and IsUsable(S.POWER_WORD_SHIELD) and not weakened then score = score + 5
         elseif weakened then score = score - 3 end
-        if HasPlayerBuff(S.INNER_FIRE) then score = score + 3 end
+        if StablePlayerBuff(S.INNER_FIRE) then score = score + 3 end
         if IsKnown(S.PSYCHIC_SCREAM) and CooldownReady(S.PSYCHIC_SCREAM) and IsUsable(S.PSYCHIC_SCREAM) then score = score + 10 end
         if HCOB.Advisor.Engine.PriestHealSpell(false) then score = score + 6 end
         if IsKnown(S.RENEW) and IsUsable(S.RENEW) then score = score + 2 end
@@ -237,7 +224,7 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
             local id, _, key, reason = self:GetPanicRecommendation()
             return id, enemies >= 3 and "3+ MOBS - GET OUT" or "MULTI - STABILIZE", key or "ALL MODS", reason or "Shield/Scream/escape", "danger"
         end
-        if IsKnown(S.POWER_WORD_SHIELD) and IsUsable(S.POWER_WORD_SHIELD) and not HasPlayerBuff(S.POWER_WORD_SHIELD) and not HCOB.Advisor.Engine.PlayerHasDebuff(S.WEAKENED_SOUL) then
+        if IsKnown(S.POWER_WORD_SHIELD) and IsUsable(S.POWER_WORD_SHIELD) and not StablePlayerBuff(S.POWER_WORD_SHIELD) and not HCOB.Advisor.Engine.PlayerHasDebuff(S.WEAKENED_SOUL) then
             return S.POWER_WORD_SHIELD, "MULTI x2 - SHIELD", "ALT", "Buy time; avoid turning the pull into mana spam", "caution"
         end
         if IsKnown(S.PSYCHIC_SCREAM) and CooldownReady(S.PSYCHIC_SCREAM) and IsUsable(S.PSYCHIC_SCREAM) and hp <= 62 then

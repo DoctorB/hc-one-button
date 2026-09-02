@@ -6,6 +6,7 @@ local Class = HCOB.Classes.SHAMAN or {}
 HCOB.Classes.SHAMAN = Class
 Class.classToken = "SHAMAN"
 Class.fallbackSpec = 2
+local weaponImbuePendingUntil = 0
 
 local function MainhandEnchanted()
     if not GetWeaponEnchantInfo then return false end
@@ -33,12 +34,15 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local manaPct = HCOB.Advisor.Engine.ManaPct()
     local hp = UnitHealthPct("player")
 
-    if not HasPlayerBuff(S.LIGHTNING_SHIELD) and IsKnown(S.LIGHTNING_SHIELD) and IsUsable(S.LIGHTNING_SHIELD) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.LIGHTNING_SHIELD, "LIGHTNING SHIELD", "SHIFT", "Maintain the buff before spending mana on damage", inCombat and 72 or 88, "buff")
+    local hasLightningShield, lightningShieldRemaining = StablePlayerBuff(S.LIGHTNING_SHIELD)
+    if inCombat and IsKnown(S.LIGHTNING_SHIELD) and IsUsable(S.LIGHTNING_SHIELD)
+       and (not hasLightningShield or lightningShieldRemaining <= 10) then
+        local reason = hasLightningShield and ("Refresh before expiry (" .. math.floor(lightningShieldRemaining) .. "s)") or "Lightning Shield missing in combat"
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.LIGHTNING_SHIELD, "LIGHTNING SHIELD", "SHIFT", reason, hasLightningShield and 72 or 86, "buff")
     end
     local imbue = PreferredWeaponImbue(spec)
-    if not inCombat and imbue and not MainhandEnchanted() and IsUsable(imbue) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, imbue, "WEAPON IMBUE", "CAST MANUALLY", SpellName(imbue) .. " missing on the main-hand weapon", 90, "buff")
+    if inCombat and imbue and not MainhandEnchanted() and GetTime() >= weaponImbuePendingUntil and IsUsable(imbue) then
+        HCOB.Advisor.Engine.AddCandidate(candidates, imbue, "WEAPON IMBUE", "CAST MANUALLY", SpellName(imbue) .. " missing on the main-hand weapon", 84, "buff")
     end
     if not inCombat and hostile and IsKnown(S.LIGHTNING_BOLT) and IsUsable(S.LIGHTNING_BOLT) and manaPct >= 25 then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.LIGHTNING_BOLT, "LIGHTNING BOLT OPENER", "BASE", "Open from range before switching to the spec resource plan", 76, "opener")
@@ -99,7 +103,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    if reserve <= 30 and not close and HCOB.Advisor.Engine.TotemActive(S.STONECLAW_TOTEM) and IsKnown(S.GHOST_WOLF) and IsUsable(S.GHOST_WOLF) then
+    if reserve <= 30 and not close and HCOB.Advisor.Engine.TotemActive(S.STONECLAW_TOTEM) and IsKnown(S.GHOST_WOLF) and IsUsable(S.GHOST_WOLF) and not StablePlayerBuff(S.GHOST_WOLF) then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.GHOST_WOLF, "GHOST WOLF + RUN", "ALT", "Stoneclaw bought you space: extend the leash | " .. context, 96, "survival")
     end
 
@@ -120,14 +124,15 @@ end
 
 -- Advisor class contract extensions.
 function Class:GetBuffRecommendation(inCombat)
-    if not inCombat then
-        local imbue = PreferredWeaponImbue(TalentSpec())
-        if imbue and not MainhandEnchanted() and IsUsable(imbue) then return imbue, "WEAPON IMBUE", "CAST MANUALLY", SpellName(imbue) .. " missing" end
+    return nil
+end
+
+function Class:HandleEvent(event, unit, _, spellID)
+    if event ~= "UNIT_SPELLCAST_SUCCEEDED" or unit ~= "player" or spellID == nil then return end
+    local castName = SpellName(spellID)
+    if castName and (castName == SpellName(S.ROCKBITER_WEAPON) or castName == SpellName(S.WINDFURY_WEAPON)) then
+        weaponImbuePendingUntil = GetTime() + 1.00
     end
-    if not IsKnown(S.LIGHTNING_SHIELD) then return nil end
-    local has, remain = HasPlayerBuff(S.LIGHTNING_SHIELD)
-    if not has then return S.LIGHTNING_SHIELD, "BUFF", "SHIFT", SpellName(S.LIGHTNING_SHIELD) .. " missing" end
-    if remain < 12 and not inCombat then return S.LIGHTNING_SHIELD, "BUFF SOON", "SHIFT", "Expires in " .. math.floor(remain) .. "s" end
 end
 
 function Class:GetCautionRecommendation(ctx)

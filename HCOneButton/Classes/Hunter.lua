@@ -34,11 +34,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     end
 
     if not hostile then
-        local activeAspect = HCOB.Hunter.ActiveAspect()
-        local travelSeconds = HCOB.Hunter.TravelStableSeconds(inCombat, hostile)
-        if not inCombat and travelSeconds >= 2.0 and IsKnown(S.ASPECT_CHEETAH) and CooldownReady(S.ASPECT_CHEETAH) and IsUsable(S.ASPECT_CHEETAH) and activeAspect ~= S.ASPECT_CHEETAH then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.ASPECT_CHEETAH, "ASPECT OF THE CHEETAH", "CAST MANUALLY", "Traveling out of combat: increase movement speed", 58, "travel")
-        end
+        HCOB.Hunter.TravelStableSeconds(inCombat, hostile)
         return HCOB.Advisor.Engine.SelectCandidate(candidates)
     end
 
@@ -70,10 +66,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     -- Aspect management. Cheetah is never allowed to remain active in combat,
     -- because taking a hit can daze the Hunter. Hawk is the normal ranged
     -- combat aspect; Monkey is a temporary defensive stance for sustained melee.
-    if not inCombat and IsKnown(S.ASPECT_HAWK) and CooldownReady(S.ASPECT_HAWK) and IsUsable(S.ASPECT_HAWK) and activeAspect ~= S.ASPECT_HAWK then
-        local aspectReason = activeAspect == S.ASPECT_CHEETAH and "Drop Cheetah before the pull to avoid a daze" or "Prepare the normal ranged combat aspect"
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.ASPECT_HAWK, "ASPECT OF THE HAWK", "CAST MANUALLY", aspectReason, 110, "aspect")
-    elseif inCombat and activeAspect == S.ASPECT_CHEETAH then
+    if inCombat and activeAspect == S.ASPECT_CHEETAH then
         local emergencyAspect = (close and IsKnown(S.ASPECT_MONKEY)) and S.ASPECT_MONKEY or (IsKnown(S.ASPECT_HAWK) and S.ASPECT_HAWK or nil)
         if emergencyAspect and CooldownReady(emergencyAspect) and IsUsable(emergencyAspect) then
             HCOB.Advisor.Engine.AddCandidate(candidates, emergencyAspect, emergencyAspect == S.ASPECT_MONKEY and "DROP CHEETAH -> MONKEY" or "DROP CHEETAH -> HAWK", "CAST MANUALLY", "Cheetah is unsafe in combat: remove the daze risk immediately", 125, "survival")
@@ -103,7 +96,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     end
 
     -- Survival / control candidates intentionally outrank damage candidates.
-    if inCombat and petAlive and petHP and IsKnown(S.MEND_PET) and IsUsable(S.MEND_PET) then
+    if inCombat and petAlive and petHP and IsKnown(S.MEND_PET) and IsUsable(S.MEND_PET) and not StablePetBuff(S.MEND_PET) then
         if petHP <= 32 and not close and not HCOB.Advisor.Engine.TargetOnPlayer() then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.MEND_PET, "MEND PET!", "ALT+CTRL", string.format("Pet %.0f%%: save your tank | %s", petHP, context), 99, "survival")
         elseif petHP <= 52 and tough and targetHP >= 45 and HCOB.Hunter.PetIsTanking() and manaPct >= 25 then
@@ -329,7 +322,7 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
             return S.MULTI_SHOT, "MULTI x2 - WEAVE", "CTRL", "Only already engaged mobs: after Auto Shot", "caution"
         end
 
-        if petHP and petHP <= 45 and IsKnown(S.MEND_PET) and IsUsable(S.MEND_PET) and HCOB.Hunter.PetIsTanking() then
+        if petHP and petHP <= 45 and IsKnown(S.MEND_PET) and IsUsable(S.MEND_PET) and not StablePetBuff(S.MEND_PET) and HCOB.Hunter.PetIsTanking() then
             return S.MEND_PET, "MULTI x2 - PET", "ALT+CTRL", string.format("Pet %.0f%%: stabilize before pushing DPS", petHP), "caution"
         end
 

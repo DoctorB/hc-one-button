@@ -29,24 +29,19 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local classification = hostile and SafeUnitClassification("target", "normal") or "normal"
     local tough = hostile and (classification == "elite" or classification == "rareelite" or classification == "worldboss" or targetLevel >= level + 1) or false
 
-    if not inCombat then
-        if IsKnown(S.BLESSING_MIGHT) and not HasPlayerBuff(S.BLESSING_MIGHT) and IsUsable(S.BLESSING_MIGHT) then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.BLESSING_MIGHT, "BLESSING OF MIGHT", "SHIFT", "Maintain the buff before the pull", 86, "buff")
-        end
-        local crusaderSetup = hostile and IsKnown(S.SEAL_CRUSADER) and IsUsable(S.SEAL_CRUSADER) and (tough or targetLevel >= 44)
-        if crusaderSetup and not HasPlayerBuff(S.SEAL_CRUSADER) then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.SEAL_CRUSADER, "SEAL OF THE CRUSADER", "CAST MANUALLY", "Durable/high-level target: stage Judgement of the Crusader before the normal seal", 84, "opener")
-        elseif hostile and seal and not HasPlayerBuff(seal) and IsUsable(seal) then
-            HCOB.Advisor.Engine.AddCandidate(candidates, seal, "SEAL", "CAST MANUALLY", SpellName(seal) .. " appropriate for weapon speed", 80, "buff")
-        end
-        return HCOB.Advisor.Engine.SelectCandidate(candidates)
-    end
-    if not hostile then return HCOB.Advisor.Engine.SelectCandidate(candidates) end
+    if not inCombat or not hostile then return HCOB.Advisor.Engine.SelectCandidate(candidates) end
 
     local dyn = HCOB.Advisor.Engine.RollingDynamics(targetHP)
     local ttk = dyn and dyn.confidence >= 0.38 and dyn.ttk or nil
     local context = string.format("HP %.0f%% | mana %.0f%% | reserve %.0f %s", hp, manaPct, reserve, reserveLabel)
     if ttk and ttk < math.huge then context = context .. string.format(" | TTK ~%.0fs", ttk) end
+
+    local hasMight, mightRemaining = StablePlayerBuff(S.BLESSING_MIGHT)
+    if IsKnown(S.BLESSING_MIGHT) and IsUsable(S.BLESSING_MIGHT)
+       and (not hasMight or mightRemaining <= 10) then
+        local reason = hasMight and ("Refresh before expiry (" .. math.floor(mightRemaining) .. "s)") or "Blessing missing in combat"
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.BLESSING_MIGHT, "BLESSING OF MIGHT", "SHIFT", reason .. " | " .. context, hasMight and 66 or 86, "buff")
+    end
 
     if reserve <= 28 and IsKnown(S.DIVINE_SHIELD) and CooldownReady(S.DIVINE_SHIELD) and IsUsable(S.DIVINE_SHIELD) then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.DIVINE_SHIELD, "DIVINE SHIELD", "CAST MANUALLY", "Critical reserve: immunity and time to recover | " .. context, 114, "survival")
@@ -68,10 +63,15 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         HCOB.Advisor.Engine.AddCandidate(candidates, S.HAMMER_JUSTICE, "HAMMER OF JUSTICE", "ALT", "Stun to create a healing/auto-attack window | " .. context, 91, "control")
     end
 
-    local crusaderActive = HasPlayerBuff(S.SEAL_CRUSADER)
+    local crusaderActive = StablePlayerBuff(S.SEAL_CRUSADER)
+    local normalSealActive = seal and StablePlayerBuff(seal) or false
+    local crusaderSetup = IsKnown(S.SEAL_CRUSADER) and IsUsable(S.SEAL_CRUSADER)
+        and (tough or targetLevel >= 44) and targetHP >= 75
     if crusaderActive and IsKnown(S.JUDGEMENT) and CooldownReady(S.JUDGEMENT) and IsUsable(S.JUDGEMENT) and manaPct >= 38 then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.JUDGEMENT, "JUDGE CRUSADER", "CAST MANUALLY", "Convert the staged Crusader seal into the durable-target debuff, then return to the normal weapon-speed seal | " .. context, 89, "setup")
-    elseif seal and not HasPlayerBuff(seal) and IsUsable(seal) then
+    elseif crusaderSetup and not crusaderActive then
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.SEAL_CRUSADER, "SEAL OF THE CRUSADER", "CAST MANUALLY", "Durable/high-level target: stage Judgement of the Crusader in combat | " .. context, 84, "setup")
+    elseif seal and not normalSealActive and IsUsable(seal) then
         HCOB.Advisor.Engine.AddCandidate(candidates, seal, "SEAL", "CAST MANUALLY", SpellName(seal) .. " missing | " .. context, 78, "buff")
     end
 
@@ -105,10 +105,7 @@ end
 
 -- Advisor class contract extensions.
 function Class:GetBuffRecommendation(inCombat)
-    if not IsKnown(S.BLESSING_MIGHT) then return nil end
-    local has, remain = HasPlayerBuff(S.BLESSING_MIGHT)
-    if not has and not inCombat then return S.BLESSING_MIGHT, "BUFF", "SHIFT", SpellName(S.BLESSING_MIGHT) .. " missing" end
-    if has and remain < 12 and not inCombat then return S.BLESSING_MIGHT, "BUFF SOON", "SHIFT", "Expires in " .. math.floor(remain) .. "s" end
+    return nil
 end
 
 function Class:GetCautionRecommendation(ctx)

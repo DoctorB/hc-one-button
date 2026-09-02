@@ -80,7 +80,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    local snd = HasPlayerBuff(S.SLICE_DICE)
+    local snd = StablePlayerBuff(S.SLICE_DICE)
     if IsKnown(S.SLICE_DICE) and not snd and cp >= 1 and targetHP >= 45 and reserve >= 48 and IsUsable(S.SLICE_DICE) then
         local longEnough = not ttk or ttk >= 11
         if longEnough then

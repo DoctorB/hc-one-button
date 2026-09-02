@@ -116,6 +116,13 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local context = string.format("HP %.0f%% | mana %.0f%% | reserve %.0f %s", hp, manaPct, reserve, reserveLabel)
     if ttk and ttk < math.huge then context = context .. string.format(" | TTK ~%.0fs", ttk) end
 
+    local hasMark, markRemaining = StablePlayerBuff(S.MARK_WILD)
+    if IsKnown(S.MARK_WILD) and IsUsable(S.MARK_WILD)
+       and (not hasMark or markRemaining <= 10) then
+        local reason = hasMark and ("Refresh before expiry (" .. math.floor(markRemaining) .. "s)") or "Mark of the Wild missing in combat"
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.MARK_WILD, "MARK OF THE WILD", "SHIFT", reason .. " | " .. context, hasMark and 63 or 84, "buff")
+    end
+
     -- A safe direct-heal window is valuable even from a form: the fixed Healing
     -- Touch action cancels form before casting. Never suggest this into immediate
     -- melee pressure; Bear/Dash/Roots remain the safer answer there.
@@ -233,10 +240,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
 end
 
 function Class:GetBuffRecommendation(inCombat)
-    if not IsKnown(S.MARK_WILD) then return nil end
-    local has, remain = HasPlayerBuff(S.MARK_WILD)
-    if not has and not inCombat then return S.MARK_WILD, "BUFF", "SHIFT", SpellName(S.MARK_WILD) .. " missing" end
-    if has and remain < 12 and not inCombat then return S.MARK_WILD, "BUFF SOON", "SHIFT", "Expires in " .. math.floor(remain) .. "s" end
+    return nil
 end
 
 function Class:GetCautionRecommendation(ctx)

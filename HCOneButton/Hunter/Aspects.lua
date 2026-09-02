@@ -7,9 +7,9 @@ setfenv(1, E)
 -- Hunter aspect state is managed independently from the generic buff advisor.
 -- This prevents Hawk/Monkey/Cheetah from fighting each other as ordinary buffs.
 function HCOB.Hunter.ActiveAspect()
-    if IsKnown(S.ASPECT_HAWK) and HasPlayerBuff(S.ASPECT_HAWK) then return S.ASPECT_HAWK end
-    if IsKnown(S.ASPECT_MONKEY) and HasPlayerBuff(S.ASPECT_MONKEY) then return S.ASPECT_MONKEY end
-    if IsKnown(S.ASPECT_CHEETAH) and HasPlayerBuff(S.ASPECT_CHEETAH) then return S.ASPECT_CHEETAH end
+    if IsKnown(S.ASPECT_HAWK) and StablePlayerBuff(S.ASPECT_HAWK) then return S.ASPECT_HAWK end
+    if IsKnown(S.ASPECT_MONKEY) and StablePlayerBuff(S.ASPECT_MONKEY) then return S.ASPECT_MONKEY end
+    if IsKnown(S.ASPECT_CHEETAH) and StablePlayerBuff(S.ASPECT_CHEETAH) then return S.ASPECT_CHEETAH end
     return nil
 end
 

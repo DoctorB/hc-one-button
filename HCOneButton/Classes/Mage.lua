@@ -104,6 +104,21 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local clearcasting = HasPlayerBuff(S.CLEARCASTING)
     local primary = Mage.PrimarySpell()
 
+    local armor = Mage.BestArmor()
+    local hasArmor, armorRemaining = false, 0
+    if armor then hasArmor, armorRemaining = StablePlayerBuff(armor) end
+    if armor and IsKnown(armor) and IsUsable(armor)
+       and (not hasArmor or armorRemaining <= 10) then
+        local reason = hasArmor and ("Refresh before expiry (" .. math.floor(armorRemaining) .. "s)") or (SpellName(armor) .. " missing in combat")
+        HCOB.Advisor.Engine.AddCandidate(candidates, armor, "MAGE ARMOR", "CAST MANUALLY", reason .. " | " .. context, hasArmor and 65 or 86, "buff")
+    end
+    local hasIntellect, intellectRemaining = StablePlayerBuff(S.ARCANE_INTELLECT)
+    if IsKnown(S.ARCANE_INTELLECT) and IsUsable(S.ARCANE_INTELLECT)
+       and (not hasIntellect or intellectRemaining <= 10) then
+        local reason = hasIntellect and ("Refresh before expiry (" .. math.floor(intellectRemaining) .. "s)") or "Arcane Intellect missing in combat"
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.ARCANE_INTELLECT, "ARCANE INTELLECT", "CAST MANUALLY", reason .. " | " .. context, hasIntellect and 62 or 84, "buff")
+    end
+
     if clearcasting and not close then
         local freeSpell = (spec == 1 and IsKnown(S.ARCANE_MISSILES) and IsUsable(S.ARCANE_MISSILES)) and S.ARCANE_MISSILES or primary
         if freeSpell and IsKnown(freeSpell) and IsUsable(freeSpell) then
@@ -137,7 +152,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     end
 
     if IsKnown(S.ICE_BARRIER) and CooldownReady(S.ICE_BARRIER) and IsUsable(S.ICE_BARRIER) and manaPct >= 30 and targetHP >= 35 then
-        local hasBarrier = HasPlayerBuff(S.ICE_BARRIER)
+        local hasBarrier = StablePlayerBuff(S.ICE_BARRIER)
         if not hasBarrier then
             local score = (close or reserve < 55 or tough) and 88 or 64
             score = score - riskPenalty * 0.10
@@ -152,6 +167,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     end
 
     if close and hp <= 58 and manaPct >= 45 and IsKnown(S.MANA_SHIELD) and IsUsable(S.MANA_SHIELD)
+       and not StablePlayerBuff(S.MANA_SHIELD)
        and novaUnavailable and (not IsKnown(S.BLINK) or not CooldownReady(S.BLINK)) then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.MANA_SHIELD, "MANA SHIELD", "CAST MANUALLY", "Nova/Blink unavailable: temporary buffer | " .. context, 93, "survival")
     end
@@ -196,24 +212,7 @@ end
 
 -- Advisor class contract extensions.
 function Class:GetBuffRecommendation(inCombat)
-    if inCombat then return nil end
-    if IsKnown(S.ICE_BARRIER) and CooldownReady(S.ICE_BARRIER) and IsUsable(S.ICE_BARRIER) then
-        local hasBarrier, barrierRemain = HasPlayerBuff(S.ICE_BARRIER)
-        if not hasBarrier then return S.ICE_BARRIER, "ICE BARRIER", "CAST MANUALLY", "Pre-pull: free absorption before risk" end
-        if barrierRemain < 10 then return S.ICE_BARRIER, "BARRIER SOON", "CAST MANUALLY", "Expires in " .. math.floor(barrierRemain) .. "s" end
-    end
-    local armor = Mage.BestArmor()
-    if armor and IsKnown(armor) then
-        local hasArmor, armorRemain = HasPlayerBuff(armor)
-        if not hasArmor then return armor, "MAGE ARMOR", "CAST MANUALLY", SpellName(armor) .. " missing" end
-        if armorRemain < 20 then return armor, "ARMOR SOON", "CAST MANUALLY", "Expires in " .. math.floor(armorRemain) .. "s" end
-    end
-    if IsKnown(S.ARCANE_INTELLECT) then
-        local hasInt, intRemain = HasPlayerBuff(S.ARCANE_INTELLECT)
-        local intKey = HostileLiveTarget() and "CAST MANUALLY" or "SHIFT"
-        if not hasInt then return S.ARCANE_INTELLECT, "ARCANE INT", intKey, "Intellect buff missing" end
-        if intRemain < 20 then return S.ARCANE_INTELLECT, "INT SOON", intKey, "Expires in " .. math.floor(intRemain) .. "s" end
-    end
+    return nil
 end
 
 -- Hardcore safety class contract. Advisor/Survival owns policy orchestration;
@@ -227,7 +226,7 @@ function Class:GetSurvivalReserve(ctx)
         if IsKnown(S.ICE_BLOCK) and CooldownReady(S.ICE_BLOCK) and IsUsable(S.ICE_BLOCK) then score = score + 12 end
         if IsKnown(S.COLD_SNAP) and CooldownReady(S.COLD_SNAP) and IsUsable(S.COLD_SNAP) then score = score + 6 end
         if IsKnown(S.ICE_BARRIER) then
-            local hasBarrier = HasPlayerBuff(S.ICE_BARRIER)
+            local hasBarrier = StablePlayerBuff(S.ICE_BARRIER)
             if hasBarrier then score = score + 7
             elseif CooldownReady(S.ICE_BARRIER) and IsUsable(S.ICE_BARRIER) and mana >= 25 then score = score + 3 end
         end
@@ -250,7 +249,7 @@ function Class:GetPanicRecommendation()
         if IsKnown(S.BLINK) and CooldownReady(S.BLINK) and IsUsable(S.BLINK) then
             return S.BLINK, "BLINK OUT", "ALT", "Nova unavailable: create distance now"
         end
-        if IsKnown(S.MANA_SHIELD) and IsUsable(S.MANA_SHIELD) and Mage.ManaPct() >= 25 then
+        if IsKnown(S.MANA_SHIELD) and IsUsable(S.MANA_SHIELD) and Mage.ManaPct() >= 25 and not StablePlayerBuff(S.MANA_SHIELD) then
             return S.MANA_SHIELD, "MANA SHIELD", "ALL MODS", "Last buffer before escaping"
         end
         return nil, "RUN!", "PREPARE ESCAPE", "No immediate Mage cooldown available"
