@@ -59,6 +59,75 @@ function HasPlayerBuff(id)
     return AuraByName("player", SpellName(id), "HELPFUL", false)
 end
 
+-- Classic can briefly report an empty aura list immediately after a cast or
+-- during a UNIT_AURA burst. Keep a small, per-spell observation cache so a
+-- transient miss cannot turn a maintained self aura into repeated Advisor
+-- requests. A genuinely removed aura becomes eligible again after the grace
+-- window; finite auras also become eligible as soon as their observed expiry
+-- is reached.
+local PLAYER_BUFF_MISSING_GRACE = 0.75
+local PLAYER_BUFF_CAST_GRACE = 1.00
+local playerBuffObservations = {}
+local playerSpellcastGrace = {}
+
+function NotePlayerSpellcastSucceeded(spellID)
+    local name = SpellName(spellID)
+    if not name then return end
+    playerSpellcastGrace[name] = GetTime() + PLAYER_BUFF_CAST_GRACE
+end
+
+local function StableUnitBuff(unit, id)
+    local name = SpellName(id)
+    if not name then return false, 0 end
+
+    local now = GetTime()
+    local cacheKey = tostring(unit) .. ":" .. name
+    local state = playerBuffObservations[cacheKey]
+
+    local castGraceUntil = playerSpellcastGrace[name] or 0
+    if castGraceUntil > now then
+        -- The old aura can remain visible for a frame after a successful
+        -- refresh. Let the cast acknowledgement win so that old near-expiry
+        -- metadata cannot immediately request the same spell again.
+        return true, 999
+    end
+    playerSpellcastGrace[name] = nil
+
+    local active, remaining = AuraByName(unit, name, "HELPFUL", false)
+    remaining = SafeNumber(remaining, 0) or 0
+
+    if active then
+        state = state or {}
+        state.expectedUntil = remaining >= 999 and math.huge or (now + math.max(0, remaining))
+        state.missingSince = nil
+        playerBuffObservations[cacheKey] = state
+        playerSpellcastGrace[name] = nil
+        return true, remaining
+    end
+
+    if state and (state.expectedUntil or 0) > now then
+        state.missingSince = state.missingSince or now
+        if (now - state.missingSince) < PLAYER_BUFF_MISSING_GRACE then
+            local expected = state.expectedUntil == math.huge and 999 or math.max(0, state.expectedUntil - now)
+            return true, expected
+        end
+    end
+
+    if state then
+        state.expectedUntil = 0
+        state.missingSince = nil
+    end
+    return false, 0
+end
+
+function StablePlayerBuff(id)
+    return StableUnitBuff("player", id)
+end
+
+function StablePetBuff(id)
+    return StableUnitBuff("pet", id)
+end
+
 function HasMyTargetDebuff(id)
     return AuraByName("target", SpellName(id), "HARMFUL", true)
 end

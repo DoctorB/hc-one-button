@@ -7,7 +7,8 @@ setfenv(1, E)
 
 HCOB.Core.ClassAPI = HCOB.Core.ClassAPI or {
     IsKnown = IsKnown, IsUsable = IsUsable, CooldownReady = CooldownReady,
-    HasPlayerBuff = HasPlayerBuff, HasMyTargetDebuff = HasMyTargetDebuff,
+    HasPlayerBuff = HasPlayerBuff, StablePlayerBuff = StablePlayerBuff,
+    HasMyTargetDebuff = HasMyTargetDebuff,
     SpellCastSeconds = SpellCastSeconds, HasWandEquipped = HasWandEquipped,
     SpellName = SpellName, AuraByName = AuraByName, Clamp = Clamp,
 }
@@ -180,6 +181,10 @@ function ActiveClassModule()
 end
 
 function BuffRecommendation(inCombat)
+    -- Maintained self auras are combat-only Advisor work. Out of combat they
+    -- remain a manual player choice and must never keep the Diagnostic Pixel
+    -- or an external reader busy.
+    if not inCombat then return nil end
     local class = ActiveClassModule()
     if class and class.GetBuffRecommendation then
         return class:GetBuffRecommendation(inCombat)
