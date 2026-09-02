@@ -76,6 +76,13 @@ for _, token in ipairs(classTokens) do
     local ok, macro = pcall(class.BuildMainMacro, class)
     assert(ok, token .. " BASE macro failed: " .. tostring(macro))
     assert(type(macro) == "string" and macro ~= "" and #macro <= 255, token .. " BASE macro invalid")
+
+    -- Generic self-buff hooks must never feed the out-of-combat Advisor. Class
+    -- openers remain owned by GetRecommendation and are tested separately.
+    if class.GetBuffRecommendation then
+        local buffID = class:GetBuffRecommendation(false)
+        assert(buffID == nil, token .. " requested a maintenance aura out of combat")
+    end
 end
 
 local S = environment.HCOneButton.Data.Spells
