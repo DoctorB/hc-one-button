@@ -3,11 +3,11 @@ local environment = setmetatable({}, {__index=hostGlobal})
 environment._G = environment
 environment.print = function() end
 
-local now, rage = 100, 50
+local now, rage, enemyCount = 100, 50, 1
 local queuedName = nil
 local known, usable = {}, {}
 local S = {
-    HEROIC_STRIKE=78, CLEAVE=845, BATTLE_SHOUT=6673, CHARGE=100,
+    HEROIC_STRIKE=78, CLEAVE=845, EXECUTE=5308, BATTLE_SHOUT=6673, CHARGE=100,
     SHIELD_WALL=871, RETALIATION=20230, HAMSTRING=1715,
     THUNDER_CLAP=6343, DEMO_SHOUT=1160,
 }
@@ -15,6 +15,7 @@ local S = {
 local names = {
     [S.HEROIC_STRIKE]="Heroic Strike",
     [S.CLEAVE]="Cleave",
+    [S.EXECUTE]="Execute",
 }
 
 local internal = setmetatable({
@@ -44,7 +45,7 @@ environment.Clamp = function(value, low, high) return math.max(low, math.min(hig
 environment.SafeUnitPower = function() return rage end
 environment.UnitPowerType = function() return 1 end
 environment.UnitHealthPct = function() return 100, true end
-environment.CountActiveEnemies = function() return 1 end
+environment.CountActiveEnemies = function() return enemyCount end
 environment.PlayerLevel = function() return 30 end
 environment.SafeUnitLevel = function() return 30 end
 environment.SafeUnitClassification = function() return "normal" end
@@ -113,6 +114,30 @@ id = Warrior:GetRecommendation(true, true, 70, 1)
 expect(id, nil, "queued Cleave blocks Heroic Strike")
 queuedName = nil
 
+-- Between 21% and 30%, an Execute-capable Warrior preserves Rage instead of
+-- feeding another queued strike. Near the cap, spending is released so Rage
+-- generation is not wasted.
+internal.lastAutoAttack = 100
+now, rage, enemyCount = 103.00, 50, 1
+known[S.EXECUTE], usable[names[S.EXECUTE]] = true, true
+id, title = Warrior:GetRecommendation(true, true, 25, 1)
+expect(id, nil, "Execute pooling suppresses Heroic Strike")
+expect(title, "POOL FOR EXECUTE", "Execute pooling feedback")
+rage = 85
+id = Warrior:GetRecommendation(true, true, 25, 1)
+expect(id, S.HEROIC_STRIKE, "near-cap Rage releases Execute pool")
+
+-- Cleave occupies the appended deterministic slot and wins over Heroic Strike
+-- only on a controlled multi-target swing window.
+known[S.EXECUTE], usable[names[S.EXECUTE]] = nil, nil
+known[S.CLEAVE], usable[names[S.CLEAVE]] = true, true
+rage, enemyCount = 50, 2
+id = Warrior:GetRecommendation(true, true, 70, 1)
+expect(id, S.CLEAVE, "Cleave preferred for multi-target swing dump")
+enemyCount = 1
+id = Warrior:GetRecommendation(true, true, 70, 1)
+expect(id, S.HEROIC_STRIKE, "Heroic Strike retained for single target")
+
 -- Heroic Strike/Cleave combat-log records are main-hand swings and therefore
 -- must reset the timer just like white hits and misses.
 expect(internal.IsMainhandSwingCombatEvent("SWING_DAMAGE", nil), true, "white hit resets swing")
@@ -123,7 +148,7 @@ expect(internal.IsMainhandSwingCombatEvent("SPELL_DAMAGE", 999), false, "ordinar
 -- Until the first swing has established a timestamp, preserve the safe legacy
 -- fallback rather than making a high-Rage dump impossible at combat start.
 internal.lastAutoAttack = nil
-now = 110
+now, rage, enemyCount = 110, 50, 1
 id = Warrior:GetRecommendation(true, true, 70, 1)
 expect(id, S.HEROIC_STRIKE, "first-swing fallback")
 
