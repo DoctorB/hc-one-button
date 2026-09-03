@@ -89,8 +89,14 @@ local persistentDB = {
     customValue = "preserve me",
 }
 local persistentCombatLog = {fights = {{duration = 12}}}
+local persistentAdaptiveContexts = {warlock = {samples = 12}}
+local persistentCharacterDB = {
+    logProfileId = "p-existing-profile", logSession = "Warlock tuning",
+    adaptive = {version = 1, enabled = false, contexts = persistentAdaptiveContexts},
+}
 environment.HCOB_DB = persistentDB
 environment.HCOB_CombatLog = persistentCombatLog
+environment.HCOB_CharacterDB = persistentCharacterDB
 
 fire(eventFrame, "ADDON_LOADED", "AnotherAddon")
 expect(environment.HCOneButton.DB, bootstrapDB, "foreign ADDON_LOADED ignored")
@@ -98,8 +104,10 @@ expect(environment.HCOneButton.DB, bootstrapDB, "foreign ADDON_LOADED ignored")
 fire(eventFrame, "ADDON_LOADED", "HCOneButton")
 expect(environment.HCOneButton.DB, persistentDB, "public DB rebound")
 expect(environment.HCOneButton.CombatLog, persistentCombatLog, "public combat log rebound")
+expect(environment.HCOneButton.CharacterDB, persistentCharacterDB, "public character DB rebound")
 expect(environment.HCOneButton.Internal.HCOB_DB, persistentDB, "private DB rebound")
 expect(environment.HCOneButton.Internal.HCOB_CombatLog, persistentCombatLog, "private combat log rebound")
+expect(environment.HCOneButton.Internal.HCOB_CharacterDB, persistentCharacterDB, "private character DB rebound")
 expect(persistentDB.visible, false, "valid setting preserved")
 expect(persistentDB.scale, 1.25, "numeric string repaired")
 expect(persistentDB.actionSlotKeys, nil, "invalid binding map repaired")
@@ -108,6 +116,10 @@ expect(persistentDB.actionSlotAutoBind, true, "fresh binding default installed")
 expect(persistentDB.prePullSafety, true, "fresh pre-pull safety default installed")
 expect(persistentDB.showConsumables, true, "fresh Survival strip default installed")
 expect(persistentDB.warriorHeroicSpam, false, "unsafe legacy heroic spam disabled")
+expect(persistentCharacterDB.logProfileId, "p-existing-profile", "anonymous character profile preserved")
+expect(persistentCharacterDB.logSession, "Warlock tuning", "per-character session preserved")
+expect(persistentCharacterDB.adaptive.contexts, persistentAdaptiveContexts, "adaptive contexts preserved")
+expect(persistentCharacterDB.adaptive.enabled, false, "adaptive policy remains disabled")
 assert(contains(environment.HCOneButton.SavedVariableRepairs, "HCOB_DB.scale"), "scale repair was not recorded")
 assert(contains(environment.HCOneButton.SavedVariableRepairs, "HCOB_DB.actionSlotKeys"), "binding-map repair was not recorded")
 
@@ -141,23 +153,53 @@ expect(environment.HCOneButton.Internal.savedVariablesReady, true, "saved variab
 local fallbackEnvironment, fallbackFrame, fallbackCounters = newRuntime()
 local fallbackDB = {dangerHP = 41}
 local fallbackLog = {fights = {}}
+local fallbackCharacterDB = {}
 fallbackEnvironment.HCOB_DB = fallbackDB
 fallbackEnvironment.HCOB_CombatLog = fallbackLog
+fallbackEnvironment.HCOB_CharacterDB = fallbackCharacterDB
 fire(fallbackFrame, "PLAYER_LOGIN")
 expect(fallbackEnvironment.HCOneButton.DB, fallbackDB, "PLAYER_LOGIN fallback DB rebound")
 expect(fallbackEnvironment.HCOneButton.CombatLog, fallbackLog, "PLAYER_LOGIN fallback log rebound")
+expect(fallbackEnvironment.HCOneButton.CharacterDB, fallbackCharacterDB, "PLAYER_LOGIN fallback character DB rebound")
 expect(fallbackDB.dangerHP, 41, "fallback preserved setting")
 expect(fallbackDB.actionSlotAutoBind, true, "fallback installed defaults")
+assert(type(fallbackCharacterDB.logProfileId) == "string" and #fallbackCharacterDB.logProfileId >= 8,
+    "fallback generated anonymous character profile")
+expect(fallbackCharacterDB.logSession, "HCOneButton 1.28.6", "fallback installed character session")
+expect(fallbackCharacterDB.adaptive.version, 1, "fallback installed adaptive schema")
+expect(fallbackCharacterDB.adaptive.enabled, false, "fallback kept adaptive policy disabled")
+assert(type(fallbackCharacterDB.adaptive.contexts) == "table", "fallback installed adaptive context store")
 expect(fallbackCounters.macros, 1, "fallback completed login")
 
 -- Malformed roots are replaced instead of leaking invalid values downstream.
 local repairEnvironment, repairFrame = newRuntime()
 repairEnvironment.HCOB_DB = "invalid root"
 repairEnvironment.HCOB_CombatLog = 99
+repairEnvironment.HCOB_CharacterDB = false
 fire(repairFrame, "ADDON_LOADED", "HCOneButton")
 assert(type(repairEnvironment.HCOB_DB) == "table", "malformed HCOB_DB root was not replaced")
 assert(type(repairEnvironment.HCOB_CombatLog) == "table", "malformed combat-log root was not replaced")
+assert(type(repairEnvironment.HCOB_CharacterDB) == "table", "malformed character DB root was not replaced")
 assert(contains(repairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_DB"), "DB root repair was not recorded")
 assert(contains(repairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_CombatLog"), "combat-log root repair was not recorded")
+assert(contains(repairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_CharacterDB"), "character DB root repair was not recorded")
+assert(type(repairEnvironment.HCOB_CharacterDB.adaptive) == "table"
+    and type(repairEnvironment.HCOB_CharacterDB.adaptive.contexts) == "table",
+    "malformed character root did not receive adaptive store")
+
+local nestedRepairEnvironment, nestedRepairFrame = newRuntime()
+nestedRepairEnvironment.HCOB_DB = {}
+nestedRepairEnvironment.HCOB_CombatLog = {}
+nestedRepairEnvironment.HCOB_CharacterDB = {
+    logProfileId = "p-nested-repair", logSession = "Nested repair",
+    adaptive = {version = "bad", enabled = "yes", contexts = false},
+}
+fire(nestedRepairFrame, "ADDON_LOADED", "HCOneButton")
+expect(nestedRepairEnvironment.HCOB_CharacterDB.adaptive.version, 1, "adaptive version repaired")
+expect(nestedRepairEnvironment.HCOB_CharacterDB.adaptive.enabled, false, "adaptive enabled repaired safely")
+assert(type(nestedRepairEnvironment.HCOB_CharacterDB.adaptive.contexts) == "table", "adaptive contexts repaired")
+assert(contains(nestedRepairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_CharacterDB.adaptive.version"), "adaptive version repair was not recorded")
+assert(contains(nestedRepairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_CharacterDB.adaptive.enabled"), "adaptive enabled repair was not recorded")
+assert(contains(nestedRepairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_CharacterDB.adaptive.contexts"), "adaptive contexts repair was not recorded")
 
 print("saved variables lifecycle regression: PASS")

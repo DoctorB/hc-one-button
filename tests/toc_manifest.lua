@@ -40,9 +40,12 @@ assert(positions["Advisor/Readiness.lua"] < positions["Advisor/Engine.lua"], "re
 assert(positions["Advisor/Engine.lua"] < positions["Classes/Warrior.lua"], "Advisor Engine must load before class modules")
 assert(positions["Classes/Druid.lua"] < positions["UI/CoreHUD.lua"], "all class modules must load before UI")
 assert(positions["UI/ActionPanel.lua"] < positions["UI/SurvivalStrip.lua"], "Survival strip must anchor after Action Panel")
+assert(positions["Systems/TuningTelemetry.lua"] < positions["Systems/CombatLog.lua"], "adaptive telemetry contract must load before combat log")
 assert(entries[#entries] == "Bindings.xml", "Bindings.xml must remain the final TOC entry")
 
 local tocVersion = assert(toc:match("## Version:%s*([^\r\n]+)"), "TOC version missing")
+assert(toc:find("## SavedVariablesPerCharacter: HCOB_CharacterDB", 1, true),
+    "anonymous per-character telemetry profile SavedVariable missing")
 local init = read("HCOneButton/Core/Init.lua")
 local runtimeVersion = assert(init:match('HCOB%.VERSION%s*=%s*"([^"]+)"'), "runtime version missing")
 assert(tocVersion == runtimeVersion, "TOC/runtime version mismatch")

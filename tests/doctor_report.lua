@@ -7,17 +7,24 @@ local db = {
     scale = 1.0,
 }
 local combatLog = {fights = {{id = 1}}, totalFights = 1}
+local characterDB = {
+    logProfileId = "p-private-profile", logSession = "Private session",
+    adaptive = {version=1, enabled=false, contexts={}},
+}
 
 HCOB_DB = db
 HCOB_CombatLog = combatLog
+HCOB_CharacterDB = characterDB
 HCOneButton = {
     DB = db,
     CombatLog = combatLog,
+    CharacterDB = characterDB,
     Core = {}, Data = {}, Classes = {}, Advisor = {Engine = {}}, UI = {ActionPanel = {}}, Systems = {}, Hunter = {},
 }
 HCOneButton.Internal = setmetatable({
     HCOB_DB = db,
     HCOB_CombatLog = combatLog,
+    HCOB_CharacterDB = characterDB,
     VERSION = "1.27.8",
     MACRO_LIMIT = 255,
     PLAYER_CLASS = "WARLOCK",
@@ -46,6 +53,7 @@ HCOneButton.UI.ActionPanel.idToSlot = {[686] = 4}
 HCOneButton.UI.ActionPanel.visibleCount = 15
 HCOneButton.UI.ActionPanel.buttons = {{configured=true}, {configured=true}}
 HCOneButton.UI.ActionPanel.GetSlotKey = function(slot) return slot == 4 and "SHIFT-4" or nil end
+HCOneButton.Systems.TuningTelemetry = {CONTRACT_VERSION = 1}
 
 function UnitClass() return "Warlock", "WARLOCK" end
 function PlayerLevel() return 30 end
@@ -109,11 +117,16 @@ includes("Binding set raw/normalized: 0 / 1")
 includes("BASE panel slot/key: 4 / SHIFT-4")
 includes("DB public/private identity: true / true")
 includes("Log public/private identity: true / true")
+includes("Character public/private identity: true / true")
+includes("Anonymous character telemetry profile: true")
+includes("Adaptive store/contexts/active: table / table / false")
+includes("Adaptive telemetry contract: 1")
 includes("[TestProbe] contained diagnostic error")
 includes("Doctor summary: WARN (1)")
 assert(not report:find("SensitivePlayer", 1, true), "Doctor leaked player name")
 assert(not report:find("SensitiveTarget", 1, true), "Doctor leaked target name")
-assert(HCOB_DB == db and HCOB_CombatLog == combatLog and db.scale == 1.0 and #combatLog.fights == 1,
+assert(not report:find("p-private-profile", 1, true), "Doctor leaked anonymous character profile")
+assert(HCOB_DB == db and HCOB_CombatLog == combatLog and HCOB_CharacterDB == characterDB and db.scale == 1.0 and #combatLog.fights == 1,
     "Doctor mutated SavedVariables")
 
 -- Slash dispatch opens the existing report window directly in Doctor mode.
