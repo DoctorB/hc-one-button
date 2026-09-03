@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.28.6`
+- **Current version:** `1.29.0`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -17,6 +17,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ## README contents
 
 - [What HCOneButton does](#what-hconebutton-does)
+- [Local Adaptive Tuning](#local-adaptive-tuning)
 - [Pre-pull Safety Advisor and Recovery Gate](#pre-pull-safety-advisor-and-recovery-gate)
 - [Survival consumables strip](#survival-consumables-strip)
 - [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts)
@@ -32,15 +33,28 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.28.6` is the **Character-Scoped Adaptive Telemetry Foundation**. The compact DPS HUD, `/hcob log last`, `/hcob log stats` and generated diagnostic reports now read only fights belonging to the active character. Playing another class—or a second character of the same class—can no longer contaminate current averages, last-fight output or reports.
+Version `1.29.0` introduces **Local Adaptive Tuning** for all nine supported classes. HCOneButton now learns from the active character's eligible completed fights and can apply small, evidence-based corrections to close offensive priorities while leaving the original class rotation and every Hardcore safety gate in control.
 
-New fights receive a random local profile identifier stored in the per-character `HCOB_CharacterDB`; it contains no character name, realm or GUID and is never included in sanitized reports. The existing account-wide `HCOB_CombatLog` remains intact and bounded, but retention is applied per character so sustained play on one class does not immediately evict every other character's useful history. A final 600-fight account ceiling prevents unbounded SavedVariables growth.
+Learning is enabled automatically and begins in calibration. A class/build context needs at least eight valid fights, and an individual action needs four observed outcomes from accepted recommendations or valid player alternatives, before any correction can become active. Adjustments are limited to `±4` Advisor score points, continuously revised by later results and shown transparently in the Advisor reason as `Local tuning +N.NN`.
 
-Pre-`1.28.6` fights have no profile identifier. They remain available through a class-only compatibility fallback; exact separation between two same-class characters begins with newly recorded fights. `/hcob log clear` now removes only the active character's matching history, `/hcob log clear all` explicitly clears the complete account-wide store, and custom telemetry session names are per-character.
+The learner never modifies healing, survival, control, interrupt or escape priorities. Short/incomplete fights, PvP, deaths, build changes and unreliable action correlation are excluded. Everything remains in the local per-character SavedVariables: there is no upload, external executable or account. Use `/hcob tuning status`, `/hcob tuning off` or `/hcob tuning reset` at any time.
 
-New fight schema `13` also introduces adaptive telemetry contract `1` for **all nine classes**. It correlates the stabilized Advisor recommendation with every eligible candidate and score, the secure input requested by the player, the spell that actually succeeded, reaction time, adherence and the resources/health/enemy context around the decision. Active resource modes are stored separately, so Druid mana, Energy and Rage are not mixed; hidden mana, combo points and pet health remain available where relevant. Class modules can add bounded counters, distributions and candidate threshold metadata without another logger rewrite.
+The `1.28.6` character-scoped telemetry foundation remains intact. New fights use an anonymous per-character profile, account storage remains bounded, and different classes or same-class alts cannot contaminate HUD averages, last-fight output, reports or learned contexts.
 
-This is collection infrastructure, not active auto-tuning. `HCOB_CharacterDB.adaptive` is created as a versioned per-character context store with `enabled=false`, and `1.28.6` never changes a rotation, priority or configured threshold from learned data. Each fight is pre-classified for future safety/DPS/adaptive use; short, incomplete, PvP, death, build-changing, uncorrelated and very-low-adherence samples are excluded. Action/input traces and decision/candidate buckets have fixed caps so SavedVariables cannot grow with a noisy reader or a long fight.
+## Local Adaptive Tuning
+
+- contexts are separated by class, specialization, five-level band, solo/group play, talents and learned spellbook;
+- easy, even-level, hard and elite targets use separate rolling performance baselines;
+- accepted recommendations and eligible alternatives actually used by the player are evaluated through relative DPS and the surviving HP floor; repeated deviations can contribute only one outcome per action and fight;
+- only close offensive candidate scores can move, in quarter-point steps within a hard `±4` bound;
+- if the deterministic base policy selects a healing, survival, control, interrupt or other protected candidate, offensive tuning is locked out for that evaluation;
+- later evidence can reduce or reverse an earlier adjustment automatically;
+- disabling tuning stops both learning and application but preserves the data; reset clears the active character's learned contexts;
+- learning never executes a spell: every protected action still requires the player's input.
+
+The `Local Adaptive Tuning` checkbox in `/hcob options` exposes the ON/OFF flag directly; the choice is stored per character and survives `/reload` and logout. The same flag is available through `/hcob tuning on|off`. `/hcob tuning status` shows calibration progress for the most recently learned context; `/hcob tuning reset` provides an immediate per-character rollback without deleting the normal combat history.
+
+### Preserved combat baseline
 
 The `1.28.5` **Warrior Swing Queue Update** remains part of the current baseline. Heroic Strike is treated as an on-next-swing ability instead of a normal instant action: the Advisor exposes it only during a short window before the next main-hand attack and stops requesting it immediately once the client reports it queued.
 
@@ -898,6 +912,15 @@ Both aliases are supported:
 | `/hcob sunder on\|off` | Enable/disable Warrior base Sunder behavior where applicable. |
 | `/hcob hsspam` | Compatibility command; Heroic Strike BASE spam remains intentionally disabled. |
 
+### Local Adaptive Tuning
+
+| Command | Description |
+|---|---|
+| `/hcob tuning` or `/hcob tuning status` | Show enabled state, eligible fights, learned contexts, calibration progress and active adjustments. |
+| `/hcob tuning on` | Enable local learning and bounded offensive priority corrections. Combat logging must also be enabled to collect new samples. |
+| `/hcob tuning off` | Stop learning and applying adjustments while preserving the character's learned data. |
+| `/hcob tuning reset` | Clear the active character's learned contexts and restart calibration; available out of combat. |
+
 ### Combat telemetry
 
 | Command | Description |
@@ -931,7 +954,7 @@ The table is account-wide but every fight recorded by `1.28.6` or newer carries 
 
 Retention uses the configured limit independently for the active character and a final hard ceiling of 600 fights for the complete account store. This preserves useful histories across normal alt play without allowing SavedVariables to grow indefinitely.
 
-Fight schema `13` embeds adaptive telemetry contract `1`. The contract is shared by Warrior, Paladin, Hunter, Rogue, Priest, Mage, Warlock, Druid and Shaman: it stores anonymous build/policy signatures and combat context, selected and alternative candidates, input/action correlation, reaction/adherence, resource buckets and explicit eligibility filters. No learner consumes these records in `1.28.6`; they are the stable evidence layer for the future local auto-tuning feature.
+Fight schema `13` embeds adaptive telemetry contract `1`. The contract is shared by Warrior, Paladin, Hunter, Rogue, Priest, Mage, Warlock, Druid and Shaman: it stores anonymous build/policy signatures and combat context, selected and alternative candidates, input/action correlation, reaction/adherence, resource buckets and explicit eligibility filters. In `1.29.0`, the per-character Local Adaptive Tuner consumes only records that pass those eligibility gates.
 
 ### Diagnostics and fail-safe
 
@@ -1045,7 +1068,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. The store defaults to disabled and is not consumed to modify gameplay in `1.28.6`. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and future learner state. Back up the files first if you want to keep combat history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` is enabled by default in `1.29.0`, preserves an explicit user opt-out and stores a maximum of 24 contexts with at most 64 learned actions each. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up the files first if you want to keep combat history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1053,11 +1076,11 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-The `1.28.6` source baseline currently passes:
+The `1.29.0` source baseline currently passes:
 
-- **44/44 Lua chunks** pass syntax parsing in the current validation environment;
-- **18/18 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **45/45 TOC references** resolved (`44 Lua + Bindings.xml`);
+- **45/45 Lua chunks** pass syntax parsing in the current validation environment;
+- **20/20 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **46/46 TOC references** resolved (`45 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
@@ -1069,6 +1092,7 @@ The `1.28.6` source baseline currently passes:
 - SavedVariables lifecycle coverage verifies normal `ADDON_LOADED` rebinding, direct `PLAYER_LOGIN` fallback, preservation/defaults, malformed-root repair and all login initialization hooks;
 - character-scoped telemetry coverage verifies anonymous profile filtering across different classes and same-class alts, legacy class fallback, current-version DPS averages, per-character retention, current-character clearing and explicit account-wide clearing;
 - adaptive telemetry coverage verifies the all-class contract, anonymous build/policy context, stabilized decisions and alternative candidates, secure input versus confirmed action, reaction/adherence, resource-mode separation, pet/combo/hidden-mana context, bounded traces, generic class metrics, adaptive-store repair and PvP/eligibility exclusion;
+- Local Adaptive Tuning coverage verifies schema migration, preserved opt-out, Options ON/OFF persistence across simulated reloads, context/action calibration gates, accepted and player-alternative evidence, difficulty-normalized baselines, positive and negative learning, hard score clamps, protected-winner locking, Advisor selection/explanation integration, disabled behavior, ineligible-fight rejection, status and reset;
 - all nine class modules load in isolation and expose the required Advisor/secure-macro contracts; ranged BASE recognition, hybrid melee transitions, macro size and Warrior/Warlock safety invariants are checked;
 - all nine deterministic Action Panel layouts are checked for stable slot counts, known/unique spell IDs, the 20-slot limit, unique default keys and Diagnostic Pixel V3 encodability;
 - Doctor report coverage verifies BASE/range API probes, macro/pet/binding/SavedVariables diagnostics, slash-command dispatch, error containment/path sanitization, privacy exclusions and absence of SavedVariables mutation;

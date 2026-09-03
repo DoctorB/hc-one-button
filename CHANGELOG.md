@@ -2,7 +2,34 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.28.6`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.0`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.0 — 2026-09-03
+
+### Added — Local Adaptive Tuning
+
+- HCOneButton can now learn locally from the active character's eligible combat history and apply small, evidence-based corrections to offensive Advisor candidate scores across all nine supported classes.
+- Learning is zero-configuration and enabled automatically when the old `1.28.6` placeholder store upgrades. `/hcob tuning on|off|status|reset` and the new Options checkbox provide direct control; disabling preserves learned data, while reset clears only the active character's learner state.
+- Each learning context separates class, specialization, five-level band, solo/group mode, talent layout and learned spellbook. Target difficulty is normalized through independent easy/even/hard/elite performance baselines so trivial mobs are not compared directly with dangerous targets.
+- A context calibrates for at least eight eligible fights, and an individual action needs at least four observed outcomes from accepted recommendations or eligible alternatives actually used by the player before it can influence a priority. Repeated deviations contribute at most one outcome per action and fight. The status command reports calibration progress, learned actions and active adjustments.
+- The learner combines relative DPS performance with the fight's surviving HP floor, continuously updates its rolling evidence and can move an adjustment back toward zero as later results change.
+- Adjustments are hard-clamped to `±4` Advisor score points and rounded to quarter-point steps. This is enough to resolve close offensive choices without replacing the underlying class rotation.
+- Only offensive tags such as damage, DoT, finisher, AoE, burst, efficiency, sustained damage, weapon weaving and setup are tunable. Healing, survival, control, interrupts, escape logic, buffs, forms and other Hardcore safety decisions remain outside the learner.
+- A protected winner lock disables offensive bias whenever the deterministic base policy has already selected healing, survival, control, interrupt or another non-tunable priority.
+- Active learned corrections are disclosed in the Advisor reason as `Local tuning +N.NN`; calibration completion and the first active adjustment are announced once per context.
+
+### Safety and privacy
+
+- Short, incomplete, PvP, death, context-changing, uncorrelated and very-low-adherence fights are rejected before learning.
+- All state remains inside the per-character `HCOB_CharacterDB`; no combat log, identity or gameplay data is uploaded, and no external executable or account is required.
+- Context and action stores are bounded, old contexts are evicted deterministically, malformed SavedVariables are clamped at runtime, and a manual reset provides immediate rollback.
+- Local Adaptive Tuning changes recommendations only. WoW's secure-action model and the requirement for a player key press/click are unchanged.
+
+### Validation
+
+- 45/45 addon Lua chunks parse with Lua 5.1.5.
+- All twenty regression harnesses pass through `tests/run.ps1`; 46/46 TOC references resolve without duplicates.
+- New deterministic coverage verifies calibration gates, per-action evidence gates, accepted and player-alternative outcomes, difficulty baselines, positive/negative learning, hard bias clamps, protected-winner locking, candidate-selection integration, visible explanations, disabled behavior, ineligible-fight rejection, migration, explicit opt-out and Options ON/OFF persistence across reloads, status and reset.
 
 ## 1.28.6 — 2026-09-03
 
