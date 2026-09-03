@@ -9,7 +9,7 @@ local db = {
 local combatLog = {fights = {{id = 1}}, totalFights = 1}
 local characterDB = {
     logProfileId = "p-private-profile", logSession = "Private session",
-    adaptive = {version=1, enabled=false, contexts={}},
+    adaptive = {version=2, enabled=true, contexts={}, totalEligible=0},
 }
 
 HCOB_DB = db
@@ -34,6 +34,7 @@ HCOneButton.Internal = setmetatable({
     runtimeTelemetryDisabled = false,
     runtimeErrors = {{area = "TestProbe", message = "contained diagnostic error"}},
     BIND_COMMAND = "CLICK HCOneButtonFrame:LeftButton",
+    print = function() end,
 }, {__index = _G})
 
 HCOneButton.SavedVariableRepairs = {}
@@ -54,6 +55,14 @@ HCOneButton.UI.ActionPanel.visibleCount = 15
 HCOneButton.UI.ActionPanel.buttons = {{configured=true}, {configured=true}}
 HCOneButton.UI.ActionPanel.GetSlotKey = function(slot) return slot == 4 and "SHIFT-4" or nil end
 HCOneButton.Systems.TuningTelemetry = {CONTRACT_VERSION = 1}
+local adaptiveEnabled, adaptiveStatusPrinted, adaptiveReset = true, false, false
+HCOneButton.Systems.AdaptiveTuner = {
+    SCHEMA_VERSION = 2, REVISION = 1,
+    IsEnabled = function() return adaptiveEnabled end,
+    SetEnabled = function(value) adaptiveEnabled = value == true; return true end,
+    PrintStatus = function() adaptiveStatusPrinted = true end,
+    Reset = function() adaptiveReset = true; return true end,
+}
 
 function UnitClass() return "Warlock", "WARLOCK" end
 function PlayerLevel() return 30 end
@@ -119,8 +128,9 @@ includes("DB public/private identity: true / true")
 includes("Log public/private identity: true / true")
 includes("Character public/private identity: true / true")
 includes("Anonymous character telemetry profile: true")
-includes("Adaptive store/contexts/active: table / table / false")
+includes("Adaptive store/contexts/active: table / table / true")
 includes("Adaptive telemetry contract: 1")
+includes("Adaptive learner schema/revision: 2 / 1")
 includes("[TestProbe] contained diagnostic error")
 includes("Doctor summary: WARN (1)")
 assert(not report:find("SensitivePlayer", 1, true), "Doctor leaked player name")
@@ -137,5 +147,13 @@ assert(dofile("HCOneButton/Core/Commands.lua") == nil)
 assert(type(SlashCmdList.HCOB) == "function", "slash handler missing")
 SlashCmdList.HCOB("doctor")
 assert(openedMode == "doctor", "/hcob doctor did not open Doctor mode")
+SlashCmdList.HCOB("tuning status")
+assert(adaptiveStatusPrinted, "/hcob tuning status did not dispatch to the learner")
+SlashCmdList.HCOB("tuning off")
+assert(not adaptiveEnabled, "/hcob tuning off did not disable the learner")
+SlashCmdList.HCOB("tuning on")
+assert(adaptiveEnabled, "/hcob tuning on did not enable the learner")
+SlashCmdList.HCOB("tuning reset")
+assert(adaptiveReset, "/hcob tuning reset did not reset per-character learning")
 
 print("doctor report/command regression: PASS")

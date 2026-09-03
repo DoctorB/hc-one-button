@@ -8,7 +8,7 @@ local playerHP, targetHP, petHP = 92, 75, 88
 local enemies = 1
 
 environment.PLAYER_CLASS = "DRUID"
-environment.VERSION = "1.28.6"
+environment.VERSION = "1.29.0"
 environment.S = {HEROIC_STRIKE = 78, CLEAVE = 845}
 environment.HCOB_DB = {
     criticalHP=22, dangerHP=35, enemyWindow=8, hcDangerAdvisor=true,

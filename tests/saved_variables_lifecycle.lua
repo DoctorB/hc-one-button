@@ -119,7 +119,8 @@ expect(persistentDB.warriorHeroicSpam, false, "unsafe legacy heroic spam disable
 expect(persistentCharacterDB.logProfileId, "p-existing-profile", "anonymous character profile preserved")
 expect(persistentCharacterDB.logSession, "Warlock tuning", "per-character session preserved")
 expect(persistentCharacterDB.adaptive.contexts, persistentAdaptiveContexts, "adaptive contexts preserved")
-expect(persistentCharacterDB.adaptive.enabled, false, "adaptive policy remains disabled")
+expect(persistentCharacterDB.adaptive.version, 2, "adaptive placeholder migrated to active learner schema")
+expect(persistentCharacterDB.adaptive.enabled, true, "adaptive learner enabled during placeholder migration")
 assert(contains(environment.HCOneButton.SavedVariableRepairs, "HCOB_DB.scale"), "scale repair was not recorded")
 assert(contains(environment.HCOneButton.SavedVariableRepairs, "HCOB_DB.actionSlotKeys"), "binding-map repair was not recorded")
 
@@ -165,9 +166,9 @@ expect(fallbackDB.dangerHP, 41, "fallback preserved setting")
 expect(fallbackDB.actionSlotAutoBind, true, "fallback installed defaults")
 assert(type(fallbackCharacterDB.logProfileId) == "string" and #fallbackCharacterDB.logProfileId >= 8,
     "fallback generated anonymous character profile")
-expect(fallbackCharacterDB.logSession, "HCOneButton 1.28.6", "fallback installed character session")
-expect(fallbackCharacterDB.adaptive.version, 1, "fallback installed adaptive schema")
-expect(fallbackCharacterDB.adaptive.enabled, false, "fallback kept adaptive policy disabled")
+expect(fallbackCharacterDB.logSession, "HCOneButton 1.29.0", "fallback installed character session")
+expect(fallbackCharacterDB.adaptive.version, 2, "fallback installed adaptive learner schema")
+expect(fallbackCharacterDB.adaptive.enabled, true, "fallback enabled adaptive learner")
 assert(type(fallbackCharacterDB.adaptive.contexts) == "table", "fallback installed adaptive context store")
 expect(fallbackCounters.macros, 1, "fallback completed login")
 
@@ -195,11 +196,43 @@ nestedRepairEnvironment.HCOB_CharacterDB = {
     adaptive = {version = "bad", enabled = "yes", contexts = false},
 }
 fire(nestedRepairFrame, "ADDON_LOADED", "HCOneButton")
-expect(nestedRepairEnvironment.HCOB_CharacterDB.adaptive.version, 1, "adaptive version repaired")
-expect(nestedRepairEnvironment.HCOB_CharacterDB.adaptive.enabled, false, "adaptive enabled repaired safely")
+expect(nestedRepairEnvironment.HCOB_CharacterDB.adaptive.version, 2, "adaptive version repaired")
+expect(nestedRepairEnvironment.HCOB_CharacterDB.adaptive.enabled, true, "adaptive enabled repaired safely")
 assert(type(nestedRepairEnvironment.HCOB_CharacterDB.adaptive.contexts) == "table", "adaptive contexts repaired")
 assert(contains(nestedRepairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_CharacterDB.adaptive.version"), "adaptive version repair was not recorded")
 assert(contains(nestedRepairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_CharacterDB.adaptive.enabled"), "adaptive enabled repair was not recorded")
 assert(contains(nestedRepairEnvironment.HCOneButton.SavedVariableRepairs, "HCOB_CharacterDB.adaptive.contexts"), "adaptive contexts repair was not recorded")
+
+local optOutEnvironment, optOutFrame = newRuntime()
+optOutEnvironment.HCOB_DB = {}
+optOutEnvironment.HCOB_CombatLog = {}
+optOutEnvironment.HCOB_CharacterDB = {
+    logProfileId = "p-opted-out", logSession = "Opted out",
+    adaptive = {version = 2, enabled = false, contexts = {}},
+}
+fire(optOutFrame, "ADDON_LOADED", "HCOneButton")
+expect(optOutEnvironment.HCOB_CharacterDB.adaptive.enabled, false, "explicit v2 adaptive opt-out was not preserved")
+
+local stringVersionEnvironment, stringVersionFrame = newRuntime()
+stringVersionEnvironment.HCOB_DB = {}
+stringVersionEnvironment.HCOB_CombatLog = {}
+stringVersionEnvironment.HCOB_CharacterDB = {
+    logProfileId = "p-string-version", logSession = "String version",
+    adaptive = {version = "2", enabled = false, contexts = {}},
+}
+fire(stringVersionFrame, "ADDON_LOADED", "HCOneButton")
+expect(stringVersionEnvironment.HCOB_CharacterDB.adaptive.version, 2, "numeric adaptive version string was not normalized")
+expect(stringVersionEnvironment.HCOB_CharacterDB.adaptive.enabled, false, "numeric version repair overwrote explicit opt-out")
+
+local infiniteVersionEnvironment, infiniteVersionFrame = newRuntime()
+infiniteVersionEnvironment.HCOB_DB = {}
+infiniteVersionEnvironment.HCOB_CombatLog = {}
+infiniteVersionEnvironment.HCOB_CharacterDB = {
+    logProfileId = "p-infinite-version", logSession = "Infinite version",
+    adaptive = {version = math.huge, enabled = false, contexts = {}},
+}
+fire(infiniteVersionFrame, "ADDON_LOADED", "HCOneButton")
+expect(infiniteVersionEnvironment.HCOB_CharacterDB.adaptive.version, 2, "infinite adaptive version was not repaired")
+expect(infiniteVersionEnvironment.HCOB_CharacterDB.adaptive.enabled, true, "corrupt adaptive version did not return to a safe default")
 
 print("saved variables lifecycle regression: PASS")

@@ -41,6 +41,8 @@ assert(positions["Advisor/Engine.lua"] < positions["Classes/Warrior.lua"], "Advi
 assert(positions["Classes/Druid.lua"] < positions["UI/CoreHUD.lua"], "all class modules must load before UI")
 assert(positions["UI/ActionPanel.lua"] < positions["UI/SurvivalStrip.lua"], "Survival strip must anchor after Action Panel")
 assert(positions["Systems/TuningTelemetry.lua"] < positions["Systems/CombatLog.lua"], "adaptive telemetry contract must load before combat log")
+assert(positions["Systems/TuningTelemetry.lua"] < positions["Systems/AdaptiveTuner.lua"], "telemetry contract must load before adaptive learner")
+assert(positions["Systems/AdaptiveTuner.lua"] < positions["Systems/CombatLog.lua"], "adaptive learner must load before combat log")
 assert(entries[#entries] == "Bindings.xml", "Bindings.xml must remain the final TOC entry")
 
 local tocVersion = assert(toc:match("## Version:%s*([^\r\n]+)"), "TOC version missing")
@@ -60,5 +62,11 @@ assert(readme:find("Current version:** `" .. tocVersion .. "`", 1, true), "READM
 assert(changelog:find("current release is `" .. tocVersion .. "`", 1, true), "CHANGELOG current version mismatch")
 assert(normalizeNewlines(read("LICENSE")) == normalizeNewlines(read("HCOneButton/LICENSE")),
     "LICENSE copies diverged")
+
+local options = read("HCOneButton/UI/Options.lua")
+assert(options:find('CreateCheckBox(panel, "Local Adaptive Tuning"', 1, true),
+    "Local Adaptive Tuning checkbox missing from Options")
+assert(options:find("Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled", 1, true),
+    "Local Adaptive Tuning checkbox is not wired to its persistent option accessors")
 
 print(string.format("TOC/version/package manifest regression: PASS (%d references)", #entries))

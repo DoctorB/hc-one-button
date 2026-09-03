@@ -2,19 +2,19 @@ local hostGlobal = _G
 
 local environment = setmetatable({}, {__index = hostGlobal})
 environment._G = environment
-environment.VERSION = "1.28.6"
+environment.VERSION = "1.29.0"
 environment.PLAYER_CLASS = "WARRIOR"
 environment.HCOB_DB = {combatLogMaxFights = 60}
 environment.HCOB_CharacterDB = {logProfileId = "p-current-profile", logSession = "Current Warrior"}
 environment.HCOB_CombatLog = {
     fights = {
         {id=1, class="WARRIOR", addonVersion="1.28.5", totalDamage=100, duration=10, hpMinPct=80}, -- legacy current-class
-        {id=2, class="MAGE", profileId="p-current-profile", addonVersion="1.28.6", totalDamage=800, duration=10, hpMinPct=10},
-        {id=3, class="WARRIOR", profileId="p-other-warrior", addonVersion="1.28.6", totalDamage=900, duration=10, hpMinPct=5},
-        {id=4, class="MAGE", addonVersion="1.28.6", totalDamage=700, duration=10, hpMinPct=15},
+        {id=2, class="MAGE", profileId="p-current-profile", addonVersion="1.29.0", totalDamage=800, duration=10, hpMinPct=10},
+        {id=3, class="WARRIOR", profileId="p-other-warrior", addonVersion="1.29.0", totalDamage=900, duration=10, hpMinPct=5},
+        {id=4, class="MAGE", addonVersion="1.29.0", totalDamage=700, duration=10, hpMinPct=15},
         {id=5, class="WARRIOR", profileId="p-current-profile", addonVersion="1.28.5", totalDamage=200, duration=10, hpMinPct=70},
-        {id=6, class="WARRIOR", profileId="p-current-profile", addonVersion="1.28.6", totalDamage=300, duration=10, hpMinPct=60},
-        {id=7, class="WARRIOR", profileId="p-current-profile", addonVersion="1.28.6", totalDamage=500, duration=10, hpMinPct=50},
+        {id=6, class="WARRIOR", profileId="p-current-profile", addonVersion="1.29.0", totalDamage=300, duration=10, hpMinPct=60},
+        {id=7, class="WARRIOR", profileId="p-current-profile", addonVersion="1.29.0", totalDamage=500, duration=10, hpMinPct=50},
     },
     totalFights = 7,
     session = "Legacy shared session",
