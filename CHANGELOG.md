@@ -19,6 +19,7 @@ The current release is `1.29.0`, targeting WoW Classic Era / Hardcore interface 
 - Active learned corrections are disclosed in the Advisor reason as `Local tuning +N.NN`; calibration completion and the first active adjustment are announced once per context.
 - Options now includes `View learned adjustments...`, a visual inspector for the live class/build context with calibration progress, spell icons, accepted/alternative evidence and centered `−4…+4` correction bars. An `Active only` filter, protected-baseline explanation and two-step per-character reset make every learned change inspectable and reversible without editing SavedVariables.
 - The inspector is a managed child window: it replaces Options while open, returns through Back, the standard X or Escape, and closes without restoring Options if combat begins.
+- Fixed the Options footer layout so the `Configure slot bindings...` CTA no longer overlaps explanatory text; the copy now sits below both columns and correctly distinguishes account-wide settings from per-character Adaptive Tuning data.
 
 ### Safety and privacy
 

@@ -304,11 +304,20 @@ function CreateOptionsPanel()
         end
     end)
 
+    -- Keep the explanatory copy in a dedicated full-width footer below both
+    -- columns. Anchoring it to the left-side Report button allowed the text to
+    -- flow underneath the binding CTA when the right column grew.
+    local footerRule = panel:CreateTexture(nil, "ARTWORK")
+    footerRule:SetPoint("TOPLEFT", panel, "TOPLEFT", 24, -647)
+    footerRule:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -24, -647)
+    footerRule:SetHeight(1)
+    footerRule:SetColorTexture(0.30, 0.34, 0.40, 0.55)
+
     local tip = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    tip:SetPoint("TOPLEFT", reportBtn, "BOTTOMLEFT", 0, -18)
-    tip:SetWidth(620)
+    tip:SetPoint("TOPLEFT", panel, "TOPLEFT", 24, -658)
+    tip:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -24, -658)
     tip:SetJustifyH("LEFT")
-    tip:SetText("All options are persisted in HCOB_DB across reload/logout. HUD scale resizes BASE, Advisor, Action Panel, Survival strip, DPS and Profession Coach together. Secure consumable assignments update only out of combat. Secondary configuration windows replace Options and return here when closed. Use Report a problem after a suspicious fight to generate an anonymized CurseForge-ready diagnostic report.")
+    tip:SetText("Options persist across reload/logout: account-wide settings use HCOB_DB, while Local Adaptive Tuning is stored per character. HUD scale resizes BASE, Advisor, Action Panel, Survival strip, DPS and Profession Coach together. Secure consumable assignments update only out of combat. Secondary windows replace Options and return here when closed. Use Report a problem after a suspicious fight to generate an anonymized CurseForge-ready diagnostic report.")
 
     panel.controls = controls
     panel.Refresh = function(self)

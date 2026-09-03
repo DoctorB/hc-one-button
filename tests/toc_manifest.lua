@@ -74,6 +74,12 @@ assert(options:find('adaptiveDetailsBtn:SetText("View learned adjustments...")',
     "Local Adaptive Tuning details button missing from Options")
 assert(options:find('adaptiveDetailsBtn:SetScript("OnClick", Options.OpenAdaptiveTuningDetails)', 1, true),
     "Local Adaptive Tuning details button is not wired to its child window")
+assert(options:find('tip:SetPoint("TOPLEFT", panel, "TOPLEFT", 24, -658)', 1, true),
+    "Options explanatory text is not anchored in its dedicated footer")
+assert(options:find('tip:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -24, -658)', 1, true),
+    "Options explanatory footer is not constrained inside the panel")
+assert(not options:find('tip:SetPoint("TOPLEFT", reportBtn', 1, true),
+    "Options explanatory text can overlap right-column CTAs")
 
 local adaptiveUI = read("HCOneButton/UI/AdaptiveTuning.lua")
 assert(adaptiveUI:find('WindowManager.Register("adaptive_tuning", frame)', 1, true),
