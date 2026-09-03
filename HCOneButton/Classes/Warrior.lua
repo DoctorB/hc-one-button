@@ -20,6 +20,19 @@ local function CurrentRage()
     return SafeUnitPower("player", pType, 0) or 0
 end
 
+local function NextSwingQueueReady()
+    if IsQueuedMeleeSwingSpell then
+        -- The two on-next-swing abilities share one main-hand queue. Once
+        -- either is armed, no further key request should be emitted.
+        if IsQueuedMeleeSwingSpell(S.HEROIC_STRIKE)
+           or (S.CLEAVE and IsQueuedMeleeSwingSpell(S.CLEAVE)) then
+            return false, nil
+        end
+    end
+    if MainhandSwingQueueOpen then return MainhandSwingQueueOpen() end
+    return true, nil
+end
+
 -- A caution/escape plan must not leave the Warrior sitting near the Rage cap.
 -- Keep enough Rage for Hamstring/control, but let a high-value spender pass
 -- through before returning to the escape recommendation.
@@ -55,7 +68,8 @@ local function EscapeRageSpendRecommendation(ctx)
         return S.WHIRLWIND, "WHIRLWIND - THEN EXIT", "CAST MANUALLY", reason, "caution"
     end
     local heroicKnown = IsKnown(S.HEROIC_STRIKE) or knownSpellNames[SpellName(S.HEROIC_STRIKE) or ""] == true
-    if heroicKnown and IsUsable(S.HEROIC_STRIKE) then
+    local swingReady = NextSwingQueueReady()
+    if heroicKnown and swingReady and IsUsable(S.HEROIC_STRIKE) then
         return S.HEROIC_STRIKE, "HEROIC STRIKE - EXIT", "ALT+SHIFT", reason, "caution"
     end
     return nil
@@ -191,10 +205,12 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     if reserve >= 72 and targetHP <= 45 then hsThreshold = math.max(20, hsThreshold - 5) end
 
     local heroicKnown = IsKnown(S.HEROIC_STRIKE) or knownSpellNames[SpellName(S.HEROIC_STRIKE) or ""] == true
-    if heroicKnown and rage >= hsThreshold and IsUsable(S.HEROIC_STRIKE) then
+    local swingReady, swingRemaining = NextSwingQueueReady()
+    if heroicKnown and swingReady and rage >= hsThreshold and IsUsable(S.HEROIC_STRIKE) then
         local excess = math.max(0, rage - hsThreshold)
         local score = 64 + math.min(16, excess * 0.8) + (targetHP <= 30 and 8 or 0) - riskPenalty * 0.55
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. " | " .. context, score, "dump")
+        local swingText = swingRemaining and string.format(" | next swing %.1fs", swingRemaining) or ""
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. swingText .. " | " .. context, score, "dump")
     end
 
     return HCOB.Advisor.Engine.SelectCandidate(candidates)
@@ -333,10 +349,14 @@ function Class:BuildModifierMacros()
         AddLine(interrupt, IsKnown(S.PUMMEL) and ("/cast [stance:3] " .. SpellName(S.PUMMEL)) or nil, 1)
         AddLine(interrupt, IsKnown(S.SHIELD_BASH) and ("/cast [stance:1/2] " .. SpellName(S.SHIELD_BASH)) or nil, 1)
         local panic = IsKnown(S.RETALIATION) and BuildSpellMacro(S.RETALIATION, "stance:1", false) or BuildSpellMacro(S.DEMO_SHOUT)
+        local heroicStrike = CastLine(S.HEROIC_STRIKE, nil, true)
+        heroicStrike = heroicStrike and ("/startattack\n" .. heroicStrike) or "/stopmacro"
         return {
             shift=BuildSpellMacro(S.BATTLE_SHOUT), ctrl=BuildSpellMacro(S.THUNDER_CLAP, nil, true),
             alt=BuildSpellMacro(S.HAMSTRING, nil, true), ctrlshift=FitMacro(interrupt),
-            altshift=BuildSpellMacro(S.HEROIC_STRIKE, nil, true), altctrl=BuildSpellMacro(S.BLOODRAGE, "combat"),
+            -- The bang form prevents repeated hardware/key samples from
+            -- toggling an already queued Heroic Strike back off.
+            altshift=heroicStrike, altctrl=BuildSpellMacro(S.BLOODRAGE, "combat"),
             all=panic,
             desc={shift="Battle Shout",ctrl="Thunder Clap",alt="Hamstring",ctrlshift="Interrupt",altshift="Heroic Strike",altctrl="Bloodrage",all="Retaliation / Demo Shout"}
         }

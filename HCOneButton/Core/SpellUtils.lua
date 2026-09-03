@@ -131,3 +131,38 @@ function CooldownReady(id)
     return CooldownRemaining(id) <= 0.05
 end
 
+-- Heroic Strike and Cleave are not ordinary instant casts: they are queued
+-- and replace the next main-hand auto attack. Keep their client queue state
+-- and swing timing in one shared place so class policy, display stabilization
+-- and combat-log tracking agree on the same mechanic.
+function IsQueuedMeleeSwingSpell(id)
+    if id ~= S.HEROIC_STRIKE and id ~= S.CLEAVE then return false end
+    if not IsCurrentSpell then return false end
+    local name = SpellName(id)
+    if not name then return false end
+    local ok, queued = pcall(IsCurrentSpell, name)
+    return ok and SafeBoolean(queued, false) or false
+end
+
+function MainhandSwingQueueOpen()
+    if not GetTime or not MainhandSpeed then return true, nil, nil end
+    local speed = MainhandSpeed()
+    if not speed or speed <= 0 or lastAutoAttack == nil then
+        -- Before the first measurable swing, keep the old safe fallback: the
+        -- Advisor may recommend the dump instead of hiding it indefinitely.
+        return true, nil, nil
+    end
+    local remaining = math.max(0, speed - math.max(0, GetTime() - lastAutoAttack))
+    -- Stabilization confirms a normal recommendation for 0.20s. This window
+    -- leaves roughly 0.25-0.45s of visible time afterwards, enough for a 50Hz
+    -- reader without occupying the full duration of a slow weapon swing.
+    local queueWindow = Clamp(speed * 0.17, 0.45, 0.65)
+    return remaining <= queueWindow, remaining, queueWindow
+end
+
+function IsMainhandSwingCombatEvent(subevent, spellId)
+    if subevent == "SWING_DAMAGE" or subevent == "SWING_MISSED" then return true end
+    if subevent ~= "SPELL_DAMAGE" and subevent ~= "SPELL_MISSED" then return false end
+    return spellId == S.HEROIC_STRIKE or spellId == S.CLEAVE
+end
+

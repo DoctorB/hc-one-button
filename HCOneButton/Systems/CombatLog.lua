@@ -481,7 +481,8 @@ function CombatLogHandler()
         RemoveEnemy(destGUID)
     end
 
-    if sourceGUID == playerGUID and (subevent == "SWING_DAMAGE" or subevent == "SWING_MISSED" or subevent == "RANGE_DAMAGE" or subevent == "RANGE_MISSED") then
+    if sourceGUID == playerGUID and (IsMainhandSwingCombatEvent(subevent, spellId)
+       or subevent == "RANGE_DAMAGE" or subevent == "RANGE_MISSED") then
         lastAutoAttack = now
     end
     if destGUID == playerGUID and sourceGUID ~= playerGUID

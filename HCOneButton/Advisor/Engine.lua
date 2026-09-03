@@ -78,6 +78,13 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
         or CooldownRemaining(state.spellId) <= 1.60
     local oldStillPlausible = state.spellId == nil or (IsKnown(state.spellId)
         and IsUsable(state.spellId) and oldCooldownPlausible)
+    if state.spellId and oldStillPlausible and IsQueuedMeleeSwingSpell
+       and IsQueuedMeleeSwingSpell(state.spellId) then
+        -- Once an on-next-swing spell is armed, drop its pixel immediately.
+        -- Holding it for the normal 0.20s swap confirmation would ask a 50Hz
+        -- reader to press the same key several more times.
+        oldStillPlausible = false
+    end
     if state.spellId and oldStillPlausible and HCOB.Advisor.Engine.IsRangedHostileSpell(state.spellId)
        and HCOB.Advisor.Engine.SpellRange(state.spellId, "target") == false then
         oldStillPlausible = false

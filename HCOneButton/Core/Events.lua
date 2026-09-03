@@ -15,6 +15,7 @@ local events = {
     "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS",
     "COMBAT_LOG_EVENT_UNFILTERED", "UNIT_PET", "PET_BAR_UPDATE", "UNIT_HAPPINESS",
     "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL",
+    "CURRENT_SPELL_CAST_CHANGED",
     "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED",
     "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
 }
@@ -72,6 +73,7 @@ local function EventNeedsAdvisorRefresh(event, unit)
     if event == "SPELL_UPDATE_COOLDOWN" or event == "SPELL_UPDATE_USABLE" or event == "PLAYER_COMBO_POINTS" or event == "UPDATE_SHAPESHIFT_FORM" or event == "UPDATE_SHAPESHIFT_FORMS" then return true end
     if event == "UNIT_PET" or event == "PET_BAR_UPDATE" or event == "UNIT_HAPPINESS" then return true end
     if event == "START_AUTOREPEAT_SPELL" or event == "STOP_AUTOREPEAT_SPELL" then return true end
+    if event == "CURRENT_SPELL_CAST_CHANGED" then return true end
     if event == "PLAYER_LEVEL_UP" or event == "SPELLS_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_TALENT_UPDATE" then return true end
     if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then return unit == "player" end
     if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" or event == "UNIT_AURA" then return unit == "player" or unit == "target" or unit == "pet" end
