@@ -8,6 +8,9 @@ Class.classToken = "WARRIOR"
 Class.fallbackSpec = 1
 
 local BATTLE_SHOUT_REFRESH_SECONDS = 10
+local DEFENSIVE_DEBUFF_REFRESH_SECONDS = 3
+local EXECUTE_POOL_START_HP = 30
+local EXECUTE_POOL_RELEASE_RAGE = 85
 
 local function BattleShoutState()
     local active, remaining = StablePlayerBuff(S.BATTLE_SHOUT)
@@ -18,6 +21,13 @@ end
 local function CurrentRage()
     local pType = UnitPowerType("player")
     return SafeUnitPower("player", pType, 0) or 0
+end
+
+local function DefensiveDebuffNeedsRefresh(id)
+    local active, remaining = HasMyTargetDebuff(id)
+    if not active then return true end
+    remaining = SafeNumber(remaining, 999) or 999
+    return remaining <= DEFENSIVE_DEBUFF_REFRESH_SECONDS
 end
 
 local function NextSwingQueueReady()
@@ -31,6 +41,12 @@ local function NextSwingQueueReady()
     end
     if MainhandSwingQueueOpen then return MainhandSwingQueueOpen() end
     return true, nil
+end
+
+local function ShouldPoolForExecute(targetHP, rage)
+    return S.EXECUTE and IsKnown(S.EXECUTE)
+        and targetHP > 20 and targetHP <= EXECUTE_POOL_START_HP
+        and rage < EXECUTE_POOL_RELEASE_RAGE
 end
 
 -- A caution/escape plan must not leave the Warrior sitting near the Rage cap.
@@ -67,8 +83,14 @@ local function EscapeRageSpendRecommendation(ctx)
     if IsKnown(S.WHIRLWIND) and CooldownReady(S.WHIRLWIND) and IsUsable(S.WHIRLWIND) then
         return S.WHIRLWIND, "WHIRLWIND - THEN EXIT", "CAST MANUALLY", reason, "caution"
     end
+    if ShouldPoolForExecute(targetHP, rage) then return nil end
+    local cleaveKnown = S.CLEAVE and (IsKnown(S.CLEAVE)
+        or knownSpellNames[SpellName(S.CLEAVE) or ""] == true)
     local heroicKnown = IsKnown(S.HEROIC_STRIKE) or knownSpellNames[SpellName(S.HEROIC_STRIKE) or ""] == true
     local swingReady = NextSwingQueueReady()
+    if enemies >= 2 and cleaveKnown and swingReady and IsUsable(S.CLEAVE) then
+        return S.CLEAVE, "CLEAVE - THEN EXIT", "CAST MANUALLY", reason, "caution"
+    end
     if heroicKnown and swingReady and IsUsable(S.HEROIC_STRIKE) then
         return S.HEROIC_STRIKE, "HEROIC STRIKE - EXIT", "ALT+SHIFT", reason, "caution"
     end
@@ -137,10 +159,12 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     end
 
     -- Mitigation can be worth more than another rage dump on a hard/long mob.
-    if tough and reserve < 58 and targetHP >= 45 and IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP) and IsUsable(S.THUNDER_CLAP) then
+    if tough and reserve < 58 and targetHP >= 45 and IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP)
+       and IsUsable(S.THUNDER_CLAP) and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP) then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.THUNDER_CLAP, "THUNDER CLAP", "CTRL", "Reduce melee pressure on a difficult fight | " .. context, 79 + (55 - math.min(55, reserve)) * 0.25, "mitigation")
     end
-    if tough and targetHP >= 50 and IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT) and not HasMyTargetDebuff(S.DEMO_SHOUT) then
+    if tough and targetHP >= 50 and IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT)
+       and DefensiveDebuffNeedsRefresh(S.DEMO_SHOUT) then
         local longEnough = not estimatedTTK or estimatedTTK >= 11
         if longEnough then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.DEMO_SHOUT, "DEMO SHOUT", "CAST MANUALLY", "Long fight: reduce incoming damage | " .. context, 70 + (reserve < 50 and 8 or 0), "mitigation")
@@ -204,16 +228,33 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     if reserve < 42 then hsThreshold = hsThreshold + 10 end
     if reserve >= 72 and targetHP <= 45 then hsThreshold = math.max(20, hsThreshold - 5) end
 
+    local executePooling = ShouldPoolForExecute(targetHP, rage)
     local heroicKnown = IsKnown(S.HEROIC_STRIKE) or knownSpellNames[SpellName(S.HEROIC_STRIKE) or ""] == true
+    local cleaveKnown = S.CLEAVE and (IsKnown(S.CLEAVE)
+        or knownSpellNames[SpellName(S.CLEAVE) or ""] == true)
     local swingReady, swingRemaining = NextSwingQueueReady()
-    if heroicKnown and swingReady and rage >= hsThreshold and IsUsable(S.HEROIC_STRIKE) then
+    local swingText = swingRemaining and string.format(" | next swing %.1fs", swingRemaining) or ""
+    local cleaveThreshold = math.max(40, hsThreshold + 5)
+    if not executePooling and enemies >= 2 and cleaveKnown and swingReady
+       and rage >= cleaveThreshold and IsUsable(S.CLEAVE) then
+        local excess = math.max(0, rage - cleaveThreshold)
+        local score = 71 + math.min(18, excess * 0.8) + math.min(6, (enemies - 1) * 3) - riskPenalty * 0.50
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.CLEAVE, "CLEAVE", "CAST MANUALLY", "Multi-target swing dump: " .. rage .. " / threshold " .. cleaveThreshold .. swingText .. " | " .. context, score, "aoe")
+    end
+    if not executePooling and heroicKnown and swingReady and rage >= hsThreshold and IsUsable(S.HEROIC_STRIKE) then
         local excess = math.max(0, rage - hsThreshold)
-        local score = 64 + math.min(16, excess * 0.8) + (targetHP <= 30 and 8 or 0) - riskPenalty * 0.55
-        local swingText = swingRemaining and string.format(" | next swing %.1fs", swingRemaining) or ""
+        local noExecuteFinisher = not IsKnown(S.EXECUTE)
+        local score = 64 + math.min(16, excess * 0.8) + (targetHP <= 30 and noExecuteFinisher and 8 or 0) - riskPenalty * 0.55
         HCOB.Advisor.Engine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. swingText .. " | " .. context, score, "dump")
     end
 
-    return HCOB.Advisor.Engine.SelectCandidate(candidates)
+    local id, title, key, reason, kind = HCOB.Advisor.Engine.SelectCandidate(candidates)
+    if id or title then return id, title, key, reason, kind end
+    if executePooling then
+        return nil, "POOL FOR EXECUTE", "KEEP AUTO ATTACKING",
+            "Target approaching Execute range: preserve Rage below " .. EXECUTE_POOL_RELEASE_RAGE, "idle"
+    end
+    return nil
 end
 
 
@@ -259,13 +300,15 @@ end
 
 function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
         if enemies >= 3 then
-            if IsKnown(S.RETALIATION) and CooldownReady(S.RETALIATION) then
+            if IsKnown(S.RETALIATION) and CooldownReady(S.RETALIATION) and IsUsable(S.RETALIATION) then
                 return S.RETALIATION, "3+ MOBS - PANIC", "ALL MODS", "Use Retaliation now; then reduce the pull", "danger"
             end
-            if IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP) and IsUsable(S.THUNDER_CLAP) then
+            if IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP) and IsUsable(S.THUNDER_CLAP)
+               and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP) then
                 return S.THUNDER_CLAP, "3+ MOBS - CONTROL", "CTRL", "Use Thunder Clap now; then create distance", "danger"
             end
-            if IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT) then
+            if IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT)
+               and DefensiveDebuffNeedsRefresh(S.DEMO_SHOUT) then
                 return S.DEMO_SHOUT, "3+ MOBS - DEBUFF", "CAST MANUALLY", "Demoralizing Shout, then prepare to escape", "danger"
             end
             local id, _, key, reason = self:GetPanicRecommendation()
@@ -277,15 +320,14 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
             return id, "2 MOBS - GET OUT", key or "ALL MODS", reason or "Reduce pressure", "danger"
         end
 
-        if IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP) and IsUsable(S.THUNDER_CLAP) then
+        if IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP) and IsUsable(S.THUNDER_CLAP)
+           and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP) then
             return S.THUNDER_CLAP, "MULTI x2 - CONTROL", "CTRL", "Reduce attack speed and pressure", "caution"
         end
 
-        if IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT) then
-            local hasDemo = HasMyTargetDebuff(S.DEMO_SHOUT)
-            if not hasDemo then
-                return S.DEMO_SHOUT, "MULTI x2 - DEBUFF", "CAST MANUALLY", "Demoralizing Shout reduces melee damage", "caution"
-            end
+        if IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT)
+           and DefensiveDebuffNeedsRefresh(S.DEMO_SHOUT) then
+            return S.DEMO_SHOUT, "MULTI x2 - DEBUFF", "CAST MANUALLY", "Demoralizing Shout reduces melee damage", "caution"
         end
 
         local reserve = select(1, HCOB.Advisor.Engine.SurvivalReserve())
@@ -297,20 +339,23 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
             return spendID, "MULTI x2 - SPEND RAGE", spendKey, spendReason .. "; then create distance", kind
         end
 
-        if hp <= 68 then
+        if hp <= 68 or reserve <= 45 then
             if IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not HasMyTargetDebuff(S.HAMSTRING) then
                 return S.HAMSTRING, "MULTI x2 - RISK", "ALT", "Hamstring and prepare an escape route", "danger"
             end
             return nil, "MULTI x2 - RISK", "PREPARE ESCAPE", "High pressure: create distance", "danger"
         end
-        return nil, "MULTI x2", "PREPARE ESCAPE", "Do not add mobs; watch HP and escape routes", "caution"
+        -- A healthy, controlled two-target pull must yield to the normal class
+        -- scorer after mitigation setup. Returning a caution title here would
+        -- short-circuit Mortal Strike, Bloodthirst and Whirlwind indefinitely.
+        return nil
 end
 
 -- Class interrupt contract. Advisor/Threat only detects the cast;
 -- the class decides which control/interrupt spell is valid.
 function Class:GetInterruptRecommendation()
-        if IsKnown(S.PUMMEL) and CooldownReady(S.PUMMEL) then return S.PUMMEL, "INTERRUPT!", "CTRL+SHIFT", "Pummel" end
-        if IsKnown(S.SHIELD_BASH) and CooldownReady(S.SHIELD_BASH) then return S.SHIELD_BASH, "INTERRUPT!", "CTRL+SHIFT", "Shield Bash" end
+        if IsKnown(S.PUMMEL) and CooldownReady(S.PUMMEL) and IsUsable(S.PUMMEL) then return S.PUMMEL, "INTERRUPT!", "CTRL+SHIFT", "Pummel" end
+        if IsKnown(S.SHIELD_BASH) and CooldownReady(S.SHIELD_BASH) and IsUsable(S.SHIELD_BASH) then return S.SHIELD_BASH, "INTERRUPT!", "CTRL+SHIFT", "Shield Bash" end
 end
 
 -- Secure macro class contract. Core/Macros owns only secure attribute orchestration;
