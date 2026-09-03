@@ -2,7 +2,33 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.28.4`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.28.5`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.28.5 — 2026-09-03
+
+### Fixed
+
+- Warrior Heroic Strike is no longer requested throughout an entire slow weapon swing. The Advisor exposes it only near the next main-hand attack and suppresses it as soon as the client reports the strike already queued.
+- Heroic Strike and Cleave damage or miss events now reset the tracked main-hand swing timer just like a white hit or miss. A consumed queued strike therefore starts a fresh timing cycle instead of leaving Heroic Strike permanently eligible.
+- An acknowledged on-next-swing queue bypasses normal display swap confirmation, immediately clearing the obsolete recommendation and Diagnostic Pixel request for a 50 Hz external reader.
+
+### Changed
+
+- The Heroic Strike queue window scales with current main-hand speed and is clamped to `0.45–0.65` seconds. Normal `0.20`-second recommendation confirmation leaves a short, stable reader-visible input window without occupying the complete swing.
+- The secure `ALT+SHIFT` action now uses `!Heroic Strike`, preventing duplicate key samples from toggling an already queued strike back off.
+- Heroic Strike and Cleave share one queue-state helper. A queued Cleave blocks a competing Heroic Strike request even though the deterministic Warrior action layout remains unchanged.
+
+### Compatibility
+
+- `/hcob hsrage` retains its persistent `20`–`70` range and all existing Rage, escape and panic priorities remain unchanged.
+- SavedVariables, deterministic Action Panel slots/default bindings and Diagnostic Pixel Protocol V3 colors are unchanged.
+- The `1.28.4` combat-only aura policy and all earlier cast-timing, range, consumable and survival behavior remain compatible.
+
+### Validation
+
+- 43/43 addon Lua chunks parse with Lua 5.1.5.
+- All fifteen regression harnesses pass through `tests/run.ps1`; 44/44 TOC references resolve without duplicates.
+- New coverage verifies the adaptive swing window, queued Heroic Strike/Cleave suppression, special hit/miss timer reset, first-swing fallback, immediate display acknowledgement and queue-safe secure macro.
 
 ## 1.28.4 — 2026-09-02
 

@@ -3,7 +3,7 @@ local addonName = ...
 
 HCOneButton = type(HCOneButton) == "table" and HCOneButton or {}
 local HCOB = HCOneButton
-HCOB.VERSION = "1.28.4"
+HCOB.VERSION = "1.28.5"
 
 HCOB.Core = type(HCOB.Core) == "table" and HCOB.Core or {}
 HCOB.Data = type(HCOB.Data) == "table" and HCOB.Data or {}

@@ -2,7 +2,7 @@
 ## Title: HC One Button
 ## Notes: Hardcore combat assistant with pre-pull readiness, secure survival consumables, Advisor Engine 2.0, deterministic action slots, Hunter management and telemetry for WoW Classic Era.
 ## Author: DoctorB
-## Version: 1.28.4
+## Version: 1.28.5
 ## SavedVariables: HCOB_DB, HCOB_CombatLog
 
 Core/Init.lua

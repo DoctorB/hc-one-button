@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.28.4`
+- **Current version:** `1.28.5`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -32,15 +32,17 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.28.4` is the **Combat Aura Discipline Update**. Maintained self auras no longer occupy the Advisor or Diagnostic Pixel outside combat. In combat, a genuinely missing aura can enter the class rotation, an active healthy aura is suppressed, and finite maintenance buffs are refreshed only in their final `10` seconds.
+Version `1.28.5` is the **Warrior Swing Queue Update**. Heroic Strike is now treated as an on-next-swing ability instead of a normal instant action: the Advisor exposes it only during a short window before the next main-hand attack and stops requesting it immediately once the client reports it queued.
 
-The policy covers Battle Shout, Blessing of Might and Paladin seals, Inner Fire/Fortitude/Power Word: Shield/Renew, Mage armor/Arcane Intellect/Ice Barrier/Mana Shield, Demon Armor/Demon Skin, Mark of the Wild, Lightning Shield and weapon imbues, Hunter aspects/Mend Pet, and Slice and Dice. A shared stabilization layer absorbs short Classic aura-API races and the stale near-expiry frame that can follow a successful refresh, preventing duplicate requests without hiding a genuinely removed aura.
+The queue window scales with the equipped main-hand speed and is clamped to `0.45–0.65` seconds. Heroic Strike and Cleave hit/miss events realign the swing timer, a queued Cleave blocks a competing Heroic Strike request, and the secure `ALT+SHIFT` action uses `!Heroic Strike` so duplicate input samples cannot toggle the queued strike back off.
+
+The `1.28.4` combat-only aura policy remains part of the baseline. It covers Battle Shout, Blessing of Might and Paladin seals, Inner Fire/Fortitude/Power Word: Shield/Renew, Mage armor/Arcane Intellect/Ice Barrier/Mana Shield, Demon Armor/Demon Skin, Mark of the Wild, Lightning Shield and weapon imbues, Hunter aspects/Mend Pet, and Slice and Dice. A shared stabilization layer absorbs short Classic aura-API races and the stale near-expiry frame that can follow a successful refresh, preventing duplicate requests without hiding a genuinely removed aura.
 
 The **Survival consumables strip** provides four secure click buttons for the best usable healing potion, Healthstone, mana potion and bandage currently in the bags. It shows quantities, cooldown sweeps/text, availability and restock state. The Advisor highlights the appropriate healing tool during low-health recovery and combat danger, or a mana potion at critically low mana.
 
 Protected item assignments are selected only outside combat and remain frozen throughout combat lockdown. Bag counts, cooldowns and highlights may continue updating visually, but a newly acquired/lower-tier item is not assigned until combat ends. The strip never consumes an item automatically and adds no key binding; every use requires the player's click.
 
-The `1.28.3` Warrior Rage/escape balance, `1.28.2` active-cast timing and Paladin Divine Shield policy remain part of the current baseline, together with exact HUD-position persistence, the rank-safe `60 ms` Diagnostic Pixel acknowledgement edge, recommendation stabilization, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor`. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
+The `1.28.4` Combat Aura Discipline, `1.28.3` Warrior Rage/escape balance, `1.28.2` active-cast timing and Paladin Divine Shield policy remain part of the current baseline, together with exact HUD-position persistence, the rank-safe `60 ms` Diagnostic Pixel acknowledgement edge, recommendation stabilization, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor`. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
@@ -146,7 +148,7 @@ Maintained self auras follow one cross-class contract. They are never requested 
 
 For Paladin, Divine Shield is immediate at `25%` HP or lower. From `26%` through `35%`, it requires concrete lethal pressure: at least two active enemies, Survival Reserve at `28` or lower, or a confident estimated TTD of `6` seconds or less. Above `35%`, an unfavorable trend or a healthy 3+ enemy pull preserves Divine Shield and prefers Divine Protection, Hammer of Justice, healing or escape guidance. Lay on Hands retains priority at `18%` HP or lower.
 
-For Warrior, preventive `UNFAVORABLE FIGHT` and controlled two-target escape guidance preserves enough Rage for Hamstring/control but no longer allows Rage to accumulate unused. Excess Rage passes through `Execute`, `Overpower`, `Mortal Strike`, `Bloodthirst`, `Whirlwind` or `Heroic Strike` in that priority order before escape guidance resumes. The threshold starts at the greater of `40` or the configured `/hcob hsrage` value plus `5`, rises when Survival Reserve is critical and falls near the target's execute range. HP at `50%` or lower during a multi-pull and every 3+ enemy panic continue to preempt offensive spending.
+For Warrior, preventive `UNFAVORABLE FIGHT` and controlled two-target escape guidance preserves enough Rage for Hamstring/control but no longer allows Rage to accumulate unused. Excess Rage passes through `Execute`, `Overpower`, `Mortal Strike`, `Bloodthirst`, `Whirlwind` or `Heroic Strike` in that priority order before escape guidance resumes. The threshold starts at the greater of `40` or the configured `/hcob hsrage` value plus `5`, rises when Survival Reserve is critical and falls near the target's execute range. HP at `50%` or lower during a multi-pull and every 3+ enemy panic continue to preempt offensive spending. Heroic Strike is offered only in the final `0.45–0.65` seconds before a tracked main-hand swing; an already queued Heroic Strike or Cleave suppresses the request immediately.
 
 ### Coherent standalone windows
 
@@ -1030,10 +1032,10 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 
 ## Current baseline validation
 
-The `1.28.4` source baseline currently passes:
+The `1.28.5` source baseline currently passes:
 
 - **43/43 Lua chunks** pass syntax parsing in the current validation environment;
-- **14/14 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **15/15 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **44/44 TOC references** resolved (`43 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
@@ -1051,6 +1053,7 @@ The `1.28.4` source baseline currently passes:
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - Warrior escape-Rage coverage verifies low-Rage Hamstring priority, excess-Rage spending, proc/core/queued-strike ordering, controlled two-target spending and strict panic preemption at low HP or 3+ enemies;
+- Warrior swing-queue coverage verifies the adaptive Heroic Strike window, immediate Heroic Strike/Cleave queue suppression, special hit/miss timer reset, first-swing fallback and the queue-safe `!Heroic Strike` secure action;
 - cross-class aura coverage verifies combat-only maintenance for Paladin, Priest, Mage, Warlock, Druid and Shaman, healthy-aura suppression, the final-ten-second refresh boundary, Warrior Battle Shout policy, Hunter/Rogue aura guards, rank-safe cast acknowledgement, stale refresh metadata and bounded player/pet aura-miss debouncing;
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
