@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.28.5`
+- **Current version:** `1.28.6`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -32,7 +32,17 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.28.5` is the **Warrior Swing Queue Update**. Heroic Strike is now treated as an on-next-swing ability instead of a normal instant action: the Advisor exposes it only during a short window before the next main-hand attack and stops requesting it immediately once the client reports it queued.
+Version `1.28.6` is the **Character-Scoped Adaptive Telemetry Foundation**. The compact DPS HUD, `/hcob log last`, `/hcob log stats` and generated diagnostic reports now read only fights belonging to the active character. Playing another class—or a second character of the same class—can no longer contaminate current averages, last-fight output or reports.
+
+New fights receive a random local profile identifier stored in the per-character `HCOB_CharacterDB`; it contains no character name, realm or GUID and is never included in sanitized reports. The existing account-wide `HCOB_CombatLog` remains intact and bounded, but retention is applied per character so sustained play on one class does not immediately evict every other character's useful history. A final 600-fight account ceiling prevents unbounded SavedVariables growth.
+
+Pre-`1.28.6` fights have no profile identifier. They remain available through a class-only compatibility fallback; exact separation between two same-class characters begins with newly recorded fights. `/hcob log clear` now removes only the active character's matching history, `/hcob log clear all` explicitly clears the complete account-wide store, and custom telemetry session names are per-character.
+
+New fight schema `13` also introduces adaptive telemetry contract `1` for **all nine classes**. It correlates the stabilized Advisor recommendation with every eligible candidate and score, the secure input requested by the player, the spell that actually succeeded, reaction time, adherence and the resources/health/enemy context around the decision. Active resource modes are stored separately, so Druid mana, Energy and Rage are not mixed; hidden mana, combo points and pet health remain available where relevant. Class modules can add bounded counters, distributions and candidate threshold metadata without another logger rewrite.
+
+This is collection infrastructure, not active auto-tuning. `HCOB_CharacterDB.adaptive` is created as a versioned per-character context store with `enabled=false`, and `1.28.6` never changes a rotation, priority or configured threshold from learned data. Each fight is pre-classified for future safety/DPS/adaptive use; short, incomplete, PvP, death, build-changing, uncorrelated and very-low-adherence samples are excluded. Action/input traces and decision/candidate buckets have fixed caps so SavedVariables cannot grow with a noisy reader or a long fight.
+
+The `1.28.5` **Warrior Swing Queue Update** remains part of the current baseline. Heroic Strike is treated as an on-next-swing ability instead of a normal instant action: the Advisor exposes it only during a short window before the next main-hand attack and stops requesting it immediately once the client reports it queued.
 
 The queue window scales with the equipped main-hand speed and is clamped to `0.45–0.65` seconds. Heroic Strike and Cleave hit/miss events realign the swing timer, an armed queued strike suppresses further requests, and queue-safe `!` macros prevent duplicate input samples from toggling it back off. Cleave is now the appended deterministic Warrior slot 20 and becomes the preferred queued Rage dump during controlled multi-target pressure.
 
@@ -44,7 +54,7 @@ The **Survival consumables strip** provides four secure click buttons for the be
 
 Protected item assignments are selected only outside combat and remain frozen throughout combat lockdown. Bag counts, cooldowns and highlights may continue updating visually, but a newly acquired/lower-tier item is not assigned until combat ends. The strip never consumes an item automatically and adds no key binding; every use requires the player's click.
 
-The `1.28.4` Combat Aura Discipline, `1.28.3` Warrior Rage/escape balance, `1.28.2` active-cast timing and Paladin Divine Shield policy remain part of the current baseline, together with exact HUD-position persistence, the rank-safe `60 ms` Diagnostic Pixel acknowledgement edge, recommendation stabilization, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor`. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
+The `1.28.5` Warrior swing queue, `1.28.4` Combat Aura Discipline, `1.28.3` Warrior Rage/escape balance and `1.28.2` active-cast timing and Paladin Divine Shield policy remain part of the current baseline, together with exact HUD-position persistence, the rank-safe `60 ms` Diagnostic Pixel acknowledgement edge, recommendation stabilization, shared hostile-spell range checks, Warlock pet pull protection, guarded binding saves and read-only `/hcob doctor`. Fresh installations still enable Action Panel auto-bind by default. Deterministic class slots and Diagnostic Pixel Protocol V3 encoding are unchanged.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the complete release history.
 
@@ -556,9 +566,9 @@ The window provides the HCOneButton CurseForge Issues address and generates a co
 5. open `https://www.curseforge.com/wow/addons/hconebutton/issues` in a browser;
 6. create a new issue, explain what you expected, and paste the diagnostic report.
 
-The standard report contains class/level/spec, client/addon version, fight summary, Survival Reserve and the recent Advisor recommendation changes. Detailed mode additionally includes the complete stored trace for that fight, top scored candidates when available and player ability telemetry.
+The standard report contains class/level/spec, client/addon version, fight summary, Survival Reserve, a privacy-safe adaptive eligibility/adherence summary and the recent Advisor recommendation changes. Detailed mode additionally includes the complete stored trace for that fight, top scored candidates when available, resource buckets, generic class metrics and player ability telemetry. Last/recent report selection is scoped to the active character, so changing class or alt cannot insert unrelated fights into the diagnostic block.
 
-The report generator intentionally omits character name/realm, target names/GUIDs, zone/subzone and equipment item IDs. The internal trace is change-only and capped at 32 recommendation changes per fight to keep SavedVariables bounded.
+The report generator intentionally omits character name/realm, target names/GUIDs, zone/subzone, equipment item IDs, anonymous profile/session identifiers and build hashes. The legacy Advisor trace is change-only and capped at 32 recommendation changes; adaptive action/input traces and decision/candidate aggregates are independently bounded.
 
 Commands:
 
@@ -895,14 +905,15 @@ Both aliases are supported:
 | `/hcob log` | Show logging status. |
 | `/hcob log on` | Enable combat telemetry. |
 | `/hcob log off` | Disable combat telemetry. |
-| `/hcob log last` | Print the last recorded fight. |
-| `/hcob log stats` | Print aggregate recent combat statistics. |
+| `/hcob log last` | Print the active character's last recorded fight. |
+| `/hcob log stats` | Print aggregate statistics from the active character's latest ten fights. |
 | `/hcob log export` | Open the report window and generate the last-fight diagnostic report. |
 | `/hcob log export recent` | Open the report window for recent fights. |
 | `/hcob log export raw` | Print the legacy instructions for locating the complete SavedVariables table after `/reload`. |
-| `/hcob log clear` | Clear saved fight history. |
-| `/hcob log max N` | Set maximum retained fights (`10`–`200`). |
-| `/hcob log session NAME` | Set/read the combat-log session name. |
+| `/hcob log clear` | Clear only the active character's matching fight history. |
+| `/hcob log clear all` | Clear the complete account-wide fight store. |
+| `/hcob log max N` | Set maximum retained fights per character (`10`–`200`); an account-wide hard ceiling still applies. |
+| `/hcob log session NAME` | Set/read the active character's combat-log session name. |
 
 Saved data is stored in:
 
@@ -915,6 +926,12 @@ The main telemetry table is:
 ```text
 HCOB_CombatLog
 ```
+
+The table is account-wide but every fight recorded by `1.28.6` or newer carries a random local profile identifier. `HCOB_CharacterDB`, stored by WoW as `SavedVariablesPerCharacter`, supplies that identifier and the character-specific session label without retaining a character name, realm or GUID. HUD averages, log commands and sanitized reports select only the active profile. Legacy fights without an identifier use a class-only compatibility fallback.
+
+Retention uses the configured limit independently for the active character and a final hard ceiling of 600 fights for the complete account store. This preserves useful histories across normal alt play without allowing SavedVariables to grow indefinitely.
+
+Fight schema `13` embeds adaptive telemetry contract `1`. The contract is shared by Warrior, Paladin, Hunter, Rogue, Priest, Mage, Warlock, Druid and Shaman: it stores anonymous build/policy signatures and combat context, selected and alternative candidates, input/action correlation, reaction/adherence, resource buckets and explicit eligibility filters. No learner consumes these records in `1.28.6`; they are the stable evidence layer for the future local auto-tuning feature.
 
 ### Diagnostics and fail-safe
 
@@ -1002,7 +1019,7 @@ HCOneButton avoids heavy continuous scans where possible:
 - Survival consumable inventory selection is event-driven by login, bag, item-data, level and combat-end events;
 - profession panels hide in combat;
 - Action Panel state/cooldown updates are throttled;
-- combat telemetry is retained with a configurable fight limit; the 1.27 Advisor trace is change-only and capped at 32 entries per fight;
+- combat telemetry is retained with per-character quotas and an account ceiling; the Advisor trace, adaptive action/input traces and decision/candidate aggregates all have independent fixed caps;
 - smart components include runtime fail-safe handling;
 - shared combat data is collected into a common Advisor context instead of repeatedly querying the same APIs from every class module;
 - defensive value-access guards fail closed if a shared API value is unexpectedly unavailable, instead of fabricating combat state.
@@ -1025,23 +1042,24 @@ HCOneButton currently uses:
 ```text
 HCOB_DB
 HCOB_CombatLog
+HCOB_CharacterDB (per character)
 ```
 
-Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configuration and telemetry. Back it up first if you want to keep combat history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. The store defaults to disabled and is not consumed to modify gameplay in `1.28.6`. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and future learner state. Back up the files first if you want to keep combat history.
 
-`/hcob log clear` clears the existing combat-log table in place so the WoW SavedVariable identity remains intact across `/reload` and logout.
+`/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
 ---
 
 ## Current baseline validation
 
-The `1.28.5` source baseline currently passes:
+The `1.28.6` source baseline currently passes:
 
-- **43/43 Lua chunks** pass syntax parsing in the current validation environment;
-- **16/16 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **44/44 TOC references** resolved (`43 Lua + Bindings.xml`);
+- **44/44 Lua chunks** pass syntax parsing in the current validation environment;
+- **18/18 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **45/45 TOC references** resolved (`44 Lua + Bindings.xml`);
 - no duplicate TOC entry;
-- SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
+- SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
 - fresh-install binding-path verification: auto-bind defaults to enabled and is applied during `PLAYER_LOGIN`;
 - all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants;
@@ -1049,6 +1067,8 @@ The `1.28.5` source baseline currently passes:
 - Warlock pull-safety regression coverage verifies that BASE pet attack requires combat and the former unconditional out-of-combat pet command is absent;
 - binding-save regression coverage: account/character binding sets remain unchanged, while `0`, `nil`, invalid values and API failures safely fall back to set `1` without passing an invalid argument to `SaveBindings`;
 - SavedVariables lifecycle coverage verifies normal `ADDON_LOADED` rebinding, direct `PLAYER_LOGIN` fallback, preservation/defaults, malformed-root repair and all login initialization hooks;
+- character-scoped telemetry coverage verifies anonymous profile filtering across different classes and same-class alts, legacy class fallback, current-version DPS averages, per-character retention, current-character clearing and explicit account-wide clearing;
+- adaptive telemetry coverage verifies the all-class contract, anonymous build/policy context, stabilized decisions and alternative candidates, secure input versus confirmed action, reaction/adherence, resource-mode separation, pet/combo/hidden-mana context, bounded traces, generic class metrics, adaptive-store repair and PvP/eligibility exclusion;
 - all nine class modules load in isolation and expose the required Advisor/secure-macro contracts; ranged BASE recognition, hybrid melee transitions, macro size and Warrior/Warlock safety invariants are checked;
 - all nine deterministic Action Panel layouts are checked for stable slot counts, known/unique spell IDs, the 20-slot limit, unique default keys and Diagnostic Pixel V3 encodability;
 - Doctor report coverage verifies BASE/range API probes, macro/pet/binding/SavedVariables diagnostics, slash-command dispatch, error containment/path sanitization, privacy exclusions and absence of SavedVariables mutation;

@@ -2,7 +2,56 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.28.5`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.28.6`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.28.6 — 2026-09-03
+
+### Coming next — HCOneButton learns from the way you fight
+
+> **The next major HCOneButton feature is Local Adaptive Tuning:** an Advisor that will use your own completed combat sessions to become progressively better suited to your character, build and real gameplay—without uploading combat logs, installing an external program or sending personal data anywhere.
+
+Version `1.28.6` builds the complete data foundation for this next step across **all nine supported classes**. The upcoming learner will be able to compare the recommendation shown, the other valid choices available at that moment, the action actually performed and the resulting combat state. This will allow HCOneButton to refine bounded class thresholds and priorities from evidence gathered during normal play instead of relying on a single static profile for every character.
+
+The goal is a more personal Advisor that understands differences between characters, talent builds, equipment and resource patterns while preserving HCOneButton's Hardcore-first safety rules. Learning will remain local and per character, with unsuitable fights filtered out and explicit safeguards preventing a bad session from freely rewriting the rotation.
+
+**Nothing is auto-tuned in `1.28.6` yet.** This release installs and validates the privacy-safe telemetry contract required to deliver the feature without another disruptive combat-log migration when Local Adaptive Tuning is activated in an upcoming release.
+
+### Fixed
+
+- The compact DPS HUD no longer calculates `LAST` or `AVG` values from another class or character on the same account.
+- `/hcob log last` and `/hcob log stats` now select only the active character's compatible fights instead of aggregating the latest account-wide entries indiscriminately.
+- Last/recent diagnostic reports no longer include fights recorded by another character.
+- Two characters of the same class are isolated for every newly recorded fight; class alone is no longer treated as character identity.
+
+### Added
+
+- Added adaptive telemetry contract `1` for all nine supported classes. Every new fight records an anonymous build/policy context, the stabilized Advisor decisions, all eligible candidate alternatives and scores, player inputs, confirmed actions, reaction time and recommendation adherence.
+- Resource sampling is now class-neutral and form-aware: active resource types are kept in separate buckets while hidden mana, combo points, player/target health, enemy pressure and pet health remain available to future class tuners.
+- Candidate metadata and generic counter/distribution extension points let any class expose a future tuning threshold without changing the combat-log schema again. Warrior Heroic Strike/Cleave currently attach their base/effective Rage thresholds, Execute-pooling state and swing timing through this common contract.
+- Each completed fight receives explicit safety, DPS and adaptive eligibility flags. Short, incomplete, PvP, death, context-changing, uncorrelated and very-low-adherence samples are marked so a future learner cannot silently train on unsuitable data.
+- `HCOB_CharacterDB.adaptive` is initialized as a versioned per-character context store with automatic tuning disabled. This release collects the required evidence but does not alter Advisor priorities or player settings.
+
+### Changed
+
+- New fight schema `13` and combat-log schema `12` retain the random local profile identifier supplied by the per-character `HCOB_CharacterDB` and add the bounded adaptive telemetry contract. Identifiers and build hashes are omitted from sanitized diagnostic reports.
+- Existing pre-`1.28.6` fights remain visible through a class-only compatibility fallback because their originating character cannot be reconstructed retroactively.
+- `/hcob log max N` is now a per-character retention quota. The account-wide store has a final hard ceiling of 600 fights so alt histories remain useful without allowing unbounded SavedVariables growth.
+- `/hcob log clear` removes only the active character's compatible records. `/hcob log clear all` explicitly resets the complete account-wide store.
+- `/hcob log session NAME` now stores a per-character session label. Existing custom account session text is adopted when a character profile is initialized.
+- `/hcob log` status reports the active-character count separately from total account storage.
+
+### Compatibility
+
+- Existing `HCOB_DB` settings and `HCOB_CombatLog` history are preserved in place. The additive `HCOB_CharacterDB.adaptive` store is repaired safely and remains disabled until the complete local learner, controls and rollback policy are released.
+- Advisor priorities, Warrior swing/Execute/Cleave behavior, deterministic Action Panel slots/default bindings, secure macros and Diagnostic Pixel Protocol V3 encoding are unchanged.
+- Raw combat-log export remains account-wide; normal last/recent exports are character-scoped and continue to omit character identity, target identity, zone and equipment IDs.
+
+### Validation
+
+- 44/44 addon Lua chunks parse with Lua 5.1.5.
+- All eighteen regression harnesses pass through `tests/run.ps1`; 45/45 TOC references resolve without duplicates.
+- New coverage verifies different-class and same-class-alt isolation, legacy fallback, current-version DPS selection, chronological last/recent selection, per-character quotas, scoped clearing, explicit account clearing and account/per-character SavedVariables rebinding.
+- Adaptive-contract coverage verifies anonymous context/policy snapshots, candidate alternatives, recommendation/action correlation, reaction and adherence metrics, bounded traces, resource-mode separation, generic class extensions, eligibility filters and PvP exclusion.
 
 ## 1.28.5 — 2026-09-03
 
