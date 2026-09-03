@@ -4,6 +4,20 @@ local HCOB = HCOneButton
 local E = HCOB.Internal
 setfenv(1, E)
 
+HCOB.UI.Options = HCOB.UI.Options or {}
+local Options = HCOB.UI.Options
+
+function Options.IsAdaptiveTuningEnabled()
+    local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+    return tuner and tuner.IsEnabled and tuner.IsEnabled() or false
+end
+
+function Options.SetAdaptiveTuningEnabled(enabled)
+    local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+    if not tuner or not tuner.SetEnabled then return false end
+    return tuner.SetEnabled(enabled == true)
+end
+
 function Center()
     if InCombatLockdown() then print("|cffff5555HCOB:|r center the HUD out of combat."); return end
     btn:ClearAllPoints(); btn:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
@@ -100,7 +114,7 @@ function CreateOptionsPanel()
     -- Standalone window: /hcob options always opens this one, independently
     -- from future changes to the Blizzard Settings API.
     local panel = CreateFrame("Frame", "HCOneButtonOptionsPanel", UIParent, "BasicFrameTemplateWithInset")
-    panel:SetSize(700, 720)
+    panel:SetSize(700, 760)
     panel:SetPoint("CENTER", UIParent, "CENTER", 0, 20)
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
@@ -169,17 +183,19 @@ function CreateOptionsPanel()
 
     add(CreateCheckBox(panel, "Mini DPS meter", "Show current and recent average DPS below the Advisor. Requires Combat logger.", function() return HCOB_DB.showDPSMeter ~= false end, function(v) HCOB_DB.showDPSMeter = v; RefreshButtonState(); UpdateDPSMeter() end, 350, -455))
 
+    add(CreateCheckBox(panel, "Local Adaptive Tuning", "Per-character and persisted across reload/logout. Learns only from eligible fights while Combat logger is enabled and applies small bounded offensive adjustments. Healing, survival, control and interrupt winners remain protected.", Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled, 350, -485))
+
     local actionBindTitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    actionBindTitle:SetPoint("TOPLEFT", 350, -500)
+    actionBindTitle:SetPoint("TOPLEFT", 350, -530)
     actionBindTitle:SetText("Fixed Action Panel bindings")
     add(CreateCheckBox(panel, "Auto-apply slot bindings", "Automatically apply and save configured bindings to secure Action panel slots. Warning: configured keys replace existing WoW/addon bindings. Changes are allowed only out of combat.", function() return HCOB_DB.actionSlotAutoBind ~= false end, function(v)
         HCOB_DB.actionSlotAutoBind = v
         if v and HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.ApplySlotBindings() end
-    end, 350, -520))
+    end, 350, -550))
 
     local actionBindBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     actionBindBtn:SetSize(190, 27)
-    actionBindBtn:SetPoint("TOPLEFT", 350, -556)
+    actionBindBtn:SetPoint("TOPLEFT", 350, -586)
     actionBindBtn:SetText("Configure slot bindings...")
     actionBindBtn:SetScript("OnClick", function()
         if HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.OpenBindingOptions then HCOB.UI.ActionPanel.OpenBindingOptions(true) end
@@ -235,6 +251,7 @@ function CreateOptionsPanel()
         HCOB_DB.actionSlotKeys = nil
         HCOB_DB.prePullSafety = true
         HCOB_DB.showConsumables = true
+        if HCOB.Systems and HCOB.Systems.AdaptiveTuner and HCOB.Systems.AdaptiveTuner.SetEnabled then HCOB.Systems.AdaptiveTuner.SetEnabled(true) end
         runtimeSmartDisabled = false
         runtimeCombatLogDisabled = false
         runtimeErrors = {}

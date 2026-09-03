@@ -184,6 +184,12 @@ local function AddAdaptiveTelemetry(lines, f, detailed)
     Add(lines, string.format("  Decisions/candidates: %d/%d | action/input trace: %d/%d | dropped: %d/%d",
         TableCount(tuning.decisions), TableCount(tuning.candidates), #(tuning.actions or {}), #(tuning.inputs or {}),
         tonumber(tuning.actionTraceDropped) or 0, tonumber(tuning.inputTraceDropped) or 0))
+    if type(tuning.learning) == "table" then
+        Add(lines, string.format("  Local learner: %s | processed %s | context fights %d | ready %s | applied %s (max bias %.2f)",
+            tuning.learning.enabled and "ON" or "OFF", tostring(tuning.learning.processed == true),
+            tonumber(tuning.learning.contextFights) or 0, tostring(tuning.learning.ready == true),
+            tostring(tuning.adaptiveApplied == true), tonumber(tuning.adaptiveMaxBias) or 0))
+    end
     if eligibility.reasons and #eligibility.reasons > 0 then
         Add(lines, "  Eligibility filters: " .. CleanText(table.concat(eligibility.reasons, ", "), 180))
     end
@@ -479,6 +485,8 @@ function F.GenerateDoctorReport()
     Add(lines, "  Anonymous character telemetry profile: " .. tostring(characterRoot and type(characterRoot.logProfileId) == "string"))
     Add(lines, "  Adaptive store/contexts/active: " .. type(characterRoot and characterRoot.adaptive) .. " / " .. type(characterRoot and characterRoot.adaptive and characterRoot.adaptive.contexts) .. " / " .. tostring(characterRoot and characterRoot.adaptive and characterRoot.adaptive.enabled == true))
     Add(lines, "  Adaptive telemetry contract: " .. tostring(HCOB.Systems and HCOB.Systems.TuningTelemetry and HCOB.Systems.TuningTelemetry.CONTRACT_VERSION or "unavailable"))
+    Add(lines, "  Adaptive learner schema/revision: " .. tostring(HCOB.Systems and HCOB.Systems.AdaptiveTuner and HCOB.Systems.AdaptiveTuner.SCHEMA_VERSION or "unavailable") .. " / " .. tostring(HCOB.Systems and HCOB.Systems.AdaptiveTuner and HCOB.Systems.AdaptiveTuner.REVISION or "unavailable"))
+    Add(lines, "  Adaptive learned contexts/fights: " .. tostring(characterRoot and characterRoot.adaptive and type(characterRoot.adaptive.contexts) == "table" and TableCount(characterRoot.adaptive.contexts) or 0) .. " / " .. tostring(characterRoot and characterRoot.adaptive and characterRoot.adaptive.totalEligible or 0))
     Add(lines, "  Binding map types: " .. type(dbRoot and dbRoot.actionSlotKeys) .. " / " .. type(dbRoot and dbRoot.actionSlotAppliedKeys))
     Add(lines, "  Saved fights/total: " .. tostring(logRoot and type(logRoot.fights) == "table" and #logRoot.fights or 0) .. " / " .. tostring(logRoot and logRoot.totalFights or 0))
     Add(lines, "  Repairs this load: " .. tostring(HCOB.SavedVariableRepairs and #HCOB.SavedVariableRepairs or 0))

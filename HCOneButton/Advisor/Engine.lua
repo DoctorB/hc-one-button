@@ -26,13 +26,32 @@ function HCOB.Advisor.Engine.SelectCandidate(list)
         return nil
     end
     local now = GetTime()
-    local best, bestScore
+    local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+    local baseBest, baseBestScore
     for _, c in ipairs(list) do
-        local effective = c.score or 0
+        local baseEffective = c.score or 0
         if HCOB.Advisor.Engine.lastClassActionId and c.id == HCOB.Advisor.Engine.lastClassActionId
            and (now - (HCOB.Advisor.Engine.lastClassActionAt or 0)) <= 0.65 then
-            effective = effective + 4 -- short hysteresis: preserve stability without masking a fresh state change
+            baseEffective = baseEffective + 4 -- short hysteresis: preserve stability without masking a fresh state change
         end
+        c.baseEffectiveScore = baseEffective
+        if not baseBest or baseEffective > baseBestScore then baseBest, baseBestScore = c, baseEffective end
+    end
+
+    -- Local tuning may reorder offensive work, but it must never displace a
+    -- healing, survival, control, interrupt or other protected winner chosen
+    -- by the deterministic base policy.
+    local allowAdaptive = tuner and tuner.IsCandidateTunable and tuner.IsCandidateTunable(baseBest)
+    local best, bestScore
+    for _, c in ipairs(list) do
+        local adaptiveBias = 0
+        if allowAdaptive and tuner.GetCandidateBias then
+            local ok, value = pcall(tuner.GetCandidateBias, c)
+            if ok then adaptiveBias = tonumber(value) or 0
+            elseif RecordRuntimeError then RecordRuntimeError("AdaptiveBias", value) end
+        end
+        c.adaptiveBias = adaptiveBias
+        local effective = (c.baseEffectiveScore or c.score or 0) + adaptiveBias
         c.effectiveScore = effective
         if not best or effective > bestScore then best, bestScore = c, effective end
     end
@@ -45,7 +64,11 @@ function HCOB.Advisor.Engine.SelectCandidate(list)
         end
         HCOB.Advisor.Engine.lastClassActionId = best.id
         HCOB.Advisor.Engine.lastClassAction = best
-        return best.id, best.title, best.key, best.reason, best.displayKind
+        local reason = best.reason
+        if math.abs(tonumber(best.adaptiveBias) or 0) >= 0.25 then
+            reason = tostring(reason or "") .. string.format(" | Local tuning %+.2f", best.adaptiveBias)
+        end
+        return best.id, best.title, best.key, reason, best.displayKind
     end
 end
 

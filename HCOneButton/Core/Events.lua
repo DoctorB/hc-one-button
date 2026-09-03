@@ -147,7 +147,9 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             UpdateDisplay(true)
             lastAdvisorUpdateAt = GetTime()
             advisorEventReady = true
-            print("|cff00ff98HC One Button v"..VERSION.." loaded:|r " .. (UnitClass("player") or PLAYER_CLASS) .. " L" .. PlayerLevel() .. ". /hcob help")
+            local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+            local adaptiveLabel = tuner and tuner.IsEnabled and tuner.IsEnabled() and " | Adaptive ON" or " | Adaptive OFF"
+            print("|cff00ff98HC One Button v"..VERSION.." loaded:|r " .. (UnitClass("player") or PLAYER_CLASS) .. " L" .. PlayerLevel() .. adaptiveLabel .. ". /hcob help")
             if HCOB.SavedVariableRepairs and #HCOB.SavedVariableRepairs > 0 then
                 print("|cffffcc00HCOB:|r repaired invalid SavedVariables: " .. table.concat(HCOB.SavedVariableRepairs, ", ") .. ".")
             end

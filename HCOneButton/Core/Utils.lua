@@ -104,21 +104,30 @@ function InitializeSavedVariables()
         HCOB_CharacterDB.logSession = "HCOneButton " .. VERSION
     end
 
-    -- Stable per-character learner store. Collection is available in 1.28.6,
-    -- while automatic policy changes remain explicitly disabled until the
-    -- learner, rollback and user controls ship together.
+    -- Version 2 activates the conservative local learner introduced in 1.29.
+    -- Version 1 was only a disabled placeholder, so upgrading it is not an
+    -- override of a prior user choice. Once on v2 an explicit OFF is preserved.
     if type(HCOB_CharacterDB.adaptive) ~= "table" then
         if HCOB_CharacterDB.adaptive ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive") end
         HCOB_CharacterDB.adaptive = {}
     end
     local adaptive = HCOB_CharacterDB.adaptive
-    if type(adaptive.version) ~= "number" then
-        if adaptive.version ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.version") end
-        adaptive.version = 1
+    local adaptiveVersion = tonumber(adaptive.version)
+    if adaptiveVersion == math.huge or adaptiveVersion == -math.huge then adaptiveVersion = nil end
+    if adaptiveVersion and adaptiveVersion == adaptiveVersion and type(adaptive.version) ~= "number" then
+        HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.version")
+        adaptive.version = adaptiveVersion
+    elseif adaptiveVersion ~= adaptiveVersion then
+        adaptiveVersion = nil
     end
-    if type(adaptive.enabled) ~= "boolean" then
+    if not adaptiveVersion or adaptiveVersion < 2 then
+        if adaptive.version ~= nil and adaptiveVersion == nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.version") end
+        if adaptive.enabled ~= nil and type(adaptive.enabled) ~= "boolean" then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.enabled") end
+        adaptive.version = 2
+        adaptive.enabled = true
+    elseif type(adaptive.enabled) ~= "boolean" then
         if adaptive.enabled ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.enabled") end
-        adaptive.enabled = false
+        adaptive.enabled = true
     end
     if type(adaptive.contexts) ~= "table" then
         if adaptive.contexts ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.contexts") end

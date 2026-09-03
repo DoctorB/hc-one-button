@@ -205,7 +205,15 @@ local function PolicySnapshot()
             parts[#parts + 1] = key .. "=" .. tostring(value)
         end
     end
-    return {version=VERSION, revision=1, signature=HashParts(parts), settings=settings}
+    local adaptive = type(HCOB_CharacterDB) == "table" and HCOB_CharacterDB.adaptive or nil
+    local adaptiveEnabled = type(adaptive) == "table" and adaptive.enabled == true
+    local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+    parts[#parts + 1] = "adaptive=" .. tostring(adaptiveEnabled)
+    parts[#parts + 1] = "tuner=" .. tostring(tuner and tuner.REVISION or 0)
+    return {
+        version=VERSION, revision=1, signature=HashParts(parts), settings=settings,
+        adaptiveEnabled=adaptiveEnabled, adaptiveRevision=tuner and tuner.REVISION or 0,
+    }
 end
 
 local function CanonicalActionId(spellId)
@@ -264,6 +272,10 @@ local function DecisionKey(spellId, kind, title, tag)
     return "none:" .. Clean(kind or "idle", 12) .. ":" .. Clean(title or "", 24)
 end
 
+local function CandidateKey(spellId, tag)
+    return tostring(CanonicalActionId(spellId) or "none") .. ":" .. Clean(tag or "action", 20)
+end
+
 local function DecisionBucket(tuning, key, spellId, kind, title, keyHint)
     local buckets = tuning.decisions
     local bucket = buckets[key]
@@ -295,7 +307,7 @@ local function SampleCandidates(tuning, selectedSpellId)
         local candidate = candidates[i]
         local spellId = CanonicalActionId(candidate.id)
         local tag = Clean(candidate.tag or "action", 20)
-        local key = tostring(spellId or "none") .. ":" .. tag
+        local key = CandidateKey(spellId, tag)
         if not seen[key] then
             seen[key] = true
             local bucket = tuning.candidates[key]
@@ -310,6 +322,9 @@ local function SampleCandidates(tuning, selectedSpellId)
                 bucket.scoreSum = (bucket.scoreSum or 0) + score
                 bucket.scoreMin = math.min(bucket.scoreMin or score, score)
                 bucket.scoreMax = math.max(bucket.scoreMax or score, score)
+                local adaptiveBias = Finite(candidate.adaptiveBias, 0) or 0
+                bucket.adaptiveBiasSum = (bucket.adaptiveBiasSum or 0) + adaptiveBias
+                bucket.adaptiveBiasMax = math.max(bucket.adaptiveBiasMax or 0, math.abs(adaptiveBias))
                 bucket.meta = CopyMeta(candidate.tuningMeta) or bucket.meta
             else
                 tuning.candidateBucketsDropped = (tuning.candidateBucketsDropped or 0) + 1
@@ -560,6 +575,7 @@ function T.FinalizeFight(fight)
         local samples = math.max(1, bucket.samples or 0)
         bucket.scoreAverage = (bucket.scoreSum or 0) / samples
         bucket.selectedPct = (bucket.selected or 0) / samples * 100
+        bucket.adaptiveBiasAverage = (bucket.adaptiveBiasSum or 0) / samples
     end
     for _, bucket in pairs(tuning.decisions or {}) do
         if (bucket.hpSamples or 0) > 0 then bucket.hpAverage = bucket.hpSum / bucket.hpSamples end
@@ -608,6 +624,11 @@ function T.FinalizeFight(fight)
         adaptive=(duration >= 4 and not context.pvp and not fight.died and fight.endReason == "combat_end" and not context.changedDuringFight and comparable >= 1 and (tuning.adherencePct or 0) >= 35),
         reasons=reasons,
     }
+    local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+    if tuner and tuner.LearnFight then
+        local ok, err = pcall(tuner.LearnFight, fight)
+        if not ok and RecordRuntimeError then RecordRuntimeError("AdaptiveTuner", err) end
+    end
     tuning._decision = nil
     tuning._lastInputKey, tuning._lastInputAt = nil, nil
     tuning._lastActionId, tuning._lastActionAt, tuning._lastActionSource = nil, nil, nil
@@ -621,6 +642,7 @@ T.ContextSnapshot = ContextSnapshot
 T.PolicySnapshot = PolicySnapshot
 T.CanonicalActionId = CanonicalActionId
 T.SameAction = SameAction
+T.CandidateKey = CandidateKey
 
 InitFightTuningTelemetry = T.InitFight
 RecordTuningRecommendation = T.RecordRecommendation

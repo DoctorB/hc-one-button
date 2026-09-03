@@ -95,6 +95,24 @@ SlashCmdList.HCOB = function(msg)
             print("|cff00ff98HCOB:|r Heroic Strike recommended from " .. HCOB_DB.warriorHeroicRage .. " rage.")
             UpdateDisplay()
         else print("|cffffcc00HCOB:|r /hcob hsrage 20-70") end
+    elseif cmd == "tuning" or cmd == "adaptive" then
+        local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+        if not tuner then print("|cffff5555HCOB ADAPTIVE:|r learner unavailable. Try /reload."); return end
+        if arg == "on" then
+            tuner.SetEnabled(true)
+            print("|cff00ff98HCOB ADAPTIVE:|r ON. Local learning and bounded offensive priority adjustments enabled.")
+            if HCOB_DB.combatLogging == false then print("|cffffcc00HCOB ADAPTIVE:|r Combat logger is OFF; enable it with /hcob log on to collect new samples.") end
+        elseif arg == "off" then
+            tuner.SetEnabled(false)
+            print("|cffffcc00HCOB ADAPTIVE:|r OFF. Learned data is preserved but no learning or score adjustment is applied.")
+        elseif arg == "reset" then
+            if InCombatLockdown() then print("|cffff5555HCOB ADAPTIVE:|r reset learning out of combat."); return end
+            tuner.Reset()
+            print("|cff00ff98HCOB ADAPTIVE:|r this character's learned contexts were reset. Calibration restarts from zero.")
+        else
+            tuner.PrintStatus()
+            print("/hcob tuning on|off|status|reset")
+        end
     elseif cmd == "errors" then
         if #runtimeErrors == 0 then print("|cff00ff98HCOB:|r no errors caught in this session.")
         else
@@ -184,7 +202,8 @@ SlashCmdList.HCOB = function(msg)
         local _, localizedClass = UnitClass("player"); local si,sn=TalentSpec()
         local macro=btn:GetAttribute("macrotext1") or ""
         print("|cff00ff98HCOB v"..VERSION..":|r "..tostring(localizedClass).." L"..PlayerLevel().." spec="..tostring(sn).."("..si..") macro="..#macro.."/"..MACRO_LIMIT)
-        print("SmartHUD="..tostring(HCOB_DB.smartDisplay ~= false).." safeMode="..tostring(runtimeSmartDisabled).." combatLogSafe="..tostring(runtimeCombatLogDisabled).." telemetrySafe="..tostring(runtimeTelemetryDisabled).." errors="..#runtimeErrors.." heroicBase=false heroicKnown="..tostring(IsKnown(S.HEROIC_STRIKE)).." hsRage="..tostring(HCOB_DB.warriorHeroicRage or 35).." autoRend="..tostring(currentWarriorAutoRend).." sunderAdaptive="..tostring(HCOB_DB.warriorSunderBase ~= false).." dpsMeter="..tostring(HCOB_DB.showDPSMeter ~= false).." hcDanger="..tostring(HCOB_DB.hcDangerAdvisor ~= false).." prePull="..tostring(HCOB_DB.prePullSafety ~= false).." survivalStrip="..tostring(HCOB_DB.showConsumables ~= false))
+        local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+        print("SmartHUD="..tostring(HCOB_DB.smartDisplay ~= false).." safeMode="..tostring(runtimeSmartDisabled).." combatLogSafe="..tostring(runtimeCombatLogDisabled).." telemetrySafe="..tostring(runtimeTelemetryDisabled).." adaptive="..tostring(tuner and tuner.IsEnabled and tuner.IsEnabled() or false).." errors="..#runtimeErrors.." heroicBase=false heroicKnown="..tostring(IsKnown(S.HEROIC_STRIKE)).." hsRage="..tostring(HCOB_DB.warriorHeroicRage or 35).." autoRend="..tostring(currentWarriorAutoRend).." sunderAdaptive="..tostring(HCOB_DB.warriorSunderBase ~= false).." dpsMeter="..tostring(HCOB_DB.showDPSMeter ~= false).." hcDanger="..tostring(HCOB_DB.hcDangerAdvisor ~= false).." prePull="..tostring(HCOB_DB.prePullSafety ~= false).." survivalStrip="..tostring(HCOB_DB.showConsumables ~= false))
         PrintKeys()
     else
         print("|cff00ff98HC One Button v"..VERSION.."|r - all Classic Era classes")
@@ -196,6 +215,7 @@ SlashCmdList.HCOB = function(msg)
         print("/hcob danger 35   /hcob critical 20   /hcob sound on|off   /hcob swing on|off   /hcob dps on|off")
         print("/hcob smart on|off   /hcob advisor on|off|debug   /hcob diagpixel on|off   /hcob rendspam on|off   /hcob sunder on|off   /hcob hsrage 35")
         print("/hcob errors   /hcob reseterrors")
+        print("/hcob tuning on|off|status|reset")
         print("/hcob log last   /hcob log stats   /hcob log export [recent|raw]   /hcob log on|off")
         print("Automatically updates with level, trainer, talents, gear and forms.")
     end
