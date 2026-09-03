@@ -4,8 +4,12 @@ local HCOB = HCOneButton
 local E = HCOB.Internal
 setfenv(1, E)
 
+local COMBAT_LOG_VERSION = 12
+local FIGHT_SCHEMA_VERSION = 13
+local GLOBAL_FIGHT_HARD_CAP = 600
+
 function InitCombatLogDB()
-    HCOB_CombatLog.version = 10
+    HCOB_CombatLog.version = COMBAT_LOG_VERSION
     if type(HCOB_CombatLog.fights) ~= "table" then
         HCOB_CombatLog.fights = {}
         HCOB.RecordSavedVariableRepair("HCOB_CombatLog.fights")
@@ -33,6 +37,85 @@ function InitCombatLogDB()
     if HCOB_CombatLog.session:match("^HCOneButton %d+%.%d+%.%d+$") then
         HCOB_CombatLog.session = "HCOneButton " .. VERSION
     end
+end
+
+function CurrentCombatLogProfileId()
+    local id = type(HCOB_CharacterDB) == "table" and HCOB_CharacterDB.logProfileId or nil
+    if type(id) == "string" and id ~= "" then return id end
+    return nil
+end
+
+function CurrentCombatLogSession()
+    local session = type(HCOB_CharacterDB) == "table" and HCOB_CharacterDB.logSession or nil
+    if type(session) == "string" and session ~= "" then return session end
+    session = type(HCOB_CombatLog) == "table" and HCOB_CombatLog.session or nil
+    if type(session) == "string" and session ~= "" then return session end
+    return "HCOneButton " .. VERSION
+end
+
+-- New records use an anonymous per-character profile. Pre-1.28.6 records do
+-- not have one, so retain a class-only fallback for historical continuity.
+-- A legacy same-class record cannot be disambiguated retroactively, but every
+-- fight recorded from this version onward is isolated even across two
+-- characters of the same class.
+function FightBelongsToCurrentCharacter(f)
+    if type(f) ~= "table" or f.class ~= PLAYER_CLASS then return false end
+    local fightProfile = f.profileId
+    if type(fightProfile) == "string" and fightProfile ~= "" then
+        local currentProfile = CurrentCombatLogProfileId()
+        return currentProfile ~= nil and fightProfile == currentProfile
+    end
+    if fightProfile ~= nil then return false end
+    return true
+end
+
+function CurrentCharacterFights(limit)
+    local fights = type(HCOB_CombatLog) == "table" and type(HCOB_CombatLog.fights) == "table" and HCOB_CombatLog.fights or {}
+    local reverse = {}
+    local wanted = tonumber(limit)
+    if wanted then wanted = math.max(0, math.floor(wanted)) end
+    if wanted == 0 then return {} end
+    for i=#fights,1,-1 do
+        local f = fights[i]
+        if FightBelongsToCurrentCharacter(f) then
+            reverse[#reverse + 1] = f
+            if wanted and #reverse >= wanted then break end
+        end
+    end
+    local result = {}
+    for i=#reverse,1,-1 do result[#result + 1] = reverse[i] end
+    return result
+end
+
+function LastCurrentCharacterFight()
+    local fights = type(HCOB_CombatLog) == "table" and type(HCOB_CombatLog.fights) == "table" and HCOB_CombatLog.fights or {}
+    for i=#fights,1,-1 do
+        if FightBelongsToCurrentCharacter(fights[i]) then return fights[i] end
+    end
+    return nil
+end
+
+function RecentCharacterDPSAverage(limit)
+    local fights = type(HCOB_CombatLog) == "table" and type(HCOB_CombatLog.fights) == "table" and HCOB_CombatLog.fights or {}
+    local need = math.max(1, math.floor(tonumber(limit) or 5))
+    for pass=1,2 do
+        local damage, duration, count = 0, 0, 0
+        for i=#fights,1,-1 do
+            local f = fights[i]
+            if FightBelongsToCurrentCharacter(f) and (pass == 2 or f.addonVersion == VERSION) then
+                local d = tonumber(f.totalDamage) or 0
+                local t = tonumber(f.duration) or 0
+                if t > 0 then
+                    damage = damage + d
+                    duration = duration + t
+                    count = count + 1
+                    if count >= need then break end
+                end
+            end
+        end
+        if count > 0 then return duration > 0 and damage / duration or 0, count end
+    end
+    return 0, 0
 end
 
 function CurrentPowerSnapshot()
@@ -154,7 +237,7 @@ function StartCombatTelemetry()
     end
     local equip = EquipmentTelemetrySnapshot()
     currentFight = {
-        schema=11, addonVersion=VERSION, session=HCOB_CombatLog.session,
+        schema=FIGHT_SCHEMA_VERSION, addonVersion=VERSION, session=CurrentCombatLogSession(), profileId=CurrentCombatLogProfileId(),
         startedAt=(GetServerTime and GetServerTime()) or (time and time()) or 0,
         startClock=GetTime(), duration=0,
         class=PLAYER_CLASS, level=PlayerLevel(), spec=specName, specIndex=specIndex, specPoints=specPoints,
@@ -184,6 +267,7 @@ function StartCombatTelemetry()
         survivalReserveSum=0, survivalReserveSamples=0, survivalReserveMin=100,
         advisorTrace={}, advisorTraceDropped=0,
     }
+    if InitFightTuningTelemetry then InitFightTuningTelemetry(currentFight) end
     local tg = SafeUnitGUID("target")
     if tg and UnitCanAttack("player", "target") then AddEnemyToFight(tg, targetName) end
 end
@@ -209,19 +293,31 @@ function SampleCombatTelemetry()
         if ok and SafeBoolean(queued, false) then currentFight.heroicQueuedSamples = (tonumber(currentFight.heroicQueuedSamples) or 0) + 1 end
     end
     currentFight.duration = math.max(0, GetTime() - (currentFight.startClock or GetTime()))
+    if SampleTuningResources then SampleTuningResources(currentFight) end
 end
 
 function TrimCombatLog()
     InitCombatLogDB()
     local maxFights = Clamp(tonumber(HCOB_DB.combatLogMaxFights) or 60, 10, 200)
-    while #HCOB_CombatLog.fights > maxFights do table.remove(HCOB_CombatLog.fights, 1) end
+    local retained = 0
+    for i=#HCOB_CombatLog.fights,1,-1 do
+        if FightBelongsToCurrentCharacter(HCOB_CombatLog.fights[i]) then
+            retained = retained + 1
+            if retained > maxFights then table.remove(HCOB_CombatLog.fights, i) end
+        end
+    end
+
+    -- Per-character quotas prevent one class from immediately evicting every
+    -- other character. Keep an absolute account-wide ceiling as a final guard
+    -- against unbounded SavedVariables growth on accounts with many alts.
+    local globalLimit = math.max(maxFights, math.min(GLOBAL_FIGHT_HARD_CAP, maxFights * 10))
+    while #HCOB_CombatLog.fights > globalLimit do table.remove(HCOB_CombatLog.fights, 1) end
 end
 
 function FinalizeCombatTelemetry(reason)
     if not currentFight then return end
     SampleCombatTelemetry()
     local f = currentFight
-    currentFight = nil
     f.endedAt = (GetServerTime and GetServerTime()) or (time and time()) or 0
     f.endReason = reason or "combat_end"
     f.duration = math.max(0.05, tonumber(f.duration) or 0.05)
@@ -246,6 +342,8 @@ function FinalizeCombatTelemetry(reason)
     f.dps = f.totalDamage / f.duration
     f.playerDps = (tonumber(f.damageDone) or 0) / f.duration
     f.dtps = (tonumber(f.damageTaken) or 0) / f.duration
+    if FinalizeFightTuningTelemetry then FinalizeFightTuningTelemetry(f) end
+    currentFight = nil
     f.enemies = {}
     for _, name in pairs(f._enemies or {}) do f.enemies[#f.enemies+1] = name end
     table.sort(f.enemies)
@@ -293,6 +391,11 @@ function CombatLogFlagIsHostile(flags)
     return true
 end
 
+function CombatLogFlagIsPlayer(flags)
+    if not flags or not bit or not bit.band or not COMBATLOG_OBJECT_TYPE_PLAYER then return false end
+    return bit.band(flags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0
+end
+
 function ProcessCombatTelemetry(args)
     if HCOB_DB.combatLogging == false or runtimeTelemetryDisabled then return end
     if not currentFight and UnitAffectingCombat("player") then StartCombatTelemetry() end
@@ -302,11 +405,18 @@ function ProcessCombatTelemetry(args)
     if not subevent then return end
     local sourceGUID, sourceName = SafeString(args[4], nil), SafeString(args[5], "Unknown")
     local destGUID, destName = SafeString(args[8], nil), SafeString(args[9], "Unknown")
+    local sourceFlags, destFlags = SafeNumber(args[6], nil), SafeNumber(args[10], nil)
     local petGUID = SafeUnitGUID("pet")
     local owner = sourceGUID == playerGUID and "player" or (petGUID and sourceGUID == petGUID and "pet" or nil)
     local destIsOurs = destGUID == playerGUID or (petGUID and destGUID == petGUID)
     local sourceIsOther = sourceGUID and not IsPlayerOrPetGUID(sourceGUID)
     local destIsOther = destGUID and not IsPlayerOrPetGUID(destGUID)
+
+    if currentFight.tuning and currentFight.tuning.context
+       and ((sourceIsOther and CombatLogFlagIsPlayer(sourceFlags)) or (destIsOther and CombatLogFlagIsPlayer(destFlags))) then
+        currentFight.tuning.context.pvp = true
+        currentFight.tuning.context.mode = "pvp"
+    end
 
     -- v1.6: no HOSTILE/NEUTRAL filter. A GUID becomes a "fight enemy"
     -- when it actually exchanges damage/misses with the player or pet. This includes
@@ -328,6 +438,9 @@ function ProcessCombatTelemetry(args)
                 currentFight.outgoingHits = currentFight.outgoingHits + 1
                 currentFight.maxHitDone = math.max(currentFight.maxHitDone, amount)
                 if critical then currentFight.crits = currentFight.crits + 1 end
+                if RecordTuningQueueOutcome and (spellId == S.HEROIC_STRIKE or spellId == S.CLEAVE) then
+                    RecordTuningQueueOutcome(spellId, "consumed")
+                end
             else
                 currentFight.petDamage = currentFight.petDamage + amount
             end
@@ -348,12 +461,16 @@ function ProcessCombatTelemetry(args)
                 if missType == "PARRY" then currentFight.parries = currentFight.parries + 1 end
                 if missType == "BLOCK" then currentFight.blocks = currentFight.blocks + 1 end
                 if missType == "RESIST" then currentFight.resists = currentFight.resists + 1 end
+                if RecordTuningQueueOutcome and (spellId == S.HEROIC_STRIKE or spellId == S.CLEAVE) then
+                    RecordTuningQueueOutcome(spellId, "missed")
+                end
             end
         end
     elseif subevent == "SPELL_CAST_SUCCESS" and owner then
         local spellId, spellName = SafeNumber(args[12], 0) or 0, SafeString(args[13], "Spell")
         local a = AbilityRecord(owner, spellId, spellName)
         a.casts = a.casts + 1
+        if owner == "player" and RecordTuningAction then RecordTuningAction(spellId, "combat_success") end
     elseif subevent == "SPELL_HEAL" and owner == "player" then
         local amount = SafeNumber(args[15], 0) or 0
         local overheal = SafeNumber(args[16], 0) or 0
@@ -383,7 +500,7 @@ end
 
 function PrintLastCombatLog()
     InitCombatLogDB()
-    local f = HCOB_CombatLog.fights[#HCOB_CombatLog.fights]
+    local f = LastCurrentCharacterFight()
     if not f then print("|cffffcc00HCOB LOG:|r no fights recorded."); return end
     local enemies = (f.enemies and #f.enemies > 0) and table.concat(f.enemies, ", ") or (f.target or "?")
     print(string.format("|cff00ff98HCOB LOG #%d|r %s | %.1fs | %.1f DPS | dmg %d | taken %d", f.id or 0, enemies, f.duration or 0, f.dps or 0, f.totalDamage or 0, f.damageTaken or 0))
@@ -416,12 +533,12 @@ end
 
 function PrintCombatLogStats()
     InitCombatLogDB()
-    local fights = HCOB_CombatLog.fights
+    local fights = CurrentCharacterFights(10)
     if #fights == 0 then print("|cffffcc00HCOB LOG:|r no fights recorded."); return end
-    local n = math.min(10, #fights)
+    local n = #fights
     local td, tt, taken, minHp, rageHigh, rageCap, rageCount = 0,0,0,100,0,0,0
     local advDanger, advCaution, advCount = 0,0,0
-    for i=#fights-n+1,#fights do
+    for i=1,#fights do
         local f=fights[i]
         td=td+(f.totalDamage or 0); tt=tt+(f.duration or 0); taken=taken+(f.damageTaken or 0); minHp=math.min(minHp,f.hpMinPct or 100)
         if f.powerType == "RAGE" and f.powerHighPct ~= nil then
@@ -438,18 +555,30 @@ function PrintCombatLogStats()
     if advCount > 0 then print(string.format("Advisor average: DANGER %.1f%% | CAUTION %.1f%%", advDanger/advCount, advCaution/advCount)) end
 end
 
-function ClearCombatLog()
+function ClearCombatLog(clearAll)
     -- Never replace the SavedVariable table inside the private environment:
     -- Core/Init.lua, HCOneButton.CombatLog and WoW persistence all reference
     -- this exact object. Mutate it in place so /reload persists the clear.
-    for key in pairs(HCOB_CombatLog) do HCOB_CombatLog[key] = nil end
-    HCOB_CombatLog.version = 10
-    HCOB_CombatLog.fights = {}
-    HCOB_CombatLog.totalFights = 0
-    HCOB_CombatLog.session = "HCOneButton " .. VERSION
-    HCOB.CombatLog = HCOB_CombatLog
+    InitCombatLogDB()
+    local removed = 0
+    if clearAll then
+        removed = #HCOB_CombatLog.fights
+        for key in pairs(HCOB_CombatLog) do HCOB_CombatLog[key] = nil end
+        HCOB_CombatLog.version = COMBAT_LOG_VERSION
+        HCOB_CombatLog.fights = {}
+        HCOB_CombatLog.totalFights = 0
+        HCOB_CombatLog.session = "HCOneButton " .. VERSION
+        HCOB.CombatLog = HCOB_CombatLog
+    else
+        for i=#HCOB_CombatLog.fights,1,-1 do
+            if FightBelongsToCurrentCharacter(HCOB_CombatLog.fights[i]) then
+                table.remove(HCOB_CombatLog.fights, i)
+                removed = removed + 1
+            end
+        end
+    end
     currentFight = nil
-    print("|cff00ff98HCOB LOG:|r history cleared.")
+    print(string.format("|cff00ff98HCOB LOG:|r %s history cleared (%d fights).", clearAll and "account-wide" or "current-character", removed))
 end
 
 

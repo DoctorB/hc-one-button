@@ -76,6 +76,54 @@ function InitializeSavedVariables()
     Default("hunterAmmoCriticalMinutes", 8)
     Default("hunterAmmoLowMinutes", 20)
     Default("hunterTrainingPointNotice", 10)
+
+    -- Combat history remains account-wide for one bounded diagnostic store,
+    -- while this anonymous identifier is persisted by WoW per character. New
+    -- fight records can therefore be selected without storing a name, realm or
+    -- GUID and without mixing two characters of the same class.
+    if type(HCOB_CharacterDB.version) ~= "number" then
+        if HCOB_CharacterDB.version ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.version") end
+        HCOB_CharacterDB.version = 1
+    end
+    if type(HCOB_CharacterDB.logProfileId) ~= "string" or #HCOB_CharacterDB.logProfileId < 8 or #HCOB_CharacterDB.logProfileId > 80 then
+        if HCOB_CharacterDB.logProfileId ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.logProfileId") end
+        local wallClock = (GetServerTime and GetServerTime()) or (time and time()) or 0
+        local sessionClock = (GetTime and GetTime()) or 0
+        local randomPart = math.random and math.random(100000, 999999) or 0
+        HCOB_CharacterDB.logProfileId = string.format("p%d-%d-%d", math.floor(wallClock), math.floor(sessionClock * 1000), randomPart)
+    end
+    if type(HCOB_CharacterDB.logSession) ~= "string" or HCOB_CharacterDB.logSession == "" then
+        if HCOB_CharacterDB.logSession ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.logSession") end
+        local legacySession = type(HCOB_CombatLog.session) == "string" and HCOB_CombatLog.session or nil
+        if legacySession and legacySession ~= "" and not legacySession:match("^HCOneButton %d+%.%d+%.%d+$") then
+            HCOB_CharacterDB.logSession = legacySession
+        else
+            HCOB_CharacterDB.logSession = "HCOneButton " .. VERSION
+        end
+    elseif HCOB_CharacterDB.logSession:match("^HCOneButton %d+%.%d+%.%d+$") then
+        HCOB_CharacterDB.logSession = "HCOneButton " .. VERSION
+    end
+
+    -- Stable per-character learner store. Collection is available in 1.28.6,
+    -- while automatic policy changes remain explicitly disabled until the
+    -- learner, rollback and user controls ship together.
+    if type(HCOB_CharacterDB.adaptive) ~= "table" then
+        if HCOB_CharacterDB.adaptive ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive") end
+        HCOB_CharacterDB.adaptive = {}
+    end
+    local adaptive = HCOB_CharacterDB.adaptive
+    if type(adaptive.version) ~= "number" then
+        if adaptive.version ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.version") end
+        adaptive.version = 1
+    end
+    if type(adaptive.enabled) ~= "boolean" then
+        if adaptive.enabled ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.enabled") end
+        adaptive.enabled = false
+    end
+    if type(adaptive.contexts) ~= "table" then
+        if adaptive.contexts ~= nil then HCOB.RecordSavedVariableRepair("HCOB_CharacterDB.adaptive.contexts") end
+        adaptive.contexts = {}
+    end
 end
 
 function Clamp(v, lo, hi)

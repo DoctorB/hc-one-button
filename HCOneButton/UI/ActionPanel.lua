@@ -885,6 +885,12 @@ function HCOB.UI.ActionPanel.CreateFrames()
             end
         end)
         b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        b:HookScript("PostClick", function(self, mouseButton)
+            if currentFight and mouseButton == "LeftButton" and self.actionId and RecordTuningInput then
+                local tuningOK, tuningError = pcall(RecordTuningInput, self.actionId, "action_panel")
+                if not tuningOK then RecordRuntimeError("TuningInput", tuningError) end
+            end
+        end)
         HCOB.UI.ActionPanel.buttons[i] = b
     end
 end

@@ -4,7 +4,7 @@ local HCOB = HCOneButton
 local E = HCOB.Internal
 setfenv(1, E)
 
-VERSION = HCOB.VERSION or "1.28.5"
+VERSION = HCOB.VERSION or "1.28.6"
 MACRO_LIMIT = 255
 
 _, PLAYER_CLASS = UnitClass("player")
@@ -31,3 +31,4 @@ runtimeTelemetryDisabled = false
 runtimeErrors = {}
 lastErrorNotice = 0
 currentFight = nil
+telemetryRuntimeSessionId = nil

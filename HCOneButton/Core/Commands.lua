@@ -110,11 +110,11 @@ SlashCmdList.HCOB = function(msg)
         elseif sub == "off" then if currentFight then SafeRun("TelemetryFinalize", FinalizeCombatTelemetry, "logging_off") end; HCOB_DB.combatLogging=false; print("|cff00ff98HCOB LOG:|r OFF")
         elseif sub == "last" then PrintLastCombatLog()
         elseif sub == "stats" then PrintCombatLogStats()
-        elseif sub == "clear" then ClearCombatLog()
+        elseif sub == "clear" then ClearCombatLog(rest == "all")
         elseif sub == "max" then
-            local v=tonumber(rest); if v then HCOB_DB.combatLogMaxFights=Clamp(math.floor(v),10,200); TrimCombatLog(); print("|cff00ff98HCOB LOG:|r max saved fights="..HCOB_DB.combatLogMaxFights) else print("/hcob log max 10-200") end
+            local v=tonumber(rest); if v then HCOB_DB.combatLogMaxFights=Clamp(math.floor(v),10,200); TrimCombatLog(); print("|cff00ff98HCOB LOG:|r max saved fights per character="..HCOB_DB.combatLogMaxFights) else print("/hcob log max 10-200") end
         elseif sub == "session" then
-            InitCombatLogDB(); if rest and rest ~= "" then HCOB_CombatLog.session=rest; print("|cff00ff98HCOB LOG:|r session="..rest) else print("|cff00ff98HCOB LOG:|r session="..tostring(HCOB_CombatLog.session)) end
+            InitCombatLogDB(); if rest and rest ~= "" then HCOB_CharacterDB.logSession=rest; print("|cff00ff98HCOB LOG:|r character session="..rest) else print("|cff00ff98HCOB LOG:|r character session="..tostring(CurrentCombatLogSession())) end
         elseif sub == "export" then
             local exportMode = (rest or ""):lower()
             if exportMode == "raw" then
@@ -125,8 +125,8 @@ SlashCmdList.HCOB = function(msg)
                 print("|cffff5555HCOB LOG EXPORT:|r feedback window unavailable. Try /reload.")
             end
         else
-            InitCombatLogDB(); print("|cff00ff98HCOB LOG:|r "..(HCOB_DB.combatLogging~=false and "ON" or "OFF").." | saved fights="..#HCOB_CombatLog.fights.."/"..tostring(HCOB_DB.combatLogMaxFights).." | total="..tostring(HCOB_CombatLog.totalFights).." | telemetrySafe="..tostring(runtimeTelemetryDisabled))
-            print("/hcob log on|off | last | stats | export [recent|raw] | clear | max 60 | session name")
+            InitCombatLogDB(); local characterFights=CurrentCharacterFights(); print("|cff00ff98HCOB LOG:|r "..(HCOB_DB.combatLogging~=false and "ON" or "OFF").." | character="..#characterFights.."/"..tostring(HCOB_DB.combatLogMaxFights).." | account stored="..#HCOB_CombatLog.fights.." | total="..tostring(HCOB_CombatLog.totalFights).." | telemetrySafe="..tostring(runtimeTelemetryDisabled))
+            print("/hcob log on|off | last | stats | export [recent|raw] | clear [all] | max 60 | session name")
         end
     elseif cmd == "prof" then
         if HCOB.Systems.ProfessionCoach and HCOB.Systems.ProfessionCoach.HandleSlash then HCOB.Systems.ProfessionCoach.HandleSlash(arg) else print("|cffff5555HCOB PROF:|r module unavailable") end

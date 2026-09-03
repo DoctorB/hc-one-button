@@ -3,7 +3,7 @@ local addonName = ...
 
 HCOneButton = type(HCOneButton) == "table" and HCOneButton or {}
 local HCOB = HCOneButton
-HCOB.VERSION = "1.28.5"
+HCOB.VERSION = "1.28.6"
 
 HCOB.Core = type(HCOB.Core) == "table" and HCOB.Core or {}
 HCOB.Data = type(HCOB.Data) == "table" and HCOB.Data or {}
@@ -29,8 +29,10 @@ end
 -- real globals declared by the TOC.
 local bootstrapDB = type(_G.HCOB_DB) == "table" and _G.HCOB_DB or {}
 local bootstrapCombatLog = type(_G.HCOB_CombatLog) == "table" and _G.HCOB_CombatLog or {}
+local bootstrapCharacterDB = type(_G.HCOB_CharacterDB) == "table" and _G.HCOB_CharacterDB or {}
 HCOB.DB = bootstrapDB
 HCOB.CombatLog = bootstrapCombatLog
+HCOB.CharacterDB = bootstrapCharacterDB
 
 -- One private cross-file runtime environment. It behaves like the old single
 -- Lua chunk's top-level locals while keeping every runtime symbol inside the
@@ -44,6 +46,7 @@ E.HCOB = HCOB
 E.addonName = addonName
 E.HCOB_DB = bootstrapDB
 E.HCOB_CombatLog = bootstrapCombatLog
+E.HCOB_CharacterDB = bootstrapCharacterDB
 
 function HCOB.BindSavedVariables()
     local db = _G.HCOB_DB
@@ -60,11 +63,20 @@ function HCOB.BindSavedVariables()
         _G.HCOB_CombatLog = combatLog
     end
 
+    local characterDB = _G.HCOB_CharacterDB
+    if type(characterDB) ~= "table" then
+        HCOB.RecordSavedVariableRepair("HCOB_CharacterDB")
+        characterDB = {}
+        _G.HCOB_CharacterDB = characterDB
+    end
+
     HCOB.DB = db
     HCOB.CombatLog = combatLog
+    HCOB.CharacterDB = characterDB
     E.HCOB_DB = db
     E.HCOB_CombatLog = combatLog
-    return db, combatLog
+    E.HCOB_CharacterDB = characterDB
+    return db, combatLog, characterDB
 end
 
 HCOB.UI.ActionPanel = type(HCOB.UI.ActionPanel) == "table" and HCOB.UI.ActionPanel or {}

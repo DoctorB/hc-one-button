@@ -406,6 +406,11 @@ function UpdateDisplayCore(recordTelemetrySample)
         end
     end
 
+    if currentFight and RecordTuningRecommendation then
+        local ok, err = pcall(RecordTuningRecommendation, spellId, title, keyHint, kind, telemetryReserve, enemies, recordTelemetrySample)
+        if not ok then RecordRuntimeError("TuningDecision", err) end
+    end
+
     if currentFight and HCOB.Systems and HCOB.Systems.Feedback and HCOB.Systems.Feedback.RecordRecommendation then
         local ok, err = pcall(HCOB.Systems.Feedback.RecordRecommendation, spellId, title, keyHint, reason, kind, telemetryReserve, enemies, hp, hpReadable)
         if not ok then RecordRuntimeError("FeedbackTrace", err) end

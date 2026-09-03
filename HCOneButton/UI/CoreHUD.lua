@@ -307,29 +307,8 @@ end
 
 
 function RecentDPSAverage(limit)
-    local fights = HCOB_CombatLog and HCOB_CombatLog.fights or {}
-    local need = tonumber(limit) or 5
-    local damage, duration, count = 0, 0, 0
-    -- Prefer fights from the current addon version so old experimental builds
-    -- do not pollute the small meter. Fall back to any recent fights if needed.
-    for pass=1,2 do
-        damage, duration, count = 0, 0, 0
-        for i=#fights,1,-1 do
-            local f = fights[i]
-            if pass == 2 or f.addonVersion == VERSION then
-                local d = tonumber(f.totalDamage) or 0
-                local t = tonumber(f.duration) or 0
-                if t > 0 then
-                    damage = damage + d
-                    duration = duration + t
-                    count = count + 1
-                    if count >= need then break end
-                end
-            end
-        end
-        if count > 0 then break end
-    end
-    return duration > 0 and damage / duration or 0, count
+    if RecentCharacterDPSAverage then return RecentCharacterDPSAverage(limit) end
+    return 0, 0
 end
 
 function UpdateDPSMeter()
@@ -346,8 +325,7 @@ function UpdateDPSMeter()
         dpsValue:SetText(string.format("DPS %.1f", dps))
         dpsMeta:SetText(string.format("AVG%d %.1f | DMG %d | %.1fs", math.max(1, avgCount), avg5, damage, elapsed))
     else
-        local fights = HCOB_CombatLog and HCOB_CombatLog.fights or {}
-        local last = fights[#fights]
+        local last = LastCurrentCharacterFight and LastCurrentCharacterFight() or nil
         if last then
             dpsValue:SetText(string.format("LAST %.1f", tonumber(last.dps) or 0))
             dpsMeta:SetText(string.format("AVG%d %.1f | DMG %d | %.1fs", math.max(1, avgCount), avg5, tonumber(last.totalDamage) or 0, tonumber(last.duration) or 0))
@@ -393,5 +371,9 @@ btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 btn:HookScript("PostClick", function(self, mouseButton, down)
     if currentFight and mouseButton == "LeftButton" then
         currentFight.baseClicks = (tonumber(currentFight.baseClicks) or 0) + 1
+        if RecordTuningBaseInput then
+            local tuningOK, tuningError = pcall(RecordTuningBaseInput)
+            if not tuningOK then RecordRuntimeError("TuningInput", tuningError) end
+        end
     end
 end)

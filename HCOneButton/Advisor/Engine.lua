@@ -12,11 +12,11 @@ HCOB.Core.ClassAPI = HCOB.Core.ClassAPI or {
     SpellCastSeconds = SpellCastSeconds, HasWandEquipped = HasWandEquipped,
     SpellName = SpellName, AuraByName = AuraByName, Clamp = Clamp,
 }
-function HCOB.Advisor.Engine.AddCandidate(list, id, title, key, reason, score, tag, displayKind)
+function HCOB.Advisor.Engine.AddCandidate(list, id, title, key, reason, score, tag, displayKind, tuningMeta)
     if not list then return end
     list[#list + 1] = {
         id=id, title=title, key=key, reason=reason,
-        score=tonumber(score) or 0, tag=tag or "action", displayKind=displayKind,
+        score=tonumber(score) or 0, tag=tag or "action", displayKind=displayKind, tuningMeta=tuningMeta,
     }
 end
 

@@ -126,6 +126,10 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "UNIT_SPELLCAST_SUCCEEDED" and eventArg1 == "player" and NotePlayerSpellcastSucceeded then
             NotePlayerSpellcastSucceeded(eventArg3)
         end
+        if event == "UNIT_SPELLCAST_SUCCEEDED" and eventArg1 == "player" and RecordTuningAction then
+            local tuningOK, tuningError = pcall(RecordTuningAction, eventArg3, "unit_success")
+            if not tuningOK then RecordRuntimeError("TuningAction", tuningError) end
+        end
 
         local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
         if class and class.HandleEvent then class:HandleEvent(event, eventArg1, eventArg2, eventArg3) end

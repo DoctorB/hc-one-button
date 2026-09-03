@@ -162,6 +162,54 @@ local function AddAbilities(lines, f)
     end
 end
 
+local function TableCount(values)
+    local count = 0
+    for _ in pairs(values or {}) do count = count + 1 end
+    return count
+end
+
+local function AddAdaptiveTelemetry(lines, f, detailed)
+    local tuning = f and f.tuning
+    if type(tuning) ~= "table" then
+        Add(lines, "Adaptive telemetry: not available for this fight.")
+        return
+    end
+    local eligibility = type(tuning.eligibility) == "table" and tuning.eligibility or {}
+    local adherence = tuning.adherencePct ~= nil and Fmt(tuning.adherencePct, "%.1f%%") or "n/a"
+    Add(lines, string.format(
+        "Adaptive telemetry: contract %s | mode %s | eligible %s | adherence %s (%d/%d correlated actions)",
+        tostring(tuning.contract or "?"), CleanText(eligibility.mode or "?", 12),
+        tostring(eligibility.adaptive == true), adherence,
+        tonumber(tuning.matchedActions) or 0, tonumber(tuning.comparableActions) or 0))
+    Add(lines, string.format("  Decisions/candidates: %d/%d | action/input trace: %d/%d | dropped: %d/%d",
+        TableCount(tuning.decisions), TableCount(tuning.candidates), #(tuning.actions or {}), #(tuning.inputs or {}),
+        tonumber(tuning.actionTraceDropped) or 0, tonumber(tuning.inputTraceDropped) or 0))
+    if eligibility.reasons and #eligibility.reasons > 0 then
+        Add(lines, "  Eligibility filters: " .. CleanText(table.concat(eligibility.reasons, ", "), 180))
+    end
+    if not detailed then return end
+
+    for token, resource in pairs(tuning.resources or {}) do
+        Add(lines, string.format("  Resource %-10s avg/min/max %.1f / %.0f / %.0f | cap %.1f%% (%d samples)",
+            CleanText(token, 10), tonumber(resource.average) or 0, tonumber(resource.min) or 0,
+            tonumber(resource.max) or 0, tonumber(resource.capPct) or 0, tonumber(resource.samples) or 0))
+    end
+    local metrics = {}
+    for name, metric in pairs(tuning.metrics or {}) do metrics[#metrics + 1] = {name=name, metric=metric} end
+    table.sort(metrics, function(a, b) return tostring(a.name) < tostring(b.name) end)
+    for i=1,math.min(12, #metrics) do
+        local item, metric = metrics[i], metrics[i].metric or {}
+        if metric.kind == "distribution" then
+            local count = math.max(1, tonumber(metric.count) or 0)
+            Add(lines, string.format("  Metric %s: avg/min/max %.2f / %.2f / %.2f (%d)",
+                CleanText(item.name, 56), (tonumber(metric.sum) or 0) / count,
+                tonumber(metric.min) or 0, tonumber(metric.max) or 0, tonumber(metric.count) or 0))
+        else
+            Add(lines, string.format("  Metric %s: %.2f", CleanText(item.name, 56), tonumber(metric.value) or 0))
+        end
+    end
+end
+
 local function AddFight(lines, f, detailed, label)
     if not f then
         Add(lines, (label or "Fight") .. ": no completed fight recorded.")
@@ -184,6 +232,7 @@ local function AddFight(lines, f, detailed, label)
             tonumber(f.advisorDangerPct) or 0, tonumber(f.advisorCautionPct) or 0,
             tonumber(f.advisorInterruptPct) or 0, tonumber(f.advisorManualPct) or 0))
     end
+    AddAdaptiveTelemetry(lines, f, detailed)
     AddTrace(lines, f, detailed)
     if detailed then AddAbilities(lines, f) end
 end
@@ -367,12 +416,16 @@ function F.GenerateDoctorReport()
 
     local dbRoot = type(HCOB_DB) == "table" and HCOB_DB or nil
     local logRoot = type(HCOB_CombatLog) == "table" and HCOB_CombatLog or nil
+    local characterRoot = type(HCOB_CharacterDB) == "table" and HCOB_CharacterDB or nil
     local dbPublicIdentity = dbRoot ~= nil and HCOB.DB == dbRoot
     local dbPrivateIdentity = dbRoot ~= nil and HCOB.Internal.HCOB_DB == dbRoot
     local logPublicIdentity = logRoot ~= nil and HCOB.CombatLog == logRoot
     local logPrivateIdentity = logRoot ~= nil and HCOB.Internal.HCOB_CombatLog == logRoot
+    local characterPublicIdentity = characterRoot ~= nil and HCOB.CharacterDB == characterRoot
+    local characterPrivateIdentity = characterRoot ~= nil and HCOB.Internal.HCOB_CharacterDB == characterRoot
     if not dbPublicIdentity or not dbPrivateIdentity then Warn("HCOB_DB identity mismatch") end
     if not logPublicIdentity or not logPrivateIdentity then Warn("HCOB_CombatLog identity mismatch") end
+    if not characterPublicIdentity or not characterPrivateIdentity then Warn("HCOB_CharacterDB identity mismatch") end
 
     Add(lines, "HCOneButton Doctor Report")
     Add(lines, "=========================")
@@ -419,9 +472,13 @@ function F.GenerateDoctorReport()
     Add(lines, "")
 
     Add(lines, "SavedVariables:")
-    Add(lines, "  Ready/root types: " .. tostring(savedVariablesReady) .. " / " .. type(HCOB_DB) .. " / " .. type(HCOB_CombatLog))
+    Add(lines, "  Ready/root types: " .. tostring(savedVariablesReady) .. " / " .. type(HCOB_DB) .. " / " .. type(HCOB_CombatLog) .. " / " .. type(HCOB_CharacterDB))
     Add(lines, "  DB public/private identity: " .. tostring(dbPublicIdentity) .. " / " .. tostring(dbPrivateIdentity))
     Add(lines, "  Log public/private identity: " .. tostring(logPublicIdentity) .. " / " .. tostring(logPrivateIdentity))
+    Add(lines, "  Character public/private identity: " .. tostring(characterPublicIdentity) .. " / " .. tostring(characterPrivateIdentity))
+    Add(lines, "  Anonymous character telemetry profile: " .. tostring(characterRoot and type(characterRoot.logProfileId) == "string"))
+    Add(lines, "  Adaptive store/contexts/active: " .. type(characterRoot and characterRoot.adaptive) .. " / " .. type(characterRoot and characterRoot.adaptive and characterRoot.adaptive.contexts) .. " / " .. tostring(characterRoot and characterRoot.adaptive and characterRoot.adaptive.enabled == true))
+    Add(lines, "  Adaptive telemetry contract: " .. tostring(HCOB.Systems and HCOB.Systems.TuningTelemetry and HCOB.Systems.TuningTelemetry.CONTRACT_VERSION or "unavailable"))
     Add(lines, "  Binding map types: " .. type(dbRoot and dbRoot.actionSlotKeys) .. " / " .. type(dbRoot and dbRoot.actionSlotAppliedKeys))
     Add(lines, "  Saved fights/total: " .. tostring(logRoot and type(logRoot.fights) == "table" and #logRoot.fights or 0) .. " / " .. tostring(logRoot and logRoot.totalFights or 0))
     Add(lines, "  Repairs this load: " .. tostring(HCOB.SavedVariableRepairs and #HCOB.SavedVariableRepairs or 0))
@@ -472,7 +529,7 @@ function F.GenerateReport(mode, detailed)
     Add(lines, "Privacy: character name/realm, target names/GUIDs, zone/subzone and equipment item IDs are not exported.")
     Add(lines, "")
 
-    local fights = HCOB_CombatLog.fights or {}
+    local fights = CurrentCharacterFights and CurrentCharacterFights() or {}
     if #fights == 0 then
         Add(lines, "No completed combat telemetry is available.")
         Add(lines, "Reproduce the issue with Combat logger enabled, finish the fight, then generate the report again.")

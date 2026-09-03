@@ -239,13 +239,21 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
        and rage >= cleaveThreshold and IsUsable(S.CLEAVE) then
         local excess = math.max(0, rage - cleaveThreshold)
         local score = 71 + math.min(18, excess * 0.8) + math.min(6, (enemies - 1) * 3) - riskPenalty * 0.50
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.CLEAVE, "CLEAVE", "CAST MANUALLY", "Multi-target swing dump: " .. rage .. " / threshold " .. cleaveThreshold .. swingText .. " | " .. context, score, "aoe")
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.CLEAVE, "CLEAVE", "CAST MANUALLY", "Multi-target swing dump: " .. rage .. " / threshold " .. cleaveThreshold .. swingText .. " | " .. context, score, "aoe", nil, {
+            baseThreshold=tonumber(HCOB_DB.warriorHeroicRage) or 35, effectiveThreshold=cleaveThreshold,
+            rage=rage, enemies=enemies, reserve=reserve, executePooling=executePooling,
+            swingRemaining=swingRemaining,
+        })
     end
     if not executePooling and heroicKnown and swingReady and rage >= hsThreshold and IsUsable(S.HEROIC_STRIKE) then
         local excess = math.max(0, rage - hsThreshold)
         local noExecuteFinisher = not IsKnown(S.EXECUTE)
         local score = 64 + math.min(16, excess * 0.8) + (targetHP <= 30 and noExecuteFinisher and 8 or 0) - riskPenalty * 0.55
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. swingText .. " | " .. context, score, "dump")
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. swingText .. " | " .. context, score, "dump", nil, {
+            baseThreshold=tonumber(HCOB_DB.warriorHeroicRage) or 35, effectiveThreshold=hsThreshold,
+            rage=rage, enemies=enemies, reserve=reserve, executePooling=executePooling,
+            swingRemaining=swingRemaining,
+        })
     end
 
     local id, title, key, reason, kind = HCOB.Advisor.Engine.SelectCandidate(candidates)
