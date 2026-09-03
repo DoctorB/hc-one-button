@@ -40,6 +40,8 @@ assert(positions["Advisor/Readiness.lua"] < positions["Advisor/Engine.lua"], "re
 assert(positions["Advisor/Engine.lua"] < positions["Classes/Warrior.lua"], "Advisor Engine must load before class modules")
 assert(positions["Classes/Druid.lua"] < positions["UI/CoreHUD.lua"], "all class modules must load before UI")
 assert(positions["UI/ActionPanel.lua"] < positions["UI/SurvivalStrip.lua"], "Survival strip must anchor after Action Panel")
+assert(positions["UI/WindowManager.lua"] < positions["UI/AdaptiveTuning.lua"], "Window Manager must load before Adaptive Tuning details")
+assert(positions["UI/Options.lua"] < positions["UI/AdaptiveTuning.lua"], "Options must load before its Adaptive Tuning child")
 assert(positions["Systems/TuningTelemetry.lua"] < positions["Systems/CombatLog.lua"], "adaptive telemetry contract must load before combat log")
 assert(positions["Systems/TuningTelemetry.lua"] < positions["Systems/AdaptiveTuner.lua"], "telemetry contract must load before adaptive learner")
 assert(positions["Systems/AdaptiveTuner.lua"] < positions["Systems/CombatLog.lua"], "adaptive learner must load before combat log")
@@ -68,5 +70,19 @@ assert(options:find('CreateCheckBox(panel, "Local Adaptive Tuning"', 1, true),
     "Local Adaptive Tuning checkbox missing from Options")
 assert(options:find("Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled", 1, true),
     "Local Adaptive Tuning checkbox is not wired to its persistent option accessors")
+assert(options:find('adaptiveDetailsBtn:SetText("View learned adjustments...")', 1, true),
+    "Local Adaptive Tuning details button missing from Options")
+assert(options:find('adaptiveDetailsBtn:SetScript("OnClick", Options.OpenAdaptiveTuningDetails)', 1, true),
+    "Local Adaptive Tuning details button is not wired to its child window")
+
+local adaptiveUI = read("HCOneButton/UI/AdaptiveTuning.lua")
+assert(adaptiveUI:find('WindowManager.Register("adaptive_tuning", frame)', 1, true),
+    "Adaptive Tuning details are not registered with the Window Manager")
+assert(adaptiveUI:find('windows.OpenChild("adaptive_tuning", "options")', 1, true),
+    "Adaptive Tuning details do not restore their Options parent")
+assert(adaptiveUI:find('windows.Close("adaptive_tuning", false)', 1, true),
+    "Adaptive Tuning details do not close safely when combat starts")
+assert(adaptiveUI:find('table.insert(UISpecialFrames, "HCOneButtonAdaptiveTuningPanel")', 1, true),
+    "Adaptive Tuning details are not registered for standard Escape-key closing")
 
 print(string.format("TOC/version/package manifest regression: PASS (%d references)", #entries))

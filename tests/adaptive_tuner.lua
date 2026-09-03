@@ -17,6 +17,7 @@ environment.HCOneButton = {
     Systems={TuningTelemetry={
         HashParts=hash,
         CandidateKey=function(id, tag) return tostring(id or "none") .. ":" .. tostring(tag or "action") end,
+        ContextSnapshot=function() return environment._displayContext end,
     }},
 }
 
@@ -70,6 +71,29 @@ assert(learnedContext.baselines.even and learnedContext.baselines.even.fights ==
     "target-difficulty baseline missing")
 assert(fight(102, 100, 90, true).tuning.context.buildSignature == nil,
     "test context unexpectedly depends on equipment identity")
+
+environment._displayContext = context
+local display = tuner.GetDisplayModel()
+assert(display.contextAvailable and display.fights == 12 and display.ready,
+    "visual model did not select the live learned context")
+assert(display.class == "MAGE" and display.levelBand == 36 and #display.arms == 2,
+    "visual model context or action summary is incorrect")
+local displayById = {}
+for _, arm in ipairs(display.arms) do displayById[arm.spellId] = arm end
+assert(displayById[101] and displayById[102] and displayById[102].active,
+    "visual model omitted learned actions or active corrections")
+displayById[102].bias = -99
+assert(learnedContext.arms["102:damage"].bias ~= -99,
+    "visual model leaked a mutable SavedVariables arm")
+
+environment._displayContext = {
+    class="MAGE", specIndex=2, spec="Fire", mode="solo", level=40,
+    talentSignature="different-build", spellbookSignature="spellbook-40",
+}
+local freshDisplay = tuner.GetDisplayModel()
+assert(freshDisplay.contextAvailable and freshDisplay.fights == 0 and #freshDisplay.arms == 0,
+    "visual model presented stale learned data as the current build")
+environment._displayContext = context
 
 for _=1,3 do tuner.LearnFight(fight(103, 120, 95, true)) end
 assert(tuner.GetCandidateBias({id=103, tag="damage"}) == 0,

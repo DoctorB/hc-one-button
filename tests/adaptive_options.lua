@@ -31,6 +31,10 @@ local options = assert(firstLoad.HCOneButton.UI.Options)
 assert(options.IsAdaptiveTuningEnabled(), "Options did not reflect the enabled per-character flag")
 assert(options.SetAdaptiveTuningEnabled(false), "Options could not disable Local Adaptive Tuning")
 assert(characterDB.adaptive.enabled == false, "Options OFF was not written to the per-character SavedVariables")
+local detailsOpenedFromOptions
+firstLoad.HCOneButton.UI.AdaptiveTuning = {Open=function(fromOptions) detailsOpenedFromOptions = fromOptions end}
+assert(options.OpenAdaptiveTuningDetails(), "Options could not open the Adaptive Tuning details")
+assert(detailsOpenedFromOptions == true, "Options did not open Adaptive Tuning as a managed child")
 
 -- A reload creates fresh addon tables while WoW restores the same
 -- SavedVariablesPerCharacter table. The explicit OFF choice must survive.
