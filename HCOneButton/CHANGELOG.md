@@ -11,24 +11,30 @@ The current release is `1.28.5`, targeting WoW Classic Era / Hardcore interface 
 - Warrior Heroic Strike is no longer requested throughout an entire slow weapon swing. The Advisor exposes it only near the next main-hand attack and suppresses it as soon as the client reports the strike already queued.
 - Heroic Strike and Cleave damage or miss events now reset the tracked main-hand swing timer just like a white hit or miss. A consumed queued strike therefore starts a fresh timing cycle instead of leaving Heroic Strike permanently eligible.
 - An acknowledged on-next-swing queue bypasses normal display swap confirmation, immediately clearing the obsolete recommendation and Diagnostic Pixel request for a 50 Hz external reader.
+- Healthy controlled two-target pulls no longer remain permanently on a non-action `PREPARE ESCAPE` state after defensive setup. They yield to the normal Mortal Strike, Bloodthirst and Whirlwind scorer; low HP, low Survival Reserve and 3+ enemy pressure retain escape priority.
+- Thunder Clap and Demoralizing Shout are no longer repeatedly requested while their target debuff is healthy. They become refreshable only in their final `3` seconds.
+- Retaliation, Pummel and Shield Bash recommendations now require actual usability, preventing dead instructions in the wrong stance or without the required equipment.
 
 ### Changed
 
 - The Heroic Strike queue window scales with current main-hand speed and is clamped to `0.45–0.65` seconds. Normal `0.20`-second recommendation confirmation leaves a short, stable reader-visible input window without occupying the complete swing.
-- The secure `ALT+SHIFT` action now uses `!Heroic Strike`, preventing duplicate key samples from toggling an already queued strike back off.
-- Heroic Strike and Cleave share one queue-state helper. A queued Cleave blocks a competing Heroic Strike request even though the deterministic Warrior action layout remains unchanged.
+- Queue-safe `!Heroic Strike` and `!Cleave` macros prevent duplicate key samples from toggling an already armed strike back off.
+- When Execute is learned, queued Rage dumps pause between `21%` and `30%` target HP. `POOL FOR EXECUTE` keeps auto attacks running and releases spending at `85` Rage to avoid wasting generation near the cap; efficient core strikes remain available.
+- Cleave now occupies the appended deterministic Warrior slot 20 (`CTRL+SHIFT+0`) and is preferred over Heroic Strike as the queued dump when at least two enemies are actively engaged. Existing Warrior slots 1–19 do not move.
 
 ### Compatibility
 
-- `/hcob hsrage` retains its persistent `20`–`70` range and all existing Rage, escape and panic priorities remain unchanged.
-- SavedVariables, deterministic Action Panel slots/default bindings and Diagnostic Pixel Protocol V3 colors are unchanged.
+- `/hcob hsrage` retains its persistent `20`–`70` range. Execute pooling and Cleave apply bounded overrides without changing the stored setting.
+- SavedVariables and existing Action Panel slots/default bindings are unchanged. Cleave uses the previously empty Warrior slot 20 and its existing default `CTRL+SHIFT+0` binding.
+- Diagnostic Pixel Protocol V3 encoding is unchanged; Cleave uses the already-defined slot-20 color `#F060E0`.
 - The `1.28.4` combat-only aura policy and all earlier cast-timing, range, consumable and survival behavior remain compatible.
 
 ### Validation
 
 - 43/43 addon Lua chunks parse with Lua 5.1.5.
-- All fifteen regression harnesses pass through `tests/run.ps1`; 44/44 TOC references resolve without duplicates.
-- New coverage verifies the adaptive swing window, queued Heroic Strike/Cleave suppression, special hit/miss timer reset, first-swing fallback, immediate display acknowledgement and queue-safe secure macro.
+- All sixteen regression harnesses pass through `tests/run.ps1`; 44/44 TOC references resolve without duplicates.
+- New coverage verifies the adaptive swing window, queued Heroic Strike/Cleave suppression, special hit/miss timer reset, first-swing fallback, immediate display acknowledgement, Execute pooling/release boundaries, slot-20 Cleave priority and queue-safe macros.
+- Multi-pull coverage verifies defensive-debuff refresh boundaries, healthy x2 return to the core DPS scorer, low-reserve escape preservation and stance/equipment-aware Retaliation and interrupt selection.
 
 ## 1.28.4 — 2026-09-02
 

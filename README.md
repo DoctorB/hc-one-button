@@ -34,7 +34,9 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 Version `1.28.5` is the **Warrior Swing Queue Update**. Heroic Strike is now treated as an on-next-swing ability instead of a normal instant action: the Advisor exposes it only during a short window before the next main-hand attack and stops requesting it immediately once the client reports it queued.
 
-The queue window scales with the equipped main-hand speed and is clamped to `0.45–0.65` seconds. Heroic Strike and Cleave hit/miss events realign the swing timer, a queued Cleave blocks a competing Heroic Strike request, and the secure `ALT+SHIFT` action uses `!Heroic Strike` so duplicate input samples cannot toggle the queued strike back off.
+The queue window scales with the equipped main-hand speed and is clamped to `0.45–0.65` seconds. Heroic Strike and Cleave hit/miss events realign the swing timer, an armed queued strike suppresses further requests, and queue-safe `!` macros prevent duplicate input samples from toggling it back off. Cleave is now the appended deterministic Warrior slot 20 and becomes the preferred queued Rage dump during controlled multi-target pressure.
+
+When Execute is learned and the target is between `21%` and `30%` HP, queued Rage dumps pause and the Advisor displays `POOL FOR EXECUTE`. Spending is released at `85` Rage to avoid wasting generation near the cap; Execute, Overpower and efficient core strikes retain priority. Healthy two-target pulls now return to Mortal Strike/Bloodthirst/Whirlwind after defensive setup, while low HP, low Survival Reserve and 3+ enemy states retain escape priority. Active Thunder Clap and Demoralizing Shout debuffs are not repeatedly requested before their final `3` seconds.
 
 The `1.28.4` combat-only aura policy remains part of the baseline. It covers Battle Shout, Blessing of Might and Paladin seals, Inner Fire/Fortitude/Power Word: Shield/Renew, Mage armor/Arcane Intellect/Ice Barrier/Mana Shield, Demon Armor/Demon Skin, Mark of the Wild, Lightning Shield and weapon imbues, Hunter aspects/Mend Pet, and Slice and Dice. A shared stabilization layer absorbs short Classic aura-API races and the stale near-expiry frame that can follow a successful refresh, preventing duplicate requests without hiding a genuinely removed aura.
 
@@ -148,7 +150,7 @@ Maintained self auras follow one cross-class contract. They are never requested 
 
 For Paladin, Divine Shield is immediate at `25%` HP or lower. From `26%` through `35%`, it requires concrete lethal pressure: at least two active enemies, Survival Reserve at `28` or lower, or a confident estimated TTD of `6` seconds or less. Above `35%`, an unfavorable trend or a healthy 3+ enemy pull preserves Divine Shield and prefers Divine Protection, Hammer of Justice, healing or escape guidance. Lay on Hands retains priority at `18%` HP or lower.
 
-For Warrior, preventive `UNFAVORABLE FIGHT` and controlled two-target escape guidance preserves enough Rage for Hamstring/control but no longer allows Rage to accumulate unused. Excess Rage passes through `Execute`, `Overpower`, `Mortal Strike`, `Bloodthirst`, `Whirlwind` or `Heroic Strike` in that priority order before escape guidance resumes. The threshold starts at the greater of `40` or the configured `/hcob hsrage` value plus `5`, rises when Survival Reserve is critical and falls near the target's execute range. HP at `50%` or lower during a multi-pull and every 3+ enemy panic continue to preempt offensive spending. Heroic Strike is offered only in the final `0.45–0.65` seconds before a tracked main-hand swing; an already queued Heroic Strike or Cleave suppresses the request immediately.
+For Warrior, preventive `UNFAVORABLE FIGHT` and controlled two-target escape guidance preserves enough Rage for Hamstring/control but no longer allows Rage to accumulate unused. Excess Rage passes through `Execute`, `Overpower`, `Mortal Strike`, `Bloodthirst`, `Whirlwind`, Cleave or `Heroic Strike` in that priority order before escape guidance resumes. The threshold starts at the greater of `40` or the configured `/hcob hsrage` value plus `5`, rises when Survival Reserve is critical and falls near the target's execute range. HP at `50%` or lower during a multi-pull and every 3+ enemy panic continue to preempt offensive spending. Heroic Strike and Cleave are offered only in the final `0.45–0.65` seconds before a tracked main-hand swing; an already queued strike suppresses the request immediately. Between `21–30%` target HP, queued dumps are pooled until `85` Rage when Execute is learned. Healthy controlled x2 pulls resume the core DPS scorer after Thunder Clap/Demoralizing Shout setup; those debuffs refresh only in their final `3` seconds.
 
 ### Coherent standalone windows
 
@@ -267,6 +269,7 @@ The following class layouts are deterministic. Unknown spells keep their slot. E
 | 17 | Retaliation |
 | 18 | Shield Wall |
 | 19 | Charge |
+| 20 | Cleave |
 
 </details>
 
@@ -880,7 +883,7 @@ Both aliases are supported:
 
 | Command | Description |
 |---|---|
-| `/hcob hsrage N` | Set the Heroic Strike threshold (`20`–`70` Rage); preventive escape logic uses this value with a small safety margin before dumping excess Rage. |
+| `/hcob hsrage N` | Set the Heroic Strike threshold (`20`–`70` Rage); preventive escape logic adds a small safety margin, Cleave adds another `5` Rage, and Execute pooling temporarily overrides queued dumps between `21–30%` target HP below `85` Rage. |
 | `/hcob rendspam on\|off` | Enable/disable intelligent pre-pull Rend preparation. |
 | `/hcob sunder on\|off` | Enable/disable Warrior base Sunder behavior where applicable. |
 | `/hcob hsspam` | Compatibility command; Heroic Strike BASE spam remains intentionally disabled. |
@@ -1035,7 +1038,7 @@ Deleting `WTF/.../SavedVariables/HCOneButton.lua` resets saved addon configurati
 The `1.28.5` source baseline currently passes:
 
 - **43/43 Lua chunks** pass syntax parsing in the current validation environment;
-- **15/15 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **16/16 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **44/44 TOC references** resolved (`43 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
@@ -1053,7 +1056,8 @@ The `1.28.5` source baseline currently passes:
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - Warrior escape-Rage coverage verifies low-Rage Hamstring priority, excess-Rage spending, proc/core/queued-strike ordering, controlled two-target spending and strict panic preemption at low HP or 3+ enemies;
-- Warrior swing-queue coverage verifies the adaptive Heroic Strike window, immediate Heroic Strike/Cleave queue suppression, special hit/miss timer reset, first-swing fallback and the queue-safe `!Heroic Strike` secure action;
+- Warrior multi-pull coverage verifies defensive-debuff refresh boundaries, healthy x2 return to the core DPS scorer, low-reserve escape preservation and stance/equipment-aware Retaliation and interrupt selection;
+- Warrior swing-queue coverage verifies the adaptive Heroic Strike/Cleave window, immediate queue suppression, special hit/miss timer reset, first-swing fallback, Execute pooling/release boundaries, slot-20 Cleave priority and queue-safe secure actions;
 - cross-class aura coverage verifies combat-only maintenance for Paladin, Priest, Mage, Warlock, Druid and Shaman, healthy-aura suppression, the final-ten-second refresh boundary, Warrior Battle Shout policy, Hunter/Rogue aura guards, rank-safe cast acknowledgement, stale refresh metadata and bounded player/pet aura-miss debouncing;
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
