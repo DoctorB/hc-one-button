@@ -18,6 +18,20 @@ function Options.SetAdaptiveTuningEnabled(enabled)
     return tuner.SetEnabled(enabled == true)
 end
 
+function Options.OpenAdaptiveTuningDetails()
+    if InCombatLockdown and InCombatLockdown() then
+        print("|cffffcc00HCOB:|r open Adaptive Tuning details out of combat.")
+        return false
+    end
+    local details = HCOB.UI and HCOB.UI.AdaptiveTuning
+    if not details or not details.Open then
+        print("|cffff5555HCOB:|r Adaptive Tuning details are unavailable. Try /reload.")
+        return false
+    end
+    details.Open(true)
+    return true
+end
+
 function Center()
     if InCombatLockdown() then print("|cffff5555HCOB:|r center the HUD out of combat."); return end
     btn:ClearAllPoints(); btn:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
@@ -185,17 +199,23 @@ function CreateOptionsPanel()
 
     add(CreateCheckBox(panel, "Local Adaptive Tuning", "Per-character and persisted across reload/logout. Learns only from eligible fights while Combat logger is enabled and applies small bounded offensive adjustments. Healing, survival, control and interrupt winners remain protected.", Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled, 350, -485))
 
+    local adaptiveDetailsBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    adaptiveDetailsBtn:SetSize(210, 25)
+    adaptiveDetailsBtn:SetPoint("TOPLEFT", 350, -515)
+    adaptiveDetailsBtn:SetText("View learned adjustments...")
+    adaptiveDetailsBtn:SetScript("OnClick", Options.OpenAdaptiveTuningDetails)
+
     local actionBindTitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    actionBindTitle:SetPoint("TOPLEFT", 350, -530)
+    actionBindTitle:SetPoint("TOPLEFT", 350, -555)
     actionBindTitle:SetText("Fixed Action Panel bindings")
     add(CreateCheckBox(panel, "Auto-apply slot bindings", "Automatically apply and save configured bindings to secure Action panel slots. Warning: configured keys replace existing WoW/addon bindings. Changes are allowed only out of combat.", function() return HCOB_DB.actionSlotAutoBind ~= false end, function(v)
         HCOB_DB.actionSlotAutoBind = v
         if v and HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.ApplySlotBindings() end
-    end, 350, -550))
+    end, 350, -575))
 
     local actionBindBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     actionBindBtn:SetSize(190, 27)
-    actionBindBtn:SetPoint("TOPLEFT", 350, -586)
+    actionBindBtn:SetPoint("TOPLEFT", 350, -611)
     actionBindBtn:SetText("Configure slot bindings...")
     actionBindBtn:SetScript("OnClick", function()
         if HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.OpenBindingOptions then HCOB.UI.ActionPanel.OpenBindingOptions(true) end

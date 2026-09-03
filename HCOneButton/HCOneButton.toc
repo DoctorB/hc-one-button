@@ -47,6 +47,7 @@ UI/WindowManager.lua
 UI/ActionPanel.lua
 UI/SurvivalStrip.lua
 UI/Options.lua
+UI/AdaptiveTuning.lua
 UI/Feedback.lua
 UI/DiagnosticPixel.lua
 

@@ -378,6 +378,73 @@ function A.Status()
     }
 end
 
+function A.GetDisplayModel()
+    local store = Store()
+    local model = {
+        enabled=store and store.enabled == true or false,
+        contexts=store and Count(store.contexts) or 0,
+        totalEligible=store and store.totalEligible or 0,
+        minContextFights=A.MIN_CONTEXT_FIGHTS,
+        minArmFights=A.MIN_ARM_FIGHTS,
+        maxBias=A.MAX_SCORE_BIAS,
+        arms={}, protectedObserved=0,
+    }
+    if not store then return model end
+
+    local telemetry = HCOB.Systems and HCOB.Systems.TuningTelemetry
+    local liveContext
+    if telemetry and telemetry.ContextSnapshot then
+        local ok, value = pcall(telemetry.ContextSnapshot)
+        if ok and type(value) == "table" then liveContext = value end
+    end
+    local liveKey, levelBand = ContextKey(liveContext)
+    local context = liveKey and store.contexts[liveKey] or nil
+    if type(context) ~= "table" then context = nil end
+
+    model.contextKey = liveKey
+    model.class = liveContext and liveContext.class or PLAYER_CLASS or "?"
+    model.specIndex = math.max(0, math.floor(Finite(liveContext and liveContext.specIndex, 0) or 0))
+    model.specName = tostring(liveContext and liveContext.spec or "")
+    model.mode = tostring(liveContext and liveContext.mode or "solo")
+    model.levelBand = levelBand or math.max(1, math.floor(Finite(liveContext and liveContext.level, 1) or 1))
+    model.contextAvailable = liveKey ~= nil
+    model.fights = context and math.max(0, math.floor(Finite(context.fights, 0) or 0)) or 0
+    model.ready = model.fights >= A.MIN_CONTEXT_FIGHTS
+
+    local learnedActions, activeAdjustments = 0, 0
+    for key, arm in pairs(context and context.arms or {}) do
+        if type(arm) == "table" then
+            if TUNABLE_TAGS[arm.tag] then
+                local fights = math.max(0, math.floor(Finite(arm.fights, 0) or 0))
+                local bias = Bound(arm.bias, -A.MAX_SCORE_BIAS, A.MAX_SCORE_BIAS)
+                if fights > 0 then learnedActions = learnedActions + 1 end
+                if math.abs(bias) >= 0.25 then activeAdjustments = activeAdjustments + 1 end
+                model.arms[#model.arms + 1] = {
+                    key=tostring(key), spellId=Finite(arm.spellId, nil),
+                    title=tostring(arm.title or arm.spellId or "Unknown action"),
+                    tag=tostring(arm.tag or "action"), fights=fights,
+                    opportunities=math.max(0, math.floor(Finite(arm.opportunities, 0) or 0)),
+                    accepted=math.max(0, math.floor(Finite(arm.accepted, 0) or 0)),
+                    userOverrides=math.max(0, math.floor(Finite(arm.userOverrides, 0) or 0)),
+                    bias=bias, active=math.abs(bias) >= 0.25,
+                }
+            else
+                model.protectedObserved = model.protectedObserved + 1
+            end
+        end
+    end
+    table.sort(model.arms, function(left, right)
+        local leftBias, rightBias = math.abs(left.bias), math.abs(right.bias)
+        if leftBias ~= rightBias then return leftBias > rightBias end
+        if left.fights ~= right.fights then return left.fights > right.fights end
+        if left.title ~= right.title then return left.title < right.title end
+        return left.key < right.key
+    end)
+    model.learnedActions = learnedActions
+    model.activeAdjustments = activeAdjustments
+    return model
+end
+
 function A.PrintStatus()
     local status = A.Status()
     print(string.format("|cff00ff98HCOB ADAPTIVE:|r %s | eligible fights %d | contexts %d",
