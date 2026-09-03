@@ -6,7 +6,9 @@ local cooldownRemaining = {}
 local harmful = {}
 local maxRange = {}
 local idMaxRange = {}
+local queuedSwingSpell = nil
 local names = {
+    [78] = "Heroic Strike",
     [101] = "Ranged A",
     [102] = "Ranged B",
     [103] = "Emergency",
@@ -20,6 +22,7 @@ HCOneButton = {
     Advisor = {Engine = {kindPriority = {idle=0, buff=20, action=40, caution=70, interrupt=90, danger=100}}},
 }
 HCOneButton.Internal = setmetatable({}, {__index = _G})
+HCOneButton.Internal.S = {HEROIC_STRIKE=78, CLEAVE=845}
 
 function GetTime() return now end
 function UnitExists(unit) return unit == "target" end
@@ -84,6 +87,7 @@ function SpellCastSeconds() return 0 end
 function HasWandEquipped() return false end
 function AuraByName() return nil end
 function Clamp(value, low, high) return math.max(low, math.min(high, value)) end
+function IsQueuedMeleeSwingSpell(id) return id == queuedSwingSpell end
 
 maxRange[101], maxRange[102], maxRange[103] = 30, 30, 30
 maxRange[201], maxRange[301] = 40, 5
@@ -207,6 +211,19 @@ now = 2.21
 id = Engine.Stabilize(102, "B", "BASE", "b", "action")
 expect(id, 101, "global cooldown does not cause an immediate swap")
 ready[101], cooldownRemaining[101] = true, nil
+
+-- A queued on-next-swing action is acknowledged immediately instead of being
+-- retained by the normal 0.20s recommendation swap confirmation.
+Engine.ResetStabilization()
+queuedSwingSpell = nil
+now = 2.30
+id = Engine.Stabilize(78, "HEROIC STRIKE", "ALT+SHIFT", "queue it", "action")
+expect(id, 78, "initial Heroic Strike")
+queuedSwingSpell = 78
+now = 2.31
+id = Engine.Stabilize(nil, "BASE OK", "KEEP SPAMMING", "queued", "idle")
+expect(id, nil, "queued Heroic Strike cleared immediately")
+queuedSwingSpell = nil
 
 -- Idle-to-action transitions are debounced too, avoiding a one-frame proc or
 -- threshold sample flashing briefly over BASE OK.
