@@ -54,6 +54,8 @@ The `1.28.6` character-scoped telemetry foundation remains intact. New fights us
 
 The `Local Adaptive Tuning` checkbox in `/hcob options` exposes the ON/OFF flag directly; the choice is stored per character and survives `/reload` and logout. The same flag is available through `/hcob tuning on|off`. `/hcob tuning status` shows calibration progress for the most recently learned context; `/hcob tuning reset` provides an immediate per-character rollback without deleting the normal combat history.
 
+`View learned adjustments...` opens the visual inspector for the character's live class/build context. It shows calibration progress, learned outcomes and every offensive correction on a centered `−4…+4` bar; green moves a close offensive candidate up, red moves it down and the gold center is the unchanged baseline. `Active only` hides zero corrections. The protected-baseline banner makes explicit which categories remain outside learning, and `Reset Learning` requires a second confirmation before clearing only the per-character learner state.
+
 ### Preserved combat baseline
 
 The `1.28.5` **Warrior Swing Queue Update** remains part of the current baseline. Heroic Strike is treated as an on-next-swing ability instead of a normal instant action: the Advisor exposes it only during a short window before the next main-hand attack and stops requesting it immediately once the client reports it queued.
@@ -178,7 +180,7 @@ For Warrior, preventive `UNFAVORABLE FIGHT` and controlled two-target escape gui
 
 ### Coherent standalone windows
 
-HCOneButton uses a small internal window manager for its standalone configuration/report dialogs. Options, Fixed Action Panel binding configuration and the feedback/report window no longer stack on top of one another. A child window opened from Options replaces it temporarily and returns to Options when closed.
+HCOneButton uses a small internal window manager for its standalone configuration/report dialogs. Options, the Adaptive Tuning inspector, Fixed Action Panel binding configuration and the feedback/report window never stack on top of one another. A child window opened from Options replaces it temporarily and returns to Options when closed through its Back button, standard frame X or Escape. If combat starts, configuration children close without trying to reopen Options during lockdown.
 
 ### Secure clickable Action Panel
 
@@ -710,11 +712,16 @@ HCOneButton/
 │   ├── Advisor.lua
 │   ├── WindowManager.lua
 │   ├── ActionPanel.lua
+│   ├── SurvivalStrip.lua
 │   ├── Options.lua
+│   ├── AdaptiveTuning.lua
 │   ├── Feedback.lua
 │   └── DiagnosticPixel.lua
 ├── Systems/
 │   ├── Bindings.lua
+│   ├── Consumables.lua
+│   ├── TuningTelemetry.lua
+│   ├── AdaptiveTuner.lua
 │   ├── CombatLog.lua
 │   ├── Feedback.lua
 │   └── ProfessionCoach.lua
@@ -1078,9 +1085,9 @@ HCOB_CharacterDB (per character)
 
 The `1.29.0` source baseline currently passes:
 
-- **45/45 Lua chunks** pass syntax parsing in the current validation environment;
-- **20/20 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **46/46 TOC references** resolved (`45 Lua + Bindings.xml`);
+- **46/46 Lua chunks** pass syntax parsing in the current validation environment;
+- **21/21 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **47/47 TOC references** resolved (`46 Lua + Bindings.xml`);
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
@@ -1092,7 +1099,7 @@ The `1.29.0` source baseline currently passes:
 - SavedVariables lifecycle coverage verifies normal `ADDON_LOADED` rebinding, direct `PLAYER_LOGIN` fallback, preservation/defaults, malformed-root repair and all login initialization hooks;
 - character-scoped telemetry coverage verifies anonymous profile filtering across different classes and same-class alts, legacy class fallback, current-version DPS averages, per-character retention, current-character clearing and explicit account-wide clearing;
 - adaptive telemetry coverage verifies the all-class contract, anonymous build/policy context, stabilized decisions and alternative candidates, secure input versus confirmed action, reaction/adherence, resource-mode separation, pet/combo/hidden-mana context, bounded traces, generic class metrics, adaptive-store repair and PvP/eligibility exclusion;
-- Local Adaptive Tuning coverage verifies schema migration, preserved opt-out, Options ON/OFF persistence across simulated reloads, context/action calibration gates, accepted and player-alternative evidence, difficulty-normalized baselines, positive and negative learning, hard score clamps, protected-winner locking, Advisor selection/explanation integration, disabled behavior, ineligible-fight rejection, status and reset;
+- Local Adaptive Tuning coverage verifies schema migration, preserved opt-out, Options ON/OFF persistence across simulated reloads, live-context visual-model isolation, active-only filtering, Window Manager parent navigation, combat-lockdown refusal, context/action calibration gates, accepted and player-alternative evidence, difficulty-normalized baselines, positive and negative learning, hard score clamps, protected-winner locking, Advisor selection/explanation integration, disabled behavior, ineligible-fight rejection, status and reset;
 - all nine class modules load in isolation and expose the required Advisor/secure-macro contracts; ranged BASE recognition, hybrid melee transitions, macro size and Warrior/Warlock safety invariants are checked;
 - all nine deterministic Action Panel layouts are checked for stable slot counts, known/unique spell IDs, the 20-slot limit, unique default keys and Diagnostic Pixel V3 encodability;
 - Doctor report coverage verifies BASE/range API probes, macro/pet/binding/SavedVariables diagnostics, slash-command dispatch, error containment/path sanitization, privacy exclusions and absence of SavedVariables mutation;

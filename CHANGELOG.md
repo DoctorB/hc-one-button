@@ -17,6 +17,8 @@ The current release is `1.29.0`, targeting WoW Classic Era / Hardcore interface 
 - Only offensive tags such as damage, DoT, finisher, AoE, burst, efficiency, sustained damage, weapon weaving and setup are tunable. Healing, survival, control, interrupts, escape logic, buffs, forms and other Hardcore safety decisions remain outside the learner.
 - A protected winner lock disables offensive bias whenever the deterministic base policy has already selected healing, survival, control, interrupt or another non-tunable priority.
 - Active learned corrections are disclosed in the Advisor reason as `Local tuning +N.NN`; calibration completion and the first active adjustment are announced once per context.
+- Options now includes `View learned adjustments...`, a visual inspector for the live class/build context with calibration progress, spell icons, accepted/alternative evidence and centered `−4…+4` correction bars. An `Active only` filter, protected-baseline explanation and two-step per-character reset make every learned change inspectable and reversible without editing SavedVariables.
+- The inspector is a managed child window: it replaces Options while open, returns through Back, the standard X or Escape, and closes without restoring Options if combat begins.
 
 ### Safety and privacy
 
@@ -27,9 +29,9 @@ The current release is `1.29.0`, targeting WoW Classic Era / Hardcore interface 
 
 ### Validation
 
-- 45/45 addon Lua chunks parse with Lua 5.1.5.
-- All twenty regression harnesses pass through `tests/run.ps1`; 46/46 TOC references resolve without duplicates.
-- New deterministic coverage verifies calibration gates, per-action evidence gates, accepted and player-alternative outcomes, difficulty baselines, positive/negative learning, hard bias clamps, protected-winner locking, candidate-selection integration, visible explanations, disabled behavior, ineligible-fight rejection, migration, explicit opt-out and Options ON/OFF persistence across reloads, status and reset.
+- 46/46 addon Lua chunks parse with Lua 5.1.5.
+- All twenty-one regression harnesses pass through `tests/run.ps1`; 47/47 TOC references resolve without duplicates.
+- New deterministic coverage verifies calibration gates, per-action evidence gates, accepted and player-alternative outcomes, live-context visual-model isolation, active-only filtering, Window Manager parent navigation, combat refusal, difficulty baselines, positive/negative learning, hard bias clamps, protected-winner locking, candidate-selection integration, visible explanations, disabled behavior, ineligible-fight rejection, migration, explicit opt-out and Options ON/OFF persistence across reloads, status and reset.
 
 ## 1.28.6 — 2026-09-03
 
