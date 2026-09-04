@@ -59,6 +59,13 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def report(message):
+    print(message)
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+            summary.write(message + "\n")
+
+
 def toc_metadata(root):
     toc = (root / "HCOneButton/HCOneButton.toc").read_text(encoding="utf-8-sig")
     fields = dict(re.findall(r"^## ([\w-]+):\s*([^\r\n]+)", toc, re.MULTILINE))
@@ -171,7 +178,9 @@ def prepare(root, output, event, event_name):
                 "sha256": digest(archive_path.read_bytes()), "files": hashes,
                 "notesSha256": digest((output / notes_name).read_bytes())}
     write_json(output / "manifest.json", manifest)
-    print(f"Verified {filename}: {len(files)} files; Classic Era {game_version}; {context['releaseType']}")
+    report(f"Verified {filename}: {len(files)} files; Classic Era {game_version}; {context['releaseType']}. "
+           + ("Package ready; upload has not run yet." if context["publish"] else
+              "Validation only: no upload to CurseForge was requested or performed."))
     return manifest
 
 
@@ -252,10 +261,7 @@ def upload(output, event, event_name, token, run_attempt):
                "actor": actor, "triggeringActor": triggering_actor}
     write_json(output / "curseforge-receipt.json", receipt)
     message = f"CurseForge accepted file {result['id']} for project {PROJECT_ID}; approval may still be pending."
-    print(message)
-    if os.environ.get("GITHUB_STEP_SUMMARY"):
-        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
-            summary.write(message + "\n")
+    report(message)
     return receipt
 
 

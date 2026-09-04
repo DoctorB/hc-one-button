@@ -26,7 +26,11 @@ class ReleaseTests(unittest.TestCase):
         stdout = patch("sys.stdout", new_callable=io.StringIO)
         stdout.start()
         self.addCleanup(stdout.stop)
-        actors = patch.dict(os.environ, {"GITHUB_ACTOR": "DoctorB", "GITHUB_TRIGGERING_ACTOR": "DoctorB"})
+        # File-command paths are real runner files, even when HTTP is mocked.
+        # Never let simulated uploads contaminate the job summary/environment.
+        actors = patch.dict(os.environ, {"GITHUB_ACTOR": "DoctorB", "GITHUB_TRIGGERING_ACTOR": "DoctorB",
+                                        "GITHUB_STEP_SUMMARY": "", "GITHUB_OUTPUT": "",
+                                        "GITHUB_ENV": "", "GITHUB_PATH": "", "CF_API_TOKEN": ""})
         actors.start()
         self.addCleanup(actors.stop)
         self.temp = tempfile.TemporaryDirectory(prefix="hcob-release-test-")
@@ -156,7 +160,11 @@ class ReleaseTests(unittest.TestCase):
             release.release_context(self.event, "release", version)
 
     def test_manual_run_builds_only_current_changelog_and_never_uploads(self):
-        manifest = release.prepare(self.root, self.output, self.event, "workflow_dispatch")
+        summary = self.root / "dry-run-summary.md"
+        with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": str(summary)}):
+            manifest = release.prepare(self.root, self.output, self.event, "workflow_dispatch")
+        self.assertIn("Validation only: no upload to CurseForge", summary.read_text())
+        self.assertNotIn("accepted file", summary.read_text())
         self.assertFalse(manifest["publish"])
         notes = (self.output / manifest["notes"]).read_text(encoding="utf-8")
         self.assertIn("Current changes", notes)
@@ -241,6 +249,17 @@ class ReleaseTests(unittest.TestCase):
                 release.upload(self.output, self.event, "release", "dummy", "1")
             request.assert_not_called()
 
+    def test_real_upload_summary_requires_successful_response(self):
+        summary = self.root / "upload-summary.md"
+        catalog = [{"id": 42, "gameVersionTypeID": 67408, "name": "1.15.9"}]
+        with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": str(summary)}):
+            self.prepare()
+            self.assertIn("upload has not run yet", summary.read_text())
+            self.assertNotIn("accepted file", summary.read_text())
+            with patch.object(release, "request_json", side_effect=[catalog, {"id": 999}]):
+                release.upload(self.output, self.event, "release", "dummy", "1")
+            self.assertEqual(summary.read_text().count("CurseForge accepted file 999"), 1)
+
     def test_ambiguous_upload_is_not_retried(self):
         self.prepare()
         catalog = [{"id": 42, "gameVersionTypeID": 67408, "name": "1.15.9"}]
@@ -277,6 +296,20 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("github.repository == 'DoctorB/hc-one-button' &&", job_guard)
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", ref)
                             for ref in re.findall(r"uses: [^@\s]+@([^\s]+)", workflow)))
+
+
+class RunnerIsolationTests(unittest.TestCase):
+    def test_mock_upload_cannot_write_inherited_runner_summary(self):
+        # Reproduce the original CI-only bug, outside ReleaseTests.setUp.
+        with tempfile.TemporaryDirectory(prefix="hcob-runner-test-") as directory:
+            summary = Path(directory) / "real-job-summary.md"
+            summary.write_text("Real job\n", encoding="utf-8")
+            with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": str(summary)}):
+                result = unittest.TestResult()
+                ReleaseTests("test_upload_metadata_multipart_and_receipt").run(result)
+                self.assertTrue(result.wasSuccessful(), result.errors or result.failures)
+                self.assertEqual(os.environ["GITHUB_STEP_SUMMARY"], str(summary))
+            self.assertEqual(summary.read_text(encoding="utf-8"), "Real job\n")
 
 
 if __name__ == "__main__":
