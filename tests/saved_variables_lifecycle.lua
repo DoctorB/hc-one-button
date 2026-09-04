@@ -166,7 +166,7 @@ expect(fallbackDB.dangerHP, 41, "fallback preserved setting")
 expect(fallbackDB.actionSlotAutoBind, true, "fallback installed defaults")
 assert(type(fallbackCharacterDB.logProfileId) == "string" and #fallbackCharacterDB.logProfileId >= 8,
     "fallback generated anonymous character profile")
-expect(fallbackCharacterDB.logSession, "HCOneButton 1.29.0", "fallback installed character session")
+expect(fallbackCharacterDB.logSession, "HCOneButton " .. fallbackEnvironment.HCOneButton.VERSION, "fallback installed character session")
 expect(fallbackCharacterDB.adaptive.version, 2, "fallback installed adaptive learner schema")
 expect(fallbackCharacterDB.adaptive.enabled, true, "fallback enabled adaptive learner")
 assert(type(fallbackCharacterDB.adaptive.contexts) == "table", "fallback installed adaptive context store")

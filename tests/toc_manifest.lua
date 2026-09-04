@@ -53,6 +53,8 @@ assert(toc:find("## SavedVariablesPerCharacter: HCOB_CharacterDB", 1, true),
 local init = read("HCOneButton/Core/Init.lua")
 local runtimeVersion = assert(init:match('HCOB%.VERSION%s*=%s*"([^"]+)"'), "runtime version missing")
 assert(tocVersion == runtimeVersion, "TOC/runtime version mismatch")
+local state = read("HCOneButton/Core/State.lua")
+assert(state:match('VERSION = HCOB%.VERSION or "([^"]+)"') == tocVersion, "fallback runtime version mismatch")
 
 local readme = read("README.md")
 local packagedReadme = read("HCOneButton/README.md")

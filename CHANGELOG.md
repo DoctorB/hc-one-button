@@ -2,7 +2,34 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.0`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.1`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.1 — 2026-09-04
+
+### Fixed — Reliable Adaptive Tuning profiles
+
+- The visual inspector and `/hcob tuning status` now resolve the same current-build profile. The command no longer reports corrections from the last learned build while the window displays another context.
+- Added explicit `Normal (PvE)` / `PvP` viewing tabs, persisted per character. Target selection never switches profiles, and viewing preferences never alter gameplay. PvP learning remains unsupported and is clearly labeled; its tab never substitutes PvE evidence.
+- The inspector refreshes automatically while open, independently of chat notifications. Learned actions at the baseline remain visible with `Active only` off; automatic refresh respects the two-step reset warning and expires it safely.
+- Removed the exact level from talent-layout identity so unchanged talents/spells retain their learning inside the same five-level band. Compatible existing `1.29.0` profiles are recovered automatically and re-keyed on the next eligible learning update without resetting counters, repeating announcements or merging independent histories.
+- Genuine talent/spellbook, level-band or solo/group changes still use separate contexts. Empty current contexts explicitly explain recalibration and preservation of other saved evidence.
+- Friendly heals, friendly buff/debuff applications and unrelated nearby players no longer contaminate PvE combat telemetry as PvP. Actual player/pet PvP damage/misses, hostile control and explicit PvP instances remain excluded; a real PvP transition also stops cached PvE corrections immediately.
+- Malformed saved action collections now fail closed in the inspector, status command and bias lookup, instead of causing errors before the next eligible fight can repair the store.
+
+### Changed — Clearer Options and tuning explanations
+
+- Added a persistent on-screen legend above the tuning spell list: left/negative lowers offensive priority, center/zero preserves the baseline and right/positive raises offensive priority. The explanation distinguishes score points from damage percentages and keeps safety rules explicit.
+- Grouped smart pre-pull Rend, situational Sunder and the Heroic Strike Rage threshold in a dedicated `Warrior - Combat policy` section, visible only to Warrior characters. Combat logger, Mini DPS meter and Local Adaptive Tuning now sit together in `Combat data and learning`.
+- Repositioned utility buttons within the existing Options window size, preserving the separate binding controls and footer. Existing saved values, defaults, callbacks and managed-window navigation are unchanged.
+- Aligned TOC, normal/fallback runtime version and current documentation to `1.29.1`. Learner revision is now `2`; adaptive schema `2`, combat-log/fight schemas, secure actions and Diagnostic Pixel Protocol V3 remain unchanged.
+
+### Validation
+
+- 46/46 addon Lua chunks parse with Lua 5.1.5; all 24/24 regression harnesses pass through `tests/run.ps1`, and 47/47 TOC references resolve without duplicates.
+- Added integration regressions using the real telemetry/learner modules for target changes, leveling, legacy migration, explicit profile persistence, all nine classes and inspector/status consistency.
+- Extended panel tests cover live updates, zero-bias row retention, tab switching, reset-confirmation expiry and combat closure; combat-event tests distinguish friendly/bystander activity from real PvP.
+- Options layout tests instantiate all nine classes, verify Warrior-only grouping, moved-control persistence/reload, slider-label clearance and CTA/footer separation; inspector tests also check the baseline legend and reserved layout space.
+- The Options and tuning-inspector layout passed the user's in-game visual check.
 
 ## 1.29.0 — 2026-09-03
 
