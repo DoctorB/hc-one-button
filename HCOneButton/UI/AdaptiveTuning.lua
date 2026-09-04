@@ -1,5 +1,5 @@
 -- Visual inspector for per-character Local Adaptive Tuning.
--- This window is read-only except for the explicit, two-step learner reset.
+-- Viewing preferences and the explicit two-step reset are the only writes.
 local HCOB = HCOneButton
 local E = HCOB.Internal
 setfenv(1, E)
@@ -35,6 +35,7 @@ local function AddSolid(parent, layer, r, g, b, a)
 end
 
 local function StatusFor(model)
+    if model.learningSupported == false then return "NOT SUPPORTED", 0.70, 0.72, 0.76 end
     if not model.enabled then return "DISABLED", 0.55, 0.58, 0.62 end
     if not model.contextAvailable then return "NO CONTEXT", 0.95, 0.60, 0.24 end
     if not model.ready then return "CALIBRATING", 1.00, 0.78, 0.22 end
@@ -171,6 +172,13 @@ local function DisarmReset(frame)
 end
 
 local function ClearRows(frame)
+    frame.model = nil
+    frame.stateText:SetText("UNAVAILABLE")
+    frame.stateText:SetTextColor(0.95, 0.60, 0.24)
+    frame.stateAccent:SetColorTexture(0.95, 0.60, 0.24, 0.92)
+    frame.accountText:SetText("No learned data were changed.")
+    frame.progress:SetValue(0)
+    frame.progressText:SetText("Data unavailable")
     for _, row in ipairs(frame.rows or {}) do row:Hide() end
     if frame.rowContent then frame.rowContent:SetHeight(1) end
     if frame.scroll then
@@ -202,6 +210,9 @@ function UI.Refresh()
         return
     end
     frame.model = model
+    for profile, button in pairs(frame.profileButtons or {}) do
+        if profile == model.viewProfile then button:Disable() else button:Enable() end
+    end
 
     local viewSignature = tostring(model.contextKey or "none") .. ":" .. tostring(frame.activeOnly == true)
     if frame.viewSignature ~= viewSignature then
@@ -215,8 +226,11 @@ function UI.Refresh()
     frame.stateText:SetTextColor(r, g, b)
     frame.stateAccent:SetColorTexture(r, g, b, 0.92)
     frame.summaryText:SetText(string.format(
-        "%d/%d eligible fights in this context  ·  %d learned actions  ·  %d active adjustments",
+        "%d/%d eligible fights in this context  ·  %d learned actions  ·  %d learned corrections",
         model.fights or 0, model.minContextFights or 8, model.learnedActions or 0, model.activeAdjustments or 0))
+    if model.learningSupported == false then
+        frame.summaryText:SetText("Viewing PvP only. Learning and priority corrections are not supported for this profile.")
+    end
     frame.accountText:SetText(string.format(
         "Current context only  ·  %d saved context%s  ·  %d eligible fight%s for this character",
         model.contexts or 0, (model.contexts or 0) == 1 and "" or "s",
@@ -225,7 +239,8 @@ function UI.Refresh()
     local minimum = math.max(1, model.minContextFights or 8)
     frame.progress:SetMinMaxValues(0, minimum)
     frame.progress:SetValue(math.min(minimum, model.fights or 0))
-    frame.progressText:SetText(model.ready and "Calibration complete" or string.format("Calibration %d/%d", model.fights or 0, minimum))
+    frame.progressText:SetText(model.learningSupported == false and "PvP learning not supported"
+        or (model.ready and "Calibration complete" or string.format("Calibration %d/%d", model.fights or 0, minimum)))
 
     local arms = UI.FilterArms(model, frame.activeOnly == true)
     for index, arm in ipairs(arms) do RefreshRow(EnsureRow(frame, index), arm, model.maxBias, index) end
@@ -234,12 +249,14 @@ function UI.Refresh()
     if frame.scroll.UpdateScrollChildRect then frame.scroll:UpdateScrollChildRect() end
 
     if #arms == 0 then
-        if frame.activeOnly and #(model.arms or {}) > 0 then
+        if model.learningSupported == false then
+            frame.emptyText:SetText("PvP learning is not supported.\nThis tab is a separate view, not a gameplay switch.\nPvP fights are excluded; Normal (PvE) corrections are never reused here.")
+        elseif frame.activeOnly and #(model.arms or {}) > 0 then
             frame.emptyText:SetText("No active corrections in this context. Disable the filter to see calibration evidence.")
         elseif not model.contextAvailable then
             frame.emptyText:SetText("The current class/build context is unavailable. Close the window and try /reload.")
         elseif (model.fights or 0) == 0 then
-            frame.emptyText:SetText("No eligible fights for this class/build context yet.\nPlay normally with Combat logger enabled; the baseline remains unchanged during calibration.")
+            frame.emptyText:SetText("No eligible fights for the current build, level band and solo/group context yet.\nOther saved contexts are preserved, not applied here.\nPlay normally with Combat logger enabled to calibrate this context.")
         else
             frame.emptyText:SetText("No offensive action outcomes have been learned in this context yet.")
         end
@@ -277,10 +294,32 @@ function UI.Create()
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -7)
     subtitle:SetWidth(730)
     subtitle:SetJustifyH("LEFT")
-    subtitle:SetText("A transparent view of the current character/build context. Bars show only the bounded correction around the unchanged base policy.")
+    subtitle:SetText("Current character/build evidence, refreshed automatically. Bars show the bounded correction around the unchanged base policy.")
+
+    frame.profileButtons = {}
+    for index, profile in ipairs({"pve", "pvp"}) do
+        local viewProfile = profile
+        local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        button:SetSize(140, 26)
+        button:SetPoint("TOPLEFT", 22 + (index - 1) * 148, -88)
+        button:SetText(profile == "pve" and "Normal (PvE)" or "PvP")
+        button:SetScript("OnClick", function()
+            local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+            if tuner and tuner.SetViewProfile and tuner.SetViewProfile(viewProfile) then
+                DisarmReset(frame)
+                UI.Refresh()
+            end
+        end)
+        frame.profileButtons[profile] = button
+    end
+    local viewHint = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    viewHint:SetPoint("TOPLEFT", 324, -95)
+    viewHint:SetWidth(430)
+    viewHint:SetJustifyH("LEFT")
+    viewHint:SetText("View only. Selecting a target never switches tabs.")
 
     local card = CreateFrame("Frame", nil, frame)
-    card:SetPoint("TOPLEFT", 22, -93)
+    card:SetPoint("TOPLEFT", 22, -129)
     card:SetSize(736, 112)
     card.background = AddSolid(card, "BACKGROUND", 0.025, 0.038, 0.052, 0.96)
     card.background:SetAllPoints()
@@ -325,10 +364,10 @@ function UI.Create()
     section:SetText("LEARNED OFFENSIVE ADJUSTMENTS")
 
     frame.activeFilter = CreateFrame("CheckButton", nil, frame, "InterfaceOptionsCheckButtonTemplate")
-    frame.activeFilter:SetPoint("TOPRIGHT", -194, -221)
+    frame.activeFilter:SetPoint("TOPRIGHT", -194, -257)
     frame.activeFilter.Text:SetText("Active only")
     frame.activeFilter:SetChecked(false)
-    frame.activeFilter.tooltipText = "Hide zero-bias actions and show only corrections currently affecting offensive candidate scores."
+    frame.activeFilter.tooltipText = "Hide zero-bias actions. Learned corrections apply only when tuning is enabled and the gameplay context is eligible."
     frame.activeFilter:SetScript("OnClick", function(self)
         frame.activeOnly = self:GetChecked() and true or false
         DisarmReset(frame)
@@ -337,22 +376,28 @@ function UI.Create()
 
     local refresh = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     refresh:SetSize(104, 24)
-    refresh:SetPoint("TOPRIGHT", -24, -224)
+    refresh:SetPoint("TOPRIGHT", -24, -260)
     refresh:SetText("Refresh")
     refresh:SetScript("OnClick", function() DisarmReset(frame); UI.Refresh() end)
 
+    frame.legendText = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    frame.legendText:SetPoint("TOPLEFT", 26, -293)
+    frame.legendText:SetWidth(728)
+    frame.legendText:SetJustifyH("LEFT")
+    frame.legendText:SetText("|cffff615cLeft (-)|r: lower offensive priority  ·  |cffffd134Center (0)|r: unchanged baseline  ·  |cff2ee6a6Right (+)|r: higher offensive priority\nScore points, not damage %. Small shifts affect close choices only; safety rules remain unchanged.")
+
     local actionHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    actionHeader:SetPoint("TOPLEFT", 78, -258)
+    actionHeader:SetPoint("TOPLEFT", 78, -330)
     actionHeader:SetText("ACTION / EVIDENCE")
     local correctionHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    correctionHeader:SetPoint("TOPLEFT", 304, -258)
+    correctionHeader:SetPoint("TOPLEFT", 304, -330)
     correctionHeader:SetText("−4        BASE POLICY        +4")
     local outcomesHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    outcomesHeader:SetPoint("TOPRIGHT", -57, -258)
+    outcomesHeader:SetPoint("TOPRIGHT", -57, -330)
     outcomesHeader:SetText("OUTCOMES")
 
     frame.scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
-    frame.scroll:SetPoint("TOPLEFT", 24, -276)
+    frame.scroll:SetPoint("TOPLEFT", 24, -348)
     frame.scroll:SetPoint("BOTTOMRIGHT", -46, 102)
     frame.rowContent = CreateFrame("Frame", nil, frame.scroll)
     frame.rowContent:SetSize(690, 1)
@@ -417,6 +462,18 @@ function UI.Create()
     end)
     frame:SetScript("OnShow", function() DisarmReset(frame); UI.Refresh() end)
     frame:SetScript("OnHide", function() DisarmReset(frame); if GameTooltip then GameTooltip:Hide() end end)
+    frame:SetScript("OnUpdate", function(self, elapsed)
+        self.refreshElapsed = (self.refreshElapsed or 0) + elapsed
+        if self.refreshElapsed < 1 then return end
+        self.refreshElapsed = 0
+        -- Preserve the confirmation warning while armed; automatic updates must
+        -- neither confirm a reset nor replace its explanation before timeout.
+        if self.resetArmedUntil then
+            if ((GetTime and GetTime()) or 0) <= self.resetArmedUntil then return end
+            DisarmReset(self)
+        end
+        UI.Refresh()
+    end)
 
     UI.frame = frame
     if UISpecialFrames then table.insert(UISpecialFrames, "HCOneButtonAdaptiveTuningPanel") end

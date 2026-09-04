@@ -161,11 +161,11 @@ function CreateOptionsPanel()
     local function add(control) table.insert(controls, control); return control end
 
     add(CreateCheckBox(panel, "Show HUD", "Show or hide the complete HC One Button combat HUD.", function() return HCOB_DB.visible end, function(v) HCOB_DB.visible = v; RefreshButtonState() end, 24, -118))
-    add(CreateCheckBox(panel, "Lock position", "Disable button dragging.", function() return HCOB_DB.locked end, function(v) HCOB_DB.locked = v end, 24, -148))
-    add(CreateCheckBox(panel, "Alert sounds", "Play sounds for danger and interrupts.", function() return HCOB_DB.soundAlerts end, function(v) HCOB_DB.soundAlerts = v end, 24, -178))
-    add(CreateCheckBox(panel, "Show swing timer", "Show the next auto-attack swing bar.", function() return HCOB_DB.showSwing end, function(v) HCOB_DB.showSwing = v; UpdateDisplay() end, 24, -208))
-    add(CreateCheckBox(panel, "Smart HUD", "Analyze buffs, target, cooldowns and danger. If an API errors, Smart HUD is disabled for the session without stopping the secure button.", function() return HCOB_DB.smartDisplay ~= false end, function(v) HCOB_DB.smartDisplay = v; if v then runtimeSmartDisabled = false end; UpdateDisplay() end, 24, -238))
-    add(CreateCheckBox(panel, "Show Advisor", "Show the right-side panel with the situational spell to cast manually.", function() return HCOB_DB.showAdvisor ~= false end, function(v) HCOB_DB.showAdvisor = v; RefreshButtonState(); UpdateDisplay() end, 24, -268))
+    add(CreateCheckBox(panel, "Lock position", "Disable button dragging.", function() return HCOB_DB.locked end, function(v) HCOB_DB.locked = v end, 24, -145))
+    add(CreateCheckBox(panel, "Alert sounds", "Play sounds for danger and interrupts.", function() return HCOB_DB.soundAlerts end, function(v) HCOB_DB.soundAlerts = v end, 24, -172))
+    add(CreateCheckBox(panel, "Show swing timer", "Show the next auto-attack swing bar.", function() return HCOB_DB.showSwing end, function(v) HCOB_DB.showSwing = v; UpdateDisplay() end, 24, -199))
+    add(CreateCheckBox(panel, "Smart HUD", "Analyze buffs, target, cooldowns and danger. If an API errors, Smart HUD is disabled for the session without stopping the secure button.", function() return HCOB_DB.smartDisplay ~= false end, function(v) HCOB_DB.smartDisplay = v; if v then runtimeSmartDisabled = false end; UpdateDisplay() end, 24, -226))
+    add(CreateCheckBox(panel, "Show Advisor", "Show the right-side panel with the situational spell to cast manually.", function() return HCOB_DB.showAdvisor ~= false end, function(v) HCOB_DB.showAdvisor = v; RefreshButtonState(); UpdateDisplay() end, 24, -253))
     add(CreateCheckBox(panel, "Profession Coach", "Enable the event-driven profession leveling coach. When disabled, its panel stays hidden and profession refresh/scans are suspended.", function()
         local prof = HCOB.Systems and HCOB.Systems.ProfessionCoach
         if prof and prof.IsEnabled then return prof.IsEnabled() end
@@ -173,49 +173,71 @@ function CreateOptionsPanel()
     end, function(v)
         local prof = HCOB.Systems and HCOB.Systems.ProfessionCoach
         if prof and prof.SetEnabled then prof.SetEnabled(v) else HCOB_DB.profCoach = v end
-    end, 24, -298))
+    end, 24, -280))
     add(CreateCheckBox(panel, "Pre-pull safety gate", "Require healthy HP/resources/pet state before the Advisor displays PULL READY; warns about missing healing stock on tough targets.", function()
         return HCOB_DB.prePullSafety ~= false
     end, function(v)
         HCOB_DB.prePullSafety = v
         UpdateDisplay()
-    end, 24, -328))
+    end, 24, -307))
     add(CreateCheckBox(panel, "Survival consumables strip", "Show secure click buttons for the best healing potion, Healthstone, mana potion and bandage in your bags.", function()
         return HCOB_DB.showConsumables ~= false
     end, function(v)
         HCOB_DB.showConsumables = v
         if HCOB.UI.SurvivalStrip then HCOB.UI.SurvivalStrip.SyncVisibility() end
         UpdateDisplay()
-    end, 24, -358))
+    end, 24, -334))
     add(CreateCheckBox(panel, "HC danger advisor", "Multi-pull and fight trend: enter CAUTION/DANGER before relying on HP threshold alone.", function() return HCOB_DB.hcDangerAdvisor ~= false end, function(v) HCOB_DB.hcDangerAdvisor = v; UpdateDisplay() end, 350, -82))
     if PLAYER_CLASS == "WARRIOR" then
-        add(CreateCheckBox(panel, "Warrior: smart pre-pull Rend", "Out of combat, if the target is equal/near-equal level or elite, prepare one Rend on the opener. Skip trivial mobs.", function() return HCOB_DB.warriorAutoRend ~= false end, function(v) HCOB_DB.warriorAutoRend = v; BuildMacros(); UpdateDisplay() end, 24, -388))
-        add(CreateCheckBox(panel, "Warrior: situational Sunder", "Sunder remains in the Advisor against durable targets; it is not spammed at low levels.", function() return HCOB_DB.warriorSunderBase ~= false end, function(v) HCOB_DB.warriorSunderBase = v; BuildMacros(); UpdateDisplay() end, 24, -418))
+        -- All class-specific controls live together, including the Rage slider.
+        -- This section is never created for another class; saved keys/callbacks
+        -- remain unchanged when moving the controls into their own parent.
+        local warrior = CreateFrame("Frame", nil, panel)
+        warrior:SetPoint("TOPLEFT", 24, -378)
+        warrior:SetSize(294, 142)
+        local background = warrior:CreateTexture(nil, "BACKGROUND")
+        background:SetAllPoints()
+        background:SetColorTexture(0.055, 0.045, 0.030, 0.90)
+        local accent = warrior:CreateTexture(nil, "BORDER")
+        accent:SetPoint("TOPLEFT", 0, 0)
+        accent:SetPoint("BOTTOMLEFT", 0, 0)
+        accent:SetWidth(3)
+        accent:SetColorTexture(0.78, 0.61, 0.43, 0.90)
+        local heading = warrior:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        heading:SetPoint("TOPLEFT", 12, -12)
+        heading:SetText("Warrior - Combat policy")
+        add(CreateCheckBox(warrior, "Smart pre-pull Rend", "Out of combat, if the target is equal/near-equal level or elite, prepare one Rend on the opener. Skip trivial mobs.", function() return HCOB_DB.warriorAutoRend ~= false end, function(v) HCOB_DB.warriorAutoRend = v; BuildMacros(); UpdateDisplay() end, 10, -30))
+        add(CreateCheckBox(warrior, "Situational Sunder", "Sunder remains in the Advisor against durable targets; it is not spammed at low levels.", function() return HCOB_DB.warriorSunderBase ~= false end, function(v) HCOB_DB.warriorSunderBase = v; BuildMacros(); UpdateDisplay() end, 10, -57))
+        add(CreateSlider(warrior, "Heroic Strike rage threshold", 20, 70, 1, function() return HCOB_DB.warriorHeroicRage or 35 end, function(v) HCOB_DB.warriorHeroicRage = v; UpdateDisplay() end, 37, -110, "20", "70", "%d rage"))
+        panel.warriorSection = warrior
     end
-    local combatLoggerY = PLAYER_CLASS == "WARRIOR" and -448 or -388
-    add(CreateCheckBox(panel, "Combat logger", "Store compact statistics from recent fights in SavedVariables. Use /hcob log last for a summary.", function() return HCOB_DB.combatLogging ~= false end, function(v) HCOB_DB.combatLogging = v; if not v and currentFight then FinalizeCombatTelemetry("logging_off") end end, 24, combatLoggerY))
 
-    add(CreateCheckBox(panel, "Mini DPS meter", "Show current and recent average DPS below the Advisor. Requires Combat logger.", function() return HCOB_DB.showDPSMeter ~= false end, function(v) HCOB_DB.showDPSMeter = v; RefreshButtonState(); UpdateDPSMeter() end, 350, -455))
+    local learningTitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    learningTitle:SetPoint("TOPLEFT", 350, -372)
+    learningTitle:SetText("Combat data and learning")
+    add(CreateCheckBox(panel, "Combat logger", "Store compact statistics from recent fights in SavedVariables. Use /hcob log last for a summary.", function() return HCOB_DB.combatLogging ~= false end, function(v) HCOB_DB.combatLogging = v; if not v and currentFight then FinalizeCombatTelemetry("logging_off") end end, 350, -392))
 
-    add(CreateCheckBox(panel, "Local Adaptive Tuning", "Per-character and persisted across reload/logout. Learns only from eligible fights while Combat logger is enabled and applies small bounded offensive adjustments. Healing, survival, control and interrupt winners remain protected.", Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled, 350, -485))
+    add(CreateCheckBox(panel, "Mini DPS meter", "Show current and recent average DPS below the Advisor. Requires Combat logger.", function() return HCOB_DB.showDPSMeter ~= false end, function(v) HCOB_DB.showDPSMeter = v; RefreshButtonState(); UpdateDPSMeter() end, 350, -422))
+
+    add(CreateCheckBox(panel, "Local Adaptive Tuning", "Per-character and persisted across reload/logout. Learns only from eligible fights while Combat logger is enabled and applies small bounded offensive adjustments. Healing, survival, control and interrupt winners remain protected.", Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled, 350, -452))
 
     local adaptiveDetailsBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     adaptiveDetailsBtn:SetSize(210, 25)
-    adaptiveDetailsBtn:SetPoint("TOPLEFT", 350, -515)
+    adaptiveDetailsBtn:SetPoint("TOPLEFT", 350, -486)
     adaptiveDetailsBtn:SetText("View learned adjustments...")
     adaptiveDetailsBtn:SetScript("OnClick", Options.OpenAdaptiveTuningDetails)
 
     local actionBindTitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    actionBindTitle:SetPoint("TOPLEFT", 350, -555)
+    actionBindTitle:SetPoint("TOPLEFT", 350, -535)
     actionBindTitle:SetText("Fixed Action Panel bindings")
     add(CreateCheckBox(panel, "Auto-apply slot bindings", "Automatically apply and save configured bindings to secure Action panel slots. Warning: configured keys replace existing WoW/addon bindings. Changes are allowed only out of combat.", function() return HCOB_DB.actionSlotAutoBind ~= false end, function(v)
         HCOB_DB.actionSlotAutoBind = v
         if v and HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.ApplySlotBindings() end
-    end, 350, -575))
+    end, 350, -555))
 
     local actionBindBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     actionBindBtn:SetSize(190, 27)
-    actionBindBtn:SetPoint("TOPLEFT", 350, -611)
+    actionBindBtn:SetPoint("TOPLEFT", 350, -591)
     actionBindBtn:SetText("Configure slot bindings...")
     actionBindBtn:SetScript("OnClick", function()
         if HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.OpenBindingOptions then HCOB.UI.ActionPanel.OpenBindingOptions(true) end
@@ -225,13 +247,10 @@ function CreateOptionsPanel()
     add(CreateSlider(panel, "Danger HP", 20, 70, 1, function() return HCOB_DB.dangerHP or 35 end, function(v) HCOB_DB.dangerHP = v; UpdateDisplay() end, 350, -183, "20", "70", "%d%%"))
     add(CreateSlider(panel, "Critical HP", 10, 40, 1, function() return HCOB_DB.criticalHP or 20 end, function(v) HCOB_DB.criticalHP = v; UpdateDisplay() end, 350, -246, "10", "40", "%d%%"))
     add(CreateSlider(panel, "Enemy window", 3, 12, 1, function() return HCOB_DB.enemyWindow or 6 end, function(v) HCOB_DB.enemyWindow = v end, 350, -309, "3", "12", "%ds"))
-    if PLAYER_CLASS == "WARRIOR" then
-        add(CreateSlider(panel, "Heroic Strike rage threshold", 20, 70, 1, function() return HCOB_DB.warriorHeroicRage or 35 end, function(v) HCOB_DB.warriorHeroicRage = v; UpdateDisplay() end, 350, -402, "20", "70", "%d rage"))
-    end
 
     local centerBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     centerBtn:SetSize(125, 25)
-    centerBtn:SetPoint("TOPLEFT", 24, -480)
+    centerBtn:SetPoint("TOPLEFT", 24, PLAYER_CLASS == "WARRIOR" and -534 or -388)
     centerBtn:SetText("Center HUD")
     centerBtn:SetScript("OnClick", Center)
 
