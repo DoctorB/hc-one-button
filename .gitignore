@@ -1,3 +1,5 @@
 .planning/
 .prompt/
 release/
+__pycache__/
+*.py[cod]
