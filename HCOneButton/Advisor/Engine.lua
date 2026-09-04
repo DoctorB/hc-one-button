@@ -23,8 +23,10 @@ end
 function HCOB.Advisor.Engine.SelectCandidate(list)
     if not list or #list == 0 then
         HCOB.Advisor.Engine.lastCandidates = {}
+        HCOB.Advisor.Engine.lastBaseline = nil
         return nil
     end
+
     local now = GetTime()
     local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
     local baseBest, baseBestScore
@@ -37,16 +39,18 @@ function HCOB.Advisor.Engine.SelectCandidate(list)
         c.baseEffectiveScore = baseEffective
         if not baseBest or baseEffective > baseBestScore then baseBest, baseBestScore = c, baseEffective end
     end
+    HCOB.Advisor.Engine.lastBaseline = baseBest
 
-    -- Local tuning may reorder offensive work, but it must never displace a
-    -- healing, survival, control, interrupt or other protected winner chosen
-    -- by the deterministic base policy.
-    local allowAdaptive = tuner and tuner.IsCandidateTunable and tuner.IsCandidateTunable(baseBest)
+    -- Situational tuning may reorder safe opportunities, but cannot displace
+    -- the baseline winner when its current use is required/protected.
+    local state = tuner and tuner.DecisionState and tuner.DecisionState()
+    HCOB.Advisor.Engine.lastAdaptiveState = state
+    local allowAdaptive = tuner and tuner.IsCandidateTunable and tuner.IsCandidateTunable(baseBest, state)
     local best, bestScore
     for _, c in ipairs(list) do
         local adaptiveBias = 0
         if allowAdaptive and tuner.GetCandidateBias then
-            local ok, value = pcall(tuner.GetCandidateBias, c)
+            local ok, value = pcall(tuner.GetCandidateBias, c, state)
             if ok then adaptiveBias = tonumber(value) or 0
             elseif RecordRuntimeError then RecordRuntimeError("AdaptiveBias", value) end
         end
@@ -59,6 +63,8 @@ function HCOB.Advisor.Engine.SelectCandidate(list)
     HCOB.Advisor.Engine.lastCandidates = list
     HCOB.Advisor.Engine.lastCandidateSelectionAt = now
     if best then
+        HCOB.Advisor.Engine.lastChosenId = best.id
+        HCOB.Advisor.Engine.lastChoiceChanged = allowAdaptive and best.id ~= baseBest.id or false
         if HCOB.Advisor.Engine.lastClassActionId ~= best.id then
             HCOB.Advisor.Engine.lastClassActionAt = now
         end
@@ -67,6 +73,8 @@ function HCOB.Advisor.Engine.SelectCandidate(list)
         local reason = best.reason
         if math.abs(tonumber(best.adaptiveBias) or 0) >= 0.25 then
             reason = tostring(reason or "") .. string.format(" | Local tuning %+.2f", best.adaptiveBias)
+        elseif baseBest and best.id ~= baseBest.id then
+            reason = tostring(reason or "") .. " | Local tuning: alternative to " .. tostring(baseBest.title or baseBest.id)
         end
         return best.id, best.title, best.key, reason, best.displayKind
     end
@@ -128,6 +136,30 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
     HCOB.Advisor.Engine.displayState = {spellId=spellId,title=title,key=keyHint,reason=reason,kind=kind,priority=priority,signature=signature,since=now}
     HCOB.Advisor.Engine.pendingDisplayState = nil
     return spellId, title, keyHint, reason, kind
+end
+
+-- Preserve the special route's baseline choice exactly, but expose its safe
+-- alternatives to the same learner instead of bypassing it on every multi-pull.
+function HCOB.Advisor.Engine.AdaptSpecial(id, title, key, reason, kind, inCombat, hostile, targetHP)
+    local engine, tuner = HCOB.Advisor.Engine, HCOB.Systems and HCOB.Systems.AdaptiveTuner
+    if not id or not tuner or not tuner.IsEnabled() then return id,title,key,reason,kind end
+    local oldId, oldAt, oldAction = engine.lastClassActionId, engine.lastClassActionAt, engine.lastClassAction
+    ClassRecommendation(inCombat, hostile, targetHP)
+    local list, match, maximum = engine.lastCandidates or {}, nil, 0
+    engine.lastClassActionId, engine.lastClassActionAt, engine.lastClassAction = oldId, oldAt, oldAction
+    for _, candidate in ipairs(list) do
+        maximum = math.max(maximum, candidate.score or 0)
+        if candidate.id == id and not match then match = candidate end
+    end
+    if not match or not tuner.Policy(match, engine.lastAdaptiveState) then
+        engine.lastCandidates, engine.lastBaseline = {}, nil
+        return id,title,key,reason,kind
+    end
+    -- Five points also dominate the existing four-point display hysteresis.
+    match.score = maximum + 5
+    local selected, selectedTitle, selectedKey, selectedReason = engine.SelectCandidate(list)
+    if selected == id then return id,title,key,reason,kind end
+    return selected,selectedTitle,selectedKey,selectedReason,kind
 end
 
 
@@ -293,6 +325,7 @@ function Recommend()
     -- safety/interrupt return. SelectCandidate repopulates these when class
     -- scoring is actually reached during this Recommend() call.
     HCOB.Advisor.Engine.lastCandidates = {}
+    HCOB.Advisor.Engine.lastBaseline = nil
     HCOB.Advisor.Engine.lastCandidateSelectionAt = nil
     local inCombat = UnitAffectingCombat("player") and true or false
     local hostile = HostileLiveTarget()
@@ -342,7 +375,7 @@ function Recommend()
 
     if inCombat and enemies >= 2 and HCOB_DB.hcDangerAdvisor ~= false then
         local mid, mtitle, mkey, mreason, mkind = MultiPullRecommendation(enemies, hp, targetHP)
-        if mtitle then return mid, mtitle, mkey, mreason, mkind end
+        if mtitle then return HCOB.Advisor.Engine.AdaptSpecial(mid, mtitle, mkey, mreason, mkind, inCombat, hostile, targetHP) end
     end
 
     -- HC single-target fight trend: CAUTION enters before the old DANGER,
@@ -366,7 +399,7 @@ function Recommend()
                         inCombat=inCombat, hostile=hostile, hp=hp, targetHP=targetHP,
                         dynamics=dyn, reserve=reserve, reserveLabel=reserveLabel, text=trendText,
                     })
-                    if cid or ctitle then return cid, ctitle, ckey, creason, ckind or "caution" end
+                    if cid or ctitle then return HCOB.Advisor.Engine.AdaptSpecial(cid, ctitle, ckey, creason, ckind or "caution", inCombat, hostile, targetHP) end
                 end
                 return nil, "UNFAVORABLE FIGHT", "PREPARE ESCAPE", trendText .. ": preserve control/defensives", "caution"
             end

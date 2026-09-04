@@ -367,6 +367,37 @@ function T.RecordRecommendation(spellId, title, keyHint, kind, reserve, enemies,
     local now = GetTime()
     local elapsed = math.max(0, now - (fight.startClock or now))
     local candidate = SelectedCandidate(spellId)
+    local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+    local engine = HCOB.Advisor and HCOB.Advisor.Engine
+    local baseline = engine and engine.lastBaseline
+    local window
+    if candidate and tuner and tuner.Policy and baseline then
+        local state = engine.lastAdaptiveState or tuner.DecisionState()
+        if tuner.Policy(baseline, state) and tuner.Policy(candidate, state) then
+            window = {candidates={}, situation=tuner.SituationKey(state), at=now,
+                target=SafeUnitGUID and SafeUnitGUID("target"),
+                recommendedId=CanonicalActionId(spellId), baselineId=CanonicalActionId(baseline.id),
+                changed=engine.lastChoiceChanged == true and SameAction(engine.lastChosenId, spellId)}
+            local seen = {}
+            local longestCast = 0
+            for i=1,math.min(12, #(engine.lastCandidates or {})) do
+                local alternative = engine.lastCandidates[i]
+                local actionId = CanonicalActionId(alternative.id)
+                if actionId and not seen[actionId] and tuner.Policy(alternative, state) then
+                    seen[actionId] = true
+                    longestCast = math.max(longestCast, Finite(SpellCastSeconds and SpellCastSeconds(actionId), 0))
+                    window.candidates[#window.candidates + 1] = {spellId=actionId,
+                        tag=alternative.tag, title=alternative.title}
+                end
+            end
+            window.expires = now + math.max(0.8, longestCast + 0.8)
+            tuning._choiceWindow = window
+        else
+            tuning._choiceWindow = nil
+        end
+    elseif title ~= "CAST ACTIVE" and title ~= "CHANNEL ACTIVE" and title ~= "RECOVERY ACTIVE" then
+        tuning._choiceWindow = nil
+    end
     local key = DecisionKey(spellId, kind, title, candidate and candidate.tag)
     local signature = key .. ":" .. Clean(kind or "idle", 16) .. ":" .. Clean(title, 40)
     local state = tuning._decision
@@ -381,6 +412,18 @@ function T.RecordRecommendation(spellId, title, keyHint, kind, reserve, enemies,
         end
         tuning._decision = {key=key, signature=signature, spellId=CanonicalActionId(spellId), since=now, elapsed=elapsed, accepted=false}
         state = tuning._decision
+    end
+    if window then
+        window.decision = state
+        tuning.impact = tuning.impact or {evaluated=0, changed=0, executed=0}
+        if not state.adaptiveEvaluated then
+            tuning.impact.evaluated = tuning.impact.evaluated + 1
+            state.adaptiveEvaluated = true
+        end
+        if window.changed and not state.adaptiveChangeCounted then
+            tuning.impact.changed = tuning.impact.changed + 1
+            state.adaptiveChangeCounted = true
+        end
     end
     if recordSample == false then return end
     SampleCandidates(tuning, spellId)
@@ -454,10 +497,28 @@ function T.RecordAction(spellId, source)
        and tuning._lastActionSource ~= source then return end
     tuning._lastActionId, tuning._lastActionAt, tuning._lastActionSource = spellId, now, source
 
+    local window = tuning._choiceWindow
+    local validWindow = window and now <= window.expires
+       and (not window.target or (SafeUnitGUID and SafeUnitGUID("target") == window.target))
+    if validWindow then
+        local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
+        if tuner and tuner.RecordChoice then tuner.RecordChoice(fight, window, spellId) end
+        if window.changed and window.recommendedId == spellId and not window.decision.adaptiveExecuted then
+            tuning.impact = tuning.impact or {evaluated=0, changed=0, executed=0}
+            tuning.impact.executed = tuning.impact.executed + 1
+            window.decision.adaptiveExecuted = true
+        end
+    end
+    tuning._choiceWindow = nil
+
     local event = EventSnapshot(fight, spellId, source)
     local stats = tuning.actionStats[tostring(spellId)] or {spellId=spellId, count=0, matched=0, deviations=0, reactionSum=0, reactionSamples=0}
     stats.count = stats.count + 1
     local state = tuning._decision
+    if validWindow and (not state or not state.spellId) then
+        state = window.decision
+        event.recommendedId, event.match = window.recommendedId, SameAction(window.recommendedId, spellId)
+    end
     if state and state.spellId then
         tuning.comparableActions = (tuning.comparableActions or 0) + 1
         local bucket = tuning.decisions[state.key]
@@ -581,6 +642,7 @@ function T.FinalizeFight(fight)
     local tuning = fight and fight.tuning
     if not tuning then return end
     CloseDecision(fight, GetTime())
+    tuning._choiceWindow = nil -- erase ephemeral target identity before any finalization can fail
     for _, bucket in pairs(tuning.resources or {}) do
         local samples = math.max(1, bucket.samples or 0)
         bucket.average = (bucket.sum or 0) / samples
@@ -615,6 +677,7 @@ function T.FinalizeFight(fight)
     local comparable = tonumber(tuning.comparableActions) or 0
     local matched = tonumber(tuning.matchedActions) or 0
     tuning.adherencePct = comparable > 0 and matched / comparable * 100 or nil
+    local hasChoices = type(tuning.choiceEvidence) == "table" and next(tuning.choiceEvidence) ~= nil
 
     local context = tuning.context or {}
     local finalContext = ContextSnapshot()
@@ -633,12 +696,12 @@ function T.FinalizeFight(fight)
     if fight.endReason ~= "combat_end" then reasons[#reasons + 1] = "incomplete" end
     if context.changedDuringFight then reasons[#reasons + 1] = "context_changed" end
     if fight.died then reasons[#reasons + 1] = "death" end
-    if comparable < 1 then reasons[#reasons + 1] = "no_correlated_actions" end
-    if comparable > 0 and (tuning.adherencePct or 0) < 35 then reasons[#reasons + 1] = "low_adherence" end
+    if comparable < 1 and not hasChoices then reasons[#reasons + 1] = "no_correlated_actions" end
+    if comparable > 0 and (tuning.adherencePct or 0) < 35 and not hasChoices then reasons[#reasons + 1] = "low_adherence" end
     tuning.eligibility = {
         mode=context.mode, safety=(duration >= 2 and not context.pvp and fight.endReason == "combat_end"),
         dps=(duration >= 4 and not context.pvp and not fight.died and fight.endReason == "combat_end" and not context.changedDuringFight),
-        adaptive=(duration >= 4 and not context.pvp and not fight.died and fight.endReason == "combat_end" and not context.changedDuringFight and comparable >= 1 and (tuning.adherencePct or 0) >= 35),
+        adaptive=(duration >= 4 and not context.pvp and not fight.died and fight.endReason == "combat_end" and not context.changedDuringFight and (hasChoices or (comparable >= 1 and (tuning.adherencePct or 0) >= 35))),
         reasons=reasons,
     }
     local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
@@ -647,6 +710,7 @@ function T.FinalizeFight(fight)
         if not ok and RecordRuntimeError then RecordRuntimeError("AdaptiveTuner", err) end
     end
     tuning._decision = nil
+    tuning._choiceWindow = nil
     tuning._lastInputKey, tuning._lastInputAt = nil, nil
     tuning._lastActionId, tuning._lastActionAt, tuning._lastActionSource = nil, nil, nil
     tuning._lastQueuedSpell, tuning._lastQueueOutcomeAt = nil, nil

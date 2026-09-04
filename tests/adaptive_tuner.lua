@@ -34,6 +34,8 @@ local context = {
 
 local function fight(spellId, dps, hp, eligible)
     local key = tostring(spellId) .. ":damage"
+    local other = spellId == 101 and 102 or 101
+    local otherKey = tostring(other) .. ":damage"
     return {
         dps=dps, hpMinPct=hp,
         tuning={
@@ -41,6 +43,10 @@ local function fight(spellId, dps, hp, eligible)
             eligibility={adaptive=eligible ~= false, reasons=eligible == false and {"pvp"} or {}},
             candidates={[key]={spellId=spellId, tag="damage", title="Action " .. spellId, samples=8}},
             decisions={[key]={spellId=spellId, tag="damage", title="Action " .. spellId, accepted=1, offers=1}},
+            choiceEvidence={
+                [key]={spellId=spellId, tag="damage", title="Action " .. spellId, situation="single:normal:main", chosen=true},
+                [otherKey]={spellId=other, tag="damage", title="Action " .. other, situation="single:normal:main", chosen=false},
+            },
         },
     }
 end
@@ -108,7 +114,7 @@ assert(revisedBias < biasBeforeRevision, "later negative evidence did not roll t
 -- manually corrupted with a large bias.
 learnedContext.arms["999:survival"] = {tag="survival", fights=99, bias=99}
 assert(tuner.GetCandidateBias({id=999, tag="survival"}) == 0, "survival priority became tunable")
-learnedContext.arms["102:damage"].bias = 99
+learnedContext.arms["102:damage"].situations["single:normal:main"].bias = 99
 assert(tuner.GetCandidateBias({id=102, tag="damage"}) == tuner.MAX_SCORE_BIAS,
     "runtime bias did not clamp corrupted SavedVariables")
 
@@ -121,7 +127,7 @@ local candidates = {
 }
 local selected, _, _, reason = environment.HCOneButton.Advisor.Engine.SelectCandidate(candidates)
 assert(selected == 102, "bounded learned bias was not integrated into candidate selection")
-assert(reason:find("Local tuning +4.00", 1, true), "visible adaptive explanation missing")
+assert(reason:find("Local tuning +12.00", 1, true), "visible adaptive explanation missing")
 
 environment.HCOneButton.Advisor.Engine.ResetStabilization()
 local protected, _, _, protectedReason = environment.HCOneButton.Advisor.Engine.SelectCandidate({

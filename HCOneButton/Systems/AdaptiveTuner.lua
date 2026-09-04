@@ -1,7 +1,6 @@
 -- HCOneButton local adaptive priority learner.
--- Learns only from eligible per-character telemetry and applies small bounded
--- score corrections to offensive candidates. Survival gates and protected
--- execution remain entirely owned by the normal Advisor engine.
+-- Learns bounded situational preferences from confirmed co-eligible choices.
+-- Emergencies and spell eligibility remain owned by the normal Advisor engine.
 local HCOB = HCOneButton
 local E = HCOB.Internal
 setfenv(1, E)
@@ -10,10 +9,11 @@ HCOB.Systems.AdaptiveTuner = HCOB.Systems.AdaptiveTuner or {}
 local A = HCOB.Systems.AdaptiveTuner
 
 A.SCHEMA_VERSION = 2
-A.REVISION = 2
+A.REVISION = 3
 A.MIN_CONTEXT_FIGHTS = 8
 A.MIN_ARM_FIGHTS = 4
-A.MAX_SCORE_BIAS = 4
+A.MAX_SCORE_BIAS = 12
+A.MAX_SITUATIONS = 12
 A.MAX_CONTEXTS = 24
 A.MAX_ARMS_PER_CONTEXT = 64
 
@@ -21,12 +21,71 @@ local TUNABLE_TAGS = {
     damage=true, dot=true, finisher=true, aoe=true, burst=true,
     efficiency=true, sustain=true, weave=true, core=true, dump=true,
     setup=true,
+    proc=true, buff=true, resource=true, mitigation=true, form=true,
+    aspect=true, survival=true, control=true,
 }
+
+-- Emergency cooldowns are never experiments, even when the current HP looks
+-- healthy. Other actions are classified at the actual decision, not by class.
+local EMERGENCY_IDS = {
+    [871]=true, [20230]=true, [642]=true, [498]=true, [633]=true,
+    [5384]=true, [1856]=true, [11958]=true, [12472]=true,
+    [22842]=true, [6789]=true,
+}
+local CONDITIONAL_TAGS = {survival=true, control=true, mitigation=true,
+    resource=true, buff=true, form=true, aspect=true, sustain=true, proc=true}
 
 local function Finite(value, fallback)
     value = tonumber(value)
     if not value or value ~= value or value == math.huge or value == -math.huge then return fallback end
     return value
+end
+
+function A.DecisionState()
+    local hp, readable
+    if UnitHealthPct then hp, readable = UnitHealthPct("player") end
+    local targetHP = UnitHealthPct and UnitHealthPct("target")
+    local petHP, petReadable
+    if UnitHealthPct then petHP, petReadable = UnitHealthPct("pet") end
+    if petReadable == false then petHP = nil end
+    local engine = HCOB.Advisor and HCOB.Advisor.Engine
+    local reserve = engine and engine.SurvivalReserve and engine.SurvivalReserve()
+    local power = UnitPowerPct and UnitPowerPct("player", UnitPowerType and UnitPowerType("player") or 0)
+    local enemies = CountActiveEnemies and CountActiveEnemies() or 1
+    return {hp=hp, readable=readable ~= false and type(hp) == "number",
+        reserve=reserve, power=power, targetHP=targetHP, petHP=petHP, enemies=enemies}
+end
+
+function A.SituationKey(state)
+    state = state or A.DecisionState()
+    local power = Finite(state.power, 50)
+    return (Finite(state.enemies, 1) >= 2 and "multi" or "single") .. ":"
+        .. (power <= 35 and "low" or (power >= 80 and "high" or "normal")) .. ":"
+        .. (Finite(state.targetHP, 100) <= 30 and "finish" or "main")
+end
+
+function A.Policy(candidate, state)
+    if type(candidate) ~= "table" then return false, "Unavailable action" end
+    local id = Finite(candidate.id or candidate.spellId)
+    if not id or id == 6603 or id == 75 then return false, "Attack mode / non-spell guidance" end
+    if EMERGENCY_IDS[id] then return false, "Emergency cooldown: fixed priority" end
+    if not TUNABLE_TAGS[candidate.tag] then return false, "Fixed " .. tostring(candidate.tag or "action") .. " policy" end
+    if type(candidate.tuningMeta) == "table" and candidate.tuningMeta.required then return false, "Required by class policy" end
+    if CONDITIONAL_TAGS[candidate.tag] then
+        state = state or A.DecisionState()
+        local hp, reserve, petHP = Finite(state.hp), Finite(state.reserve), Finite(state.petHP)
+        if not state.readable or not hp or not reserve then return false, "Safety state unavailable" end
+        if hp <= 60 or reserve < 45 or Finite(state.enemies, 1) >= 3 then
+            return false, "Pressure: preserve recovery / control / resources"
+        end
+        if candidate.tag == "survival" and (hp < 75 or reserve < 60) then
+            return false, "Recovery needed: fixed priority"
+        end
+        if id == 136 and (not petHP or petHP <= 60) then
+            return false, "Pet recovery needed: fixed priority"
+        end
+    end
+    return true, CONDITIONAL_TAGS[candidate.tag] and "Adaptive when safe; protected under pressure" or "Adaptive priority"
 end
 
 local function Bound(value, low, high)
@@ -203,40 +262,101 @@ local function FightReward(fight, context)
     baseline.fights = math.max(0, math.floor(Finite(baseline.fights, 0) or 0))
     baseline.dpsAverage = math.max(0, Finite(baseline.dpsAverage, 0) or 0)
 
-    local dps = math.max(0, Finite(fight.dps, 0) or 0)
+    local overkill = 0
+    for _, abilities in ipairs({fight.abilities or {}, fight.petAbilities or {}}) do
+        if type(abilities) == "table" then
+            for _, ability in pairs(abilities) do
+                if type(ability) == "table" then overkill = overkill + math.max(0, Finite(ability.overkill, 0)) end
+            end
+        end
+    end
+    local dps = math.max(0, Finite(fight.dps, 0) - overkill / math.max(0.05, Finite(fight.duration, 1)))
     local baselineDps = Finite(baseline.dpsAverage, 0) or 0
     local dpsIndex = baseline.fights >= 3 and Bound((dps / math.max(0.1, baselineDps) - 0.65) / 0.70, 0, 1) or 0.5
     local hpFloor = Finite(fight.hpMinPct, 100) or 100
     local survival = Bound((hpFloor - 20) / 75, 0, 1)
-    local reward = dpsIndex * 0.65 + survival * 0.35
+    local capPct = 0
+    for token, resource in pairs(fight.tuning and fight.tuning.resources or {}) do
+        if (token == "RAGE" or token == "ENERGY") and type(resource) == "table" then
+            capPct = math.max(capPct, Bound(resource.capPct, 0, 100))
+        end
+    end
+    local reward = dpsIndex * 0.55 + survival * 0.35 + (1 - capPct / 100) * 0.10
 
     baseline.fights = (baseline.fights or 0) + 1
     baseline.dpsAverage = EWMA(baselineDps, dps, baseline.fights, 0.16)
     baseline.lastSeenAt = Now()
-    return reward, survival, dpsIndex, difficulty
+    return reward, survival, dpsIndex, difficulty, dps, capPct
 end
 
 local function RecomputeBiases(context)
     local active = 0
     for _, arm in pairs(context.arms or {}) do
-        local bias = 0
-        if type(arm) == "table" and TUNABLE_TAGS[arm.tag]
-           and (Finite(context.fights, 0) or 0) >= A.MIN_CONTEXT_FIGHTS
-           and (Finite(arm.fights, 0) or 0) >= A.MIN_ARM_FIGHTS then
-            local rewardDelta = (Finite(arm.rewardAverage, 0) or 0) - (Finite(context.rewardAverage, 0) or 0)
-            local safetyDelta = (Finite(arm.survivalAverage, 0) or 0) - (Finite(context.survivalAverage, 0) or 0)
-            local confidence = Bound(((Finite(arm.fights, 0) or 0) - A.MIN_ARM_FIGHTS + 1) / 8, 0, 1)
-            local raw = rewardDelta * 12
-            if safetyDelta < -0.08 then raw = math.min(raw, safetyDelta * 14) end
-            if math.abs(raw) < 0.35 then raw = 0 end
-            bias = RoundQuarter(Bound(raw * confidence, -A.MAX_SCORE_BIAS, A.MAX_SCORE_BIAS))
-        end
         if type(arm) == "table" then
-            arm.bias = bias
-            if math.abs(bias) >= 0.25 then active = active + 1 end
+            -- Legacy fight-wide correlations remain inspectable evidence, but
+            -- are not silently promoted into the wider revision-3 score range.
+            arm.bias = 0
+            for _, situation in pairs(type(arm.situations) == "table" and arm.situations or {}) do
+                if type(situation) == "table" then
+                    local yes = type(situation.chosen) == "table" and situation.chosen or {}
+                    local no = type(situation.other) == "table" and situation.other or {}
+                    local ny, nn = Finite(yes.n, 0), Finite(no.n, 0)
+                    local bias = 0
+                    if context.fights >= A.MIN_CONTEXT_FIGHTS and ny >= A.MIN_ARM_FIGHTS and nn >= A.MIN_ARM_FIGHTS then
+                        local delta = Finite(yes.mean, 0) - Finite(no.mean, 0)
+                        local safety = Finite(yes.safety, 0) - Finite(no.safety, 0)
+                        local se = math.sqrt(math.max(0, Finite(yes.m2, 0) / (ny - 1) / ny
+                            + Finite(no.m2, 0) / (nn - 1) / nn))
+                        local signal = math.max(0, math.abs(delta) - 1.5 * se - 0.04)
+                        local raw = (delta < 0 and -1 or 1) * signal * 30
+                        -- A faster result cannot earn a positive preference at
+                        -- the expense of a materially worse health floor.
+                        if safety < -0.08 then raw = math.min(0, raw) end
+                        bias = RoundQuarter(Bound(raw * math.min(1, math.min(ny, nn) / 8), -A.MAX_SCORE_BIAS, A.MAX_SCORE_BIAS))
+                    end
+                    situation.bias = bias
+                    if math.abs(bias) >= 0.25 then active = active + 1 end
+                end
+            end
         end
     end
     return active
+end
+
+local function ObserveComparison(bucket, reward, survival)
+    bucket.n = (Finite(bucket.n, 0) or 0) + 1
+    local delta = reward - Finite(bucket.mean, 0)
+    bucket.mean = Finite(bucket.mean, 0) + delta / bucket.n
+    bucket.m2 = math.max(0, Finite(bucket.m2, 0) + delta * (reward - bucket.mean))
+    bucket.safety = Finite(bucket.safety, 0) + (survival - Finite(bucket.safety, 0)) / bucket.n
+end
+
+local function ComparisonBias(situation, contextFights)
+    if type(situation) ~= "table" or type(situation.chosen) ~= "table" or type(situation.other) ~= "table"
+       or Finite(contextFights, 0) < A.MIN_CONTEXT_FIGHTS
+       or Finite(situation.chosen.n, 0) < A.MIN_ARM_FIGHTS
+       or Finite(situation.other.n, 0) < A.MIN_ARM_FIGHTS then return 0 end
+    return Bound(situation.bias, -A.MAX_SCORE_BIAS, A.MAX_SCORE_BIAS)
+end
+
+-- One first confirmed choice per action and fight, with a genuine alternative
+-- available at that decision. Repeated reader inputs are not extra evidence.
+function A.RecordChoice(fight, window, spellId)
+    if not A.IsEnabled() or not window or not window.candidates then return end
+    local selected
+    for _, candidate in ipairs(window.candidates) do
+        if candidate.spellId == spellId then selected = candidate end
+    end
+    if not selected or #window.candidates < 2 then return end
+    local tuning = fight.tuning
+    tuning.choiceEvidence = tuning.choiceEvidence or {}
+    for _, candidate in ipairs(window.candidates) do
+        local key = CandidateKey(candidate.spellId, candidate.tag)
+        if not tuning.choiceEvidence[key] and Count(tuning.choiceEvidence) < A.MAX_ARMS_PER_CONTEXT then
+            tuning.choiceEvidence[key] = {spellId=candidate.spellId, tag=candidate.tag,
+                title=candidate.title, situation=window.situation, chosen=candidate == selected}
+        end
+    end
 end
 
 local function ObserveOutcome(arm, reward, survival, dpsIndex)
@@ -247,9 +367,9 @@ local function ObserveOutcome(arm, reward, survival, dpsIndex)
     arm.lastSeenAt = Now()
 end
 
-function A.GetCandidateBias(candidate)
+function A.GetCandidateBias(candidate, state)
     local store = Store()
-    if not store or store.enabled ~= true or type(candidate) ~= "table" or not TUNABLE_TAGS[candidate.tag] then return 0 end
+    if not store or store.enabled ~= true or not A.Policy(candidate, state) then return 0 end
     local tuning = currentFight and currentFight.tuning
     local telemetryContext = tuning and tuning.context
     -- Never reuse the last learned build blindly. If combat logging is off or
@@ -267,7 +387,8 @@ function A.GetCandidateBias(candidate)
     local arms = type(context.arms) == "table" and context.arms or {}
     local arm = arms[CandidateKey(candidate.id, candidate.tag)]
     if type(arm) ~= "table" then return 0 end
-    local bias = arm and Bound(arm.bias, -A.MAX_SCORE_BIAS, A.MAX_SCORE_BIAS) or 0
+    local situation = type(arm.situations) == "table" and arm.situations[A.SituationKey(state)] or nil
+    local bias = ComparisonBias(situation, context.fights)
     if bias ~= 0 and tuning then
         tuning.adaptiveApplied = true
         tuning.adaptiveMaxBias = math.max(Finite(tuning.adaptiveMaxBias, 0) or 0, math.abs(bias))
@@ -275,8 +396,8 @@ function A.GetCandidateBias(candidate)
     return bias
 end
 
-function A.IsCandidateTunable(candidate)
-    return type(candidate) == "table" and TUNABLE_TAGS[candidate.tag] == true
+function A.IsCandidateTunable(candidate, state)
+    return A.Policy(candidate, state)
 end
 
 function A.LearnFight(fight)
@@ -298,13 +419,35 @@ function A.LearnFight(fight)
     store.lastContextKey = contextKey
     store.totalEligible = (store.totalEligible or 0) + 1
     context.fights = (context.fights or 0) + 1
-    local reward, survival, dpsIndex, difficulty = FightReward(fight, context)
+    local reward, survival, dpsIndex, difficulty, effectiveDps, capPct = FightReward(fight, context)
     context.rewardAverage = EWMA(Finite(context.rewardAverage, reward) or reward, reward, context.fights, 0.14)
     context.survivalAverage = EWMA(Finite(context.survivalAverage, survival) or survival, survival, context.fights, 0.14)
 
     for key, candidate in pairs(tuning.candidates or {}) do
         local arm = EnsureArm(context, key, candidate)
         if arm then arm.opportunities = (arm.opportunities or 0) + (Finite(candidate.samples, 0) or 0) end
+    end
+    for key, evidence in pairs(tuning.choiceEvidence or {}) do
+        if type(evidence) == "table" and TUNABLE_TAGS[evidence.tag] and type(evidence.situation) == "string" then
+            local arm = EnsureArm(context, key, evidence)
+            if arm then
+                arm.situations = type(arm.situations) == "table" and arm.situations or {}
+                local situation = arm.situations[evidence.situation]
+                if not situation and Count(arm.situations) < A.MAX_SITUATIONS then
+                    situation = {chosen={}, other={}, bias=0}
+                    arm.situations[evidence.situation] = situation
+                end
+                if type(situation) == "table" then
+                    local side = evidence.chosen and "chosen" or "other"
+                    situation[side] = type(situation[side]) == "table" and situation[side] or {}
+                    ObserveComparison(situation[side], reward, survival)
+                end
+            end
+        end
+    end
+    context.impact = type(context.impact) == "table" and context.impact or {}
+    for _, name in ipairs({"evaluated", "changed", "executed"}) do
+        context.impact[name] = Finite(context.impact[name], 0) + Finite(tuning.impact and tuning.impact[name], 0)
     end
     local observedThisFight = {}
     for key, decision in pairs(tuning.decisions or {}) do
@@ -354,14 +497,16 @@ function A.LearnFight(fight)
     tuning.learning.reward = reward
     tuning.learning.survival = survival
     tuning.learning.difficulty = difficulty
+    tuning.learning.effectiveDps, tuning.learning.resourceCapPct = effectiveDps, capPct
     store.lastLearnedAt = Now()
     if context.fights >= A.MIN_CONTEXT_FIGHTS and not context.readyAnnounced then
         context.readyAnnounced = true
-        print("|cff00ff98HCOB ADAPTIVE:|r calibration complete for this class/build context; bounded offensive tuning is now available.")
+        print("|cff00ff98HCOB ADAPTIVE:|r context ready; each situation needs comparable chosen and alternative fights.")
     end
-    if activeAdjustments > 0 and not context.adjustmentsAnnounced then
+    if activeAdjustments > 0 and not context.comparisonsAnnounced then
         context.adjustmentsAnnounced = true
-        print("|cff00ff98HCOB ADAPTIVE:|r first learned priority adjustments are active. Use /hcob tuning status for details.")
+        context.comparisonsAnnounced = true
+        print("|cff00ff98HCOB ADAPTIVE:|r first situational adjustments are active. Use /hcob tuning status for observed impact.")
     end
 end
 
@@ -402,7 +547,7 @@ function A.Status()
         contextFights=model.fights or 0, learnedActions=model.learnedActions or 0,
         activeAdjustments=model.activeAdjustments or 0, ready=model.ready == true,
         viewProfile=model.viewProfile, mode=model.mode, contextKey=model.contextKey,
-        contextAvailable=model.contextAvailable == true, learningSupported=model.learningSupported,
+        contextAvailable=model.contextAvailable == true, learningSupported=model.learningSupported, impact=model.impact,
     }
 end
 
@@ -418,7 +563,7 @@ function A.GetDisplayModel(profile)
         minArmFights=A.MIN_ARM_FIGHTS,
         maxBias=A.MAX_SCORE_BIAS,
         viewProfile=profile, learningSupported=profile ~= "pvp",
-        arms={}, protectedObserved=0,
+        arms={}, protectedObserved=0, impact={evaluated=0, changed=0, executed=0},
     }
     if not store then return model end
 
@@ -451,27 +596,40 @@ function A.GetDisplayModel(profile)
     model.contextAvailable = liveKey ~= nil
     model.fights = context and math.max(0, math.floor(Finite(context.fights, 0) or 0)) or 0
     model.ready = model.fights >= A.MIN_CONTEXT_FIGHTS
+    for _, name in ipairs({"evaluated", "changed", "executed"}) do
+        model.impact[name] = Finite(context and type(context.impact) == "table" and context.impact[name], 0)
+    end
 
     local learnedActions, activeAdjustments = 0, 0
     local arms = context and type(context.arms) == "table" and context.arms or {}
     for key, arm in pairs(arms) do
         if type(arm) == "table" then
-            if TUNABLE_TAGS[arm.tag] then
+            if arm.spellId then
                 local fights = math.max(0, math.floor(Finite(arm.fights, 0) or 0))
-                local bias = Bound(arm.bias, -A.MAX_SCORE_BIAS, A.MAX_SCORE_BIAS)
-                if fights > 0 then learnedActions = learnedActions + 1 end
-                if math.abs(bias) >= 0.25 then activeAdjustments = activeAdjustments + 1 end
-                model.arms[#model.arms + 1] = {
-                    key=tostring(key), spellId=Finite(arm.spellId, nil),
-                    title=tostring(arm.title or arm.spellId or "Unknown action"),
-                    tag=tostring(arm.tag or "action"), fights=fights,
-                    opportunities=math.max(0, math.floor(Finite(arm.opportunities, 0) or 0)),
-                    accepted=math.max(0, math.floor(Finite(arm.accepted, 0) or 0)),
-                    userOverrides=math.max(0, math.floor(Finite(arm.userOverrides, 0) or 0)),
-                    bias=bias, active=math.abs(bias) >= 0.25,
-                }
-            else
-                model.protectedObserved = model.protectedObserved + 1
+                local tunable, policy = A.Policy(arm, {hp=100, petHP=100, reserve=100, readable=true, enemies=1})
+                learnedActions = learnedActions + 1
+                if not tunable then model.protectedObserved = model.protectedObserved + 1 end
+                local situations = type(arm.situations) == "table" and arm.situations or {}
+                local hasRows = false
+                local function addRow(situationKey, situation)
+                    local bias = tunable and ComparisonBias(situation, model.fights) or 0
+                    if math.abs(bias) >= 0.25 then activeAdjustments = activeAdjustments + 1 end
+                    model.arms[#model.arms + 1] = {
+                        key=tostring(key) .. ":" .. tostring(situationKey or "observed"), spellId=Finite(arm.spellId, nil),
+                        title=tostring(arm.title or arm.spellId or "Unknown action"), policy=policy, protected=not tunable,
+                        situation=situationKey, tag=tostring(arm.tag or "action"), fights=fights,
+                        chosenFights=situation and Finite(type(situation.chosen) == "table" and situation.chosen.n, 0) or 0,
+                        otherFights=situation and Finite(type(situation.other) == "table" and situation.other.n, 0) or 0,
+                        opportunities=math.max(0, math.floor(Finite(arm.opportunities, 0) or 0)),
+                        accepted=math.max(0, math.floor(Finite(arm.accepted, 0) or 0)),
+                        userOverrides=math.max(0, math.floor(Finite(arm.userOverrides, 0) or 0)),
+                        bias=bias, active=math.abs(bias) >= 0.25,
+                    }
+                end
+                for situationKey, situation in pairs(situations) do
+                    if type(situation) == "table" then addRow(situationKey, situation); hasRows=true end
+                end
+                if not hasRows then addRow() end
             end
         end
     end
@@ -504,7 +662,9 @@ function A.PrintStatus()
         print("No evidence for the current build/level band/solo-group context. Other saved contexts are preserved, not applied here.")
     end
     if status.enabled and status.learningSupported then
-        print("Learning is local and bounded to offensive priorities; Hardcore safety gates are never tuned.")
+        print(string.format("Observed impact: %d/%d displayed choices changed; %d changed choices executed. Not a measured DPS gain.",
+            status.impact.changed, status.impact.evaluated, status.impact.executed))
+        print("Local situational comparisons; emergency priorities and cast/range/aura gates remain fixed.")
     end
 end
 

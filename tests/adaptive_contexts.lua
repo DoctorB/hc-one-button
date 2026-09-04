@@ -52,7 +52,7 @@ local store = env.HCOB_CharacterDB.adaptive
 local originalKey = store.lastContextKey
 local learned = store.contexts[originalKey]
 -- Isolate lookup/display from the learner's statistical reward calculations.
-learned.arms["772:dot"].bias, learned.arms["78:dump"].bias = -1, 0
+learned.arms["772:dot"].situations = {["single:normal:main"]={bias=-1, chosen={n=8}, other={n=8}}}
 
 local function expect(rows, corrections, label)
     local model, status = a.GetDisplayModel(), a.Status()
@@ -181,11 +181,11 @@ store.contexts[foreignKey] = legacyContext(200, 3)
 for index=1,21 do store.contexts["unrelated-" .. index] = {lastSeenAt=index} end
 store.lastContextKey, store.totalEligible = foreignKey, 24
 env.level = 13
-expect(2, 1, "legacy same-band recovery")
-assert(a.GetDisplayModel().arms[1].bias == -1, "legacy lookup did not select latest compatible evidence")
+expect(2, 0, "legacy same-band recovery")
+assert(a.GetDisplayModel().arms[1].bias == 0, "legacy coefficient was promoted without comparative evidence")
 assert(store.contexts[legacyKey] == retained, "inspection mutated legacy context")
 env.currentFight = fight()
-assert(a.GetCandidateBias({id=772,tag="dot"}) == -1, "legacy evidence not available during gameplay")
+assert(a.GetCandidateBias({id=772,tag="dot"}) == 0, "legacy coefficient applied without comparative evidence")
 a.LearnFight(env.currentFight)
 assert(store.contexts[store.lastContextKey] == retained and not store.contexts[legacyKey], "legacy evidence was reset instead of re-keyed")
 assert(retained.fights == 9 and store.totalEligible == 25, "migration double counted or merged evidence")
