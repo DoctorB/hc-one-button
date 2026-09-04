@@ -65,8 +65,9 @@ local function RuntimeSessionId()
     return telemetryRuntimeSessionId
 end
 
-local function TalentSignature()
-    local parts = {PLAYER_CLASS or "?", PlayerLevel and PlayerLevel() or 0}
+local function TalentSignatures()
+    -- Level belongs to the learner's five-level band, not the talent layout.
+    local parts = {PLAYER_CLASS or "?"}
     for tab=1,3 do
         local points = 0
         if TalentTabCompat then
@@ -83,7 +84,19 @@ local function TalentSignature()
             parts[#parts + 1] = tostring(math.floor(rank))
         end
     end
-    return HashParts(parts)
+    local signature = HashParts(parts)
+    -- 1.29.0 included the exact level in this hash. Supply bounded aliases so
+    -- existing evidence can be recovered only for the same talents/spellbook
+    -- and level band, without merging statistically independent profiles.
+    local level = math.max(1, math.floor(Finite(PlayerLevel and PlayerLevel(), 1) or 1))
+    local band = math.floor((level - 1) / 5) * 5 + 1
+    local legacy = {}
+    table.insert(parts, 2, level)
+    for oldLevel=band,band + 4 do
+        parts[2] = oldLevel
+        legacy[#legacy + 1] = HashParts(parts)
+    end
+    return signature, legacy
 end
 
 local function SpellbookSignature()
@@ -139,7 +152,9 @@ local function GroupContext()
     inInstance = inInstance == true or inInstance == 1
     instanceType = Clean(instanceType or "none", 20)
     local targetPlayer = BoolCall(UnitIsPlayer, "target")
-    local pvp = targetPlayer or instanceType == "pvp" or instanceType == "arena"
+    -- A selected player is not evidence of PvP. Actual hostile exchanges are
+    -- tracked by CombatLog; battleground/arena instances are explicit contexts.
+    local pvp = instanceType == "pvp" or instanceType == "arena"
     local mode = pvp and "pvp" or (groupSize > 1 and "group" or "solo")
     return math.floor(groupSize), inInstance, instanceType, targetPlayer, pvp, mode
 end
@@ -175,7 +190,7 @@ end
 
 local function ContextSnapshot()
     local groupSize, inInstance, instanceType, targetPlayer, pvp, mode = GroupContext()
-    local talent = TalentSignature()
+    local talent, legacyTalents = TalentSignatures()
     local spellbook = SpellbookSignature()
     local equipment = EquipmentSignature()
     local specIndex, specName, specPoints = 0, "Unknown", 0
@@ -185,6 +200,7 @@ local function ContextSnapshot()
         class=PLAYER_CLASS, level=PlayerLevel and PlayerLevel() or 0,
         specIndex=specIndex, spec=Clean(specName, 32), specPoints=specPoints,
         talentSignature=talent, spellbookSignature=spellbook, equipmentSignature=equipment,
+        legacyTalentSignatures=legacyTalents,
         buildSignature=HashParts({PLAYER_CLASS, PlayerLevel and PlayerLevel() or 0, talent, spellbook, equipment}),
         groupSize=groupSize, inInstance=inInstance, instanceType=instanceType, targetPlayer=targetPlayer, pvp=pvp, mode=mode,
         playerHealthMax=SafeUnitHealthMax and SafeUnitHealthMax("player", 0) or 0,
@@ -604,7 +620,8 @@ function T.FinalizeFight(fight)
     local finalContext = ContextSnapshot()
     context.pvp = context.pvp == true or finalContext.pvp == true
     if context.pvp then context.mode = "pvp" end
-    context.changedDuringFight = finalContext.talentSignature ~= context.talentSignature
+    context.changedDuringFight = finalContext.level ~= context.level
+        or finalContext.talentSignature ~= context.talentSignature
         or finalContext.spellbookSignature ~= context.spellbookSignature
         or finalContext.equipmentSignature ~= context.equipmentSignature
         or finalContext.groupSize ~= context.groupSize

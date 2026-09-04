@@ -10,7 +10,7 @@ HCOB.Systems.AdaptiveTuner = HCOB.Systems.AdaptiveTuner or {}
 local A = HCOB.Systems.AdaptiveTuner
 
 A.SCHEMA_VERSION = 2
-A.REVISION = 1
+A.REVISION = 2
 A.MIN_CONTEXT_FIGHTS = 8
 A.MIN_ARM_FIGHTS = 4
 A.MAX_SCORE_BIAS = 4
@@ -63,12 +63,13 @@ local function Store()
         store.upgradedAt = Now()
     end
     if type(store.enabled) ~= "boolean" then store.enabled = true end
+    if store.viewProfile ~= "pvp" then store.viewProfile = "pve" end
     if type(store.contexts) ~= "table" then store.contexts = {} end
     store.totalEligible = math.max(0, math.floor(Finite(store.totalEligible, 0) or 0))
     return store
 end
 
-local function ContextKey(context)
+local function ContextKey(context, talentSignature)
     if type(context) ~= "table" then return nil end
     local telemetry = HCOB.Systems and HCOB.Systems.TuningTelemetry
     local hash = telemetry and telemetry.HashParts
@@ -76,11 +77,32 @@ local function ContextKey(context)
     local levelBand = math.floor((level - 1) / 5) * 5 + 1
     local parts = {
         "adaptive1", context.class or PLAYER_CLASS or "?", context.specIndex or 0,
-        context.mode or "solo", levelBand, context.talentSignature or "?",
+        context.mode or "solo", levelBand, talentSignature or context.talentSignature or "?",
         context.spellbookSignature or "?",
     }
     if hash then return hash(parts), levelBand end
     return table.concat(parts, ":"), levelBand
+end
+
+local function FindContext(store, telemetryContext)
+    local key, levelBand = ContextKey(telemetryContext)
+    local context = key and store.contexts[key]
+    if type(context) == "table" then return context, key, levelBand, key end
+    local latest, latestKey, latestAt
+    local aliases = telemetryContext and telemetryContext.legacyTalentSignatures
+    if type(aliases) == "table" then
+        for index=1,math.min(5, #aliases) do
+            local oldKey = ContextKey(telemetryContext, aliases[index])
+            local old = oldKey and store.contexts[oldKey]
+            if type(old) == "table" then
+                local seen = Finite(old.lastSeenAt, 0) or 0
+                if not latest or seen > latestAt or (seen == latestAt and oldKey < latestKey) then
+                    latest, latestKey, latestAt = old, oldKey, seen
+                end
+            end
+        end
+    end
+    return latest, key, levelBand, latestKey
 end
 
 local function CandidateKey(spellId, tag)
@@ -114,9 +136,14 @@ local function EvictOldestContext(store)
 end
 
 local function EnsureContext(store, telemetryContext)
-    local key, levelBand = ContextKey(telemetryContext)
+    local context, key, levelBand, storedKey = FindContext(store, telemetryContext)
     if not key then return nil, nil end
-    local context = store.contexts[key]
+    if context and storedKey ~= key then
+        -- Re-key the latest compatible legacy context; preserve its evidence,
+        -- notifications and counters. Other archived contexts are not merged.
+        store.contexts[key], store.contexts[storedKey] = context, nil
+        if store.lastContextKey == storedKey then store.lastContextKey = key end
+    end
     if type(context) ~= "table" then
         EvictOldestContext(store)
         context = {
@@ -228,15 +255,17 @@ function A.GetCandidateBias(candidate)
     -- Never reuse the last learned build blindly. If combat logging is off or
     -- the current fight context is unavailable, there is no reliable way to
     -- prove that talents/spellbook/mode still match, so fail closed to zero.
-    if not telemetryContext then return 0 end
+    if not telemetryContext or telemetryContext.pvp == true or telemetryContext.mode == "pvp" then return 0 end
     local key = tuning.adaptiveContextKey
     if not key then
-        key = ContextKey(telemetryContext)
+        local _, canonicalKey, _, storedKey = FindContext(store, telemetryContext)
+        key = storedKey or canonicalKey
         tuning.adaptiveContextKey = key
     end
     local context = key and store.contexts[key] or nil
     if type(context) ~= "table" or (Finite(context.fights, 0) or 0) < A.MIN_CONTEXT_FIGHTS then return 0 end
-    local arm = context.arms and context.arms[CandidateKey(candidate.id, candidate.tag)] or nil
+    local arms = type(context.arms) == "table" and context.arms or {}
+    local arm = arms[CandidateKey(candidate.id, candidate.tag)]
     if type(arm) ~= "table" then return 0 end
     local bias = arm and Bound(arm.bias, -A.MAX_SCORE_BIAS, A.MAX_SCORE_BIAS) or 0
     if bias ~= 0 and tuning then
@@ -256,6 +285,9 @@ function A.LearnFight(fight)
     if not store or type(tuning) ~= "table" then return end
     tuning.learning = {revision=A.REVISION, enabled=store.enabled == true, processed=false}
     if store.enabled ~= true then tuning.learning.reason = "disabled"; return end
+    if tuning.context and (tuning.context.pvp == true or tuning.context.mode == "pvp") then
+        tuning.learning.reason = "pvp"; return
+    end
     if not tuning.eligibility or tuning.eligibility.adaptive ~= true then
         tuning.learning.reason = tuning.eligibility and table.concat(tuning.eligibility.reasons or {}, ",") or "ineligible"
         return
@@ -338,6 +370,13 @@ function A.IsEnabled()
     return store and store.enabled == true or false
 end
 
+function A.SetViewProfile(profile)
+    local store = Store()
+    if not store or (profile ~= "pve" and profile ~= "pvp") then return false end
+    store.viewProfile = profile
+    return true
+end
+
 function A.SetEnabled(enabled)
     local store = Store()
     if not store then return false end
@@ -357,29 +396,20 @@ function A.Reset()
 end
 
 function A.Status()
-    local store = Store()
-    if not store then return {enabled=false, contexts=0, totalEligible=0} end
-    local context = store.lastContextKey and store.contexts[store.lastContextKey] or nil
-    if type(context) ~= "table" then context = nil end
-    local active, learned = 0, 0
-    if type(context) == "table" then
-        for _, arm in pairs(context.arms or {}) do
-            if type(arm) == "table" then
-                if (Finite(arm.fights, 0) or 0) > 0 then learned = learned + 1 end
-                if math.abs(Finite(arm.bias, 0) or 0) >= 0.25 then active = active + 1 end
-            end
-        end
-    end
-    local contextFights = context and math.max(0, math.floor(Finite(context.fights, 0) or 0)) or 0
+    local model = A.GetDisplayModel()
     return {
-        enabled=store.enabled == true, contexts=Count(store.contexts), totalEligible=store.totalEligible or 0,
-        contextFights=contextFights, learnedActions=learned, activeAdjustments=active,
-        ready=contextFights >= A.MIN_CONTEXT_FIGHTS,
+        enabled=model.enabled, contexts=model.contexts, totalEligible=model.totalEligible,
+        contextFights=model.fights or 0, learnedActions=model.learnedActions or 0,
+        activeAdjustments=model.activeAdjustments or 0, ready=model.ready == true,
+        viewProfile=model.viewProfile, mode=model.mode, contextKey=model.contextKey,
+        contextAvailable=model.contextAvailable == true, learningSupported=model.learningSupported,
     }
 end
 
-function A.GetDisplayModel()
+function A.GetDisplayModel(profile)
     local store = Store()
+    profile = profile or (store and store.viewProfile) or "pve"
+    profile = profile == "pvp" and "pvp" or "pve"
     local model = {
         enabled=store and store.enabled == true or false,
         contexts=store and Count(store.contexts) or 0,
@@ -387,6 +417,7 @@ function A.GetDisplayModel()
         minContextFights=A.MIN_CONTEXT_FIGHTS,
         minArmFights=A.MIN_ARM_FIGHTS,
         maxBias=A.MAX_SCORE_BIAS,
+        viewProfile=profile, learningSupported=profile ~= "pvp",
         arms={}, protectedObserved=0,
     }
     if not store then return model end
@@ -397,9 +428,19 @@ function A.GetDisplayModel()
         local ok, value = pcall(telemetry.ContextSnapshot)
         if ok and type(value) == "table" then liveContext = value end
     end
-    local liveKey, levelBand = ContextKey(liveContext)
-    local context = liveKey and store.contexts[liveKey] or nil
-    if type(context) ~= "table" then context = nil end
+    -- Inspection is an explicit view choice, never a guess based on the target
+    -- or last learned fight. It does not switch the gameplay/learning policy.
+    if liveContext then
+        local copy = {}
+        for key, value in pairs(liveContext) do copy[key] = value end
+        local grouped = (Finite(liveContext.groupSize, 1) or 1) > 1 or liveContext.mode == "group"
+        copy.mode = profile == "pvp" and "pvp" or (grouped and "group" or "solo")
+        liveContext = copy
+    end
+    local context, liveKey, levelBand = FindContext(store, liveContext)
+    -- PvP learning is not supported. Never expose stored/corrupt PvP entries as
+    -- active corrections, and never substitute the normal PvE profile here.
+    if not model.learningSupported then context = nil end
 
     model.contextKey = liveKey
     model.class = liveContext and liveContext.class or PLAYER_CLASS or "?"
@@ -412,7 +453,8 @@ function A.GetDisplayModel()
     model.ready = model.fights >= A.MIN_CONTEXT_FIGHTS
 
     local learnedActions, activeAdjustments = 0, 0
-    for key, arm in pairs(context and context.arms or {}) do
+    local arms = context and type(context.arms) == "table" and context.arms or {}
+    for key, arm in pairs(arms) do
         if type(arm) == "table" then
             if TUNABLE_TAGS[arm.tag] then
                 local fights = math.max(0, math.floor(Finite(arm.fights, 0) or 0))
@@ -449,10 +491,19 @@ function A.PrintStatus()
     local status = A.Status()
     print(string.format("|cff00ff98HCOB ADAPTIVE:|r %s | eligible fights %d | contexts %d",
         status.enabled and "ON" or "OFF", status.totalEligible, status.contexts))
-    print(string.format("Current context: %d/%d fights | learned actions %d | active adjustments %d | %s",
+    local state = not status.learningSupported and "NOT SUPPORTED"
+        or (not status.contextAvailable and "NO CONTEXT")
+        or (not status.enabled and "DISABLED") or (status.ready and "READY" or "CALIBRATING")
+    print(string.format("%s / %s: %d/%d fights | learned actions %d | learned corrections %d | %s",
+        status.viewProfile == "pvp" and "PvP" or "Normal (PvE)", tostring(status.mode or "unknown"),
         status.contextFights, A.MIN_CONTEXT_FIGHTS, status.learnedActions, status.activeAdjustments,
-        status.ready and "READY" or "CALIBRATING"))
-    if status.enabled then
+        state))
+    if not status.learningSupported then
+        print("PvP learning is not supported. This view does not enable PvP tuning or reuse PvE corrections.")
+    elseif status.contextAvailable and status.contextFights == 0 and status.contexts > 0 then
+        print("No evidence for the current build/level band/solo-group context. Other saved contexts are preserved, not applied here.")
+    end
+    if status.enabled and status.learningSupported then
         print("Learning is local and bounded to offensive priorities; Hardcore safety gates are never tuned.")
     end
 end

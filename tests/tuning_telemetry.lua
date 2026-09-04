@@ -167,19 +167,42 @@ environment.UnitName = function() return "SensitiveCharacter" end
 environment.UnitGUID = function() return "SensitiveGUID" end
 assert(not containsSensitive(tuning), "adaptive telemetry captured character identity")
 
--- A PvP transition at finalization must invalidate adaptive/DPS learning even
--- if the initial target was an NPC.
+-- Targeting a player (including self/friendly) at finalization is not PvP.
 environment.UnitIsPlayer = function() return false end
-local pvpFight = {startClock=10, duration=6, endReason="combat_end", died=false}
-environment.currentFight = pvpFight
+local friendlyFight = {startClock=10, duration=6, endReason="combat_end", died=false}
+environment.currentFight = friendlyFight
 clock = 10
-environment.InitFightTuningTelemetry(pvpFight)
+environment.InitFightTuningTelemetry(friendlyFight)
 environment.UnitIsPlayer = function(unit) return unit == "target" end
 clock = 16
+environment.RecordTuningRecommendation(101, "CLAW", "BASE", "damage", 70, 1, true)
+environment.RecordTuningAction(101, "unit_success")
+environment.FinalizeFightTuningTelemetry(friendlyFight)
+assert(not friendlyFight.tuning.context.pvp and friendlyFight.tuning.eligibility.adaptive,
+    "selecting a friendly player invalidated a clean PvE fight")
+
+-- An explicit battleground transition still invalidates adaptive/DPS learning.
+local pvpFight = {startClock=16, duration=6, endReason="combat_end", died=false}
+environment.currentFight = pvpFight
+environment.InitFightTuningTelemetry(pvpFight)
+environment.IsInInstance = function() return true, "pvp" end
+clock = 22
 environment.RecordTuningRecommendation(101, "CLAW", "BASE", "damage", 70, 1, true)
 environment.RecordTuningAction(101, "unit_success")
 environment.FinalizeFightTuningTelemetry(pvpFight)
 assert(pvpFight.tuning.context.pvp and not pvpFight.tuning.eligibility.adaptive and not pvpFight.tuning.eligibility.dps,
     "PvP telemetry was not excluded")
+
+environment.IsInInstance = function() return false, "none" end
+local levelingFight = {startClock=22, duration=6, endReason="combat_end", died=false}
+environment.currentFight = levelingFight
+environment.InitFightTuningTelemetry(levelingFight)
+environment.PlayerLevel = function() return 43 end
+clock = 28
+environment.RecordTuningRecommendation(101, "CLAW", "BASE", "damage", 70, 1, true)
+environment.RecordTuningAction(101, "unit_success")
+environment.FinalizeFightTuningTelemetry(levelingFight)
+assert(levelingFight.tuning.context.changedDuringFight and not levelingFight.tuning.eligibility.adaptive,
+    "level-up inside a fight no longer rejected mixed-level evidence")
 
 print("adaptive tuning telemetry contract regression: PASS")

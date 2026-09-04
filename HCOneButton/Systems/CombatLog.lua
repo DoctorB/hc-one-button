@@ -396,6 +396,12 @@ function CombatLogFlagIsPlayer(flags)
     return bit.band(flags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0
 end
 
+local function PlayerControlled(flags)
+    if CombatLogFlagIsPlayer(flags) then return true end
+    return flags and bit and bit.band and COMBATLOG_OBJECT_CONTROL_PLAYER
+        and bit.band(flags, COMBATLOG_OBJECT_CONTROL_PLAYER) ~= 0
+end
+
 function ProcessCombatTelemetry(args)
     if HCOB_DB.combatLogging == false or runtimeTelemetryDisabled then return end
     if not currentFight and UnitAffectingCombat("player") then StartCombatTelemetry() end
@@ -412,10 +418,20 @@ function ProcessCombatTelemetry(args)
     local sourceIsOther = sourceGUID and not IsPlayerOrPetGUID(sourceGUID)
     local destIsOther = destGUID and not IsPlayerOrPetGUID(destGUID)
 
+    local damageExchange = IsDamageEvent(subevent) or IsMissEvent(subevent)
+    local controlExchange = subevent == "SPELL_INTERRUPT" or subevent == "SPELL_STOLEN"
+        or ((subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH") and args[15] == "DEBUFF")
+    -- Damage/misses are direct evidence even for neutral duels. For control,
+    -- require a hostile reaction too: friendly spells can apply debuffs such as
+    -- Weakened Soul and must not contaminate PvE learning.
     if currentFight.tuning and currentFight.tuning.context
-       and ((sourceIsOther and CombatLogFlagIsPlayer(sourceFlags)) or (destIsOther and CombatLogFlagIsPlayer(destFlags))) then
+       and ((destIsOurs and sourceIsOther and PlayerControlled(sourceFlags)
+                and (damageExchange or (controlExchange and CombatLogFlagIsHostile(sourceFlags))))
+         or (owner and destIsOther and PlayerControlled(destFlags)
+                and (damageExchange or (controlExchange and CombatLogFlagIsHostile(destFlags))))) then
         currentFight.tuning.context.pvp = true
         currentFight.tuning.context.mode = "pvp"
+        currentFight.tuning.adaptiveContextKey = nil
     end
 
     -- v1.6: no HOSTILE/NEUTRAL filter. A GUID becomes a "fight enemy"
