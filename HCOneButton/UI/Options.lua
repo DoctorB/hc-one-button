@@ -219,7 +219,7 @@ function CreateOptionsPanel()
 
     add(CreateCheckBox(panel, "Mini DPS meter", "Show current and recent average DPS below the Advisor. Requires Combat logger.", function() return HCOB_DB.showDPSMeter ~= false end, function(v) HCOB_DB.showDPSMeter = v; RefreshButtonState(); UpdateDPSMeter() end, 350, -422))
 
-    add(CreateCheckBox(panel, "Local Adaptive Tuning", "Per-character and persisted across reload/logout. Learns only from eligible fights while Combat logger is enabled and applies small bounded offensive adjustments. Healing, survival, control and interrupt winners remain protected.", Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled, 350, -452))
+    add(CreateCheckBox(panel, "Local Adaptive Tuning", "Per-character and persisted. Compares confirmed choices in similar situations while Combat logger is enabled. Safe opportunities can change priority; emergencies and spell eligibility stay fixed. Details show comparison evidence and actual changed choices, not a claimed DPS gain.", Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled, 350, -452))
 
     local adaptiveDetailsBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     adaptiveDetailsBtn:SetSize(210, 25)

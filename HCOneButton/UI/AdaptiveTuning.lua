@@ -10,6 +10,15 @@ local UI = HCOB.UI.AdaptiveTuning
 local ROW_HEIGHT = 54
 local BAR_HALF_WIDTH = 104
 
+function UI.SituationLabel(key)
+    if not key then return "Awaiting comparable choices" end
+    local enemies, resource, phase = tostring(key):match("^(%a+):(%a+):(%a+)$")
+    if not enemies then return "Recorded situation" end
+    return (enemies == "multi" and "2+ targets" or "1 target") .. " / "
+        .. (resource == "low" and "low" or (resource == "high" and "high" or "mid"))
+        .. " resource / " .. (phase == "finish" and "<=30% HP" or ">30% HP")
+end
+
 local function Finite(value, fallback)
     value = tonumber(value)
     if not value or value ~= value or value == math.huge or value == -math.huge then return fallback end
@@ -118,8 +127,11 @@ local function EnsureRow(frame, index)
         if not GameTooltip or not self.arm then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(self.arm.title or "Adaptive action", 1, 0.82, 0.2)
-        GameTooltip:AddLine("Base policy remains unchanged.", 0.82, 0.84, 0.88)
-        GameTooltip:AddLine(string.format("Local correction: %+.2f / ±%.0f", self.arm.bias or 0, self.maxBias or 4), 0.25, 0.95, 0.68)
+        GameTooltip:AddLine(self.arm.policy or "Base eligibility rules remain unchanged.", 0.82, 0.84, 0.88, true)
+        GameTooltip:AddLine("Situation: " .. UI.SituationLabel(self.arm.situation), 0.82, 0.84, 0.88, true)
+        GameTooltip:AddLine("Resource: low <=35%, high >=80%. HP phase refers to the target.", 0.72, 0.76, 0.82, true)
+        GameTooltip:AddLine("Chosen vs another available action, in distinct fights. Observational evidence, not proven DPS gain.", 0.72, 0.76, 0.82, true)
+        GameTooltip:AddLine(string.format("Local correction: %+.2f / ±%.0f", self.arm.bias or 0, self.maxBias or 12), 0.25, 0.95, 0.68)
         GameTooltip:AddLine(string.format("Outcomes: %d · accepted: %d · alternatives: %d", self.arm.fights or 0, self.arm.accepted or 0, self.arm.userOverrides or 0), 0.72, 0.76, 0.82)
         GameTooltip:Show()
     end)
@@ -131,14 +143,14 @@ end
 
 local function RefreshRow(row, arm, maxBias, index)
     local bias = Finite(arm.bias, 0) or 0
-    maxBias = math.max(0.25, Finite(maxBias, 4) or 4)
+    maxBias = math.max(0.25, Finite(maxBias, 12) or 12)
     row.arm, row.maxBias = arm, maxBias
     row.icon:SetTexture(SpellTexture(arm.spellId))
     row.name:SetText(arm.title or "Unknown action")
-    row.meta:SetText(string.format("%s  ·  %d accepted + %d alternatives",
-        tostring(arm.tag or "action"):upper(), arm.accepted or 0, arm.userOverrides or 0))
-    row.evidence:SetText(string.format("%d outcome%s", arm.fights or 0, (arm.fights or 0) == 1 and "" or "s"))
-    row.delta:SetText(string.format("%+.2f", bias))
+    row.meta:SetText(arm.protected and ("FIXED: " .. tostring(arm.tag or "action"))
+        or UI.SituationLabel(arm.situation))
+    row.evidence:SetText(string.format("%d chosen\n%d alternative", arm.chosenFights or 0, arm.otherFights or 0))
+    row.delta:SetText(arm.protected and "FIXED" or string.format("%+.2f", bias))
     if bias > 0 then row.delta:SetTextColor(0.18, 0.95, 0.65)
     elseif bias < 0 then row.delta:SetTextColor(1.00, 0.38, 0.36)
     else row.delta:SetTextColor(0.66, 0.69, 0.74) end
@@ -226,21 +238,22 @@ function UI.Refresh()
     frame.stateText:SetTextColor(r, g, b)
     frame.stateAccent:SetColorTexture(r, g, b, 0.92)
     frame.summaryText:SetText(string.format(
-        "%d/%d eligible fights in this context  ·  %d learned actions  ·  %d learned corrections",
+        "%d/%d eligible fights in this context  ·  %d observed actions  ·  %d learned corrections",
         model.fights or 0, model.minContextFights or 8, model.learnedActions or 0, model.activeAdjustments or 0))
     if model.learningSupported == false then
         frame.summaryText:SetText("Viewing PvP only. Learning and priority corrections are not supported for this profile.")
     end
+    local impact = model.impact or {}
     frame.accountText:SetText(string.format(
-        "Current context only  ·  %d saved context%s  ·  %d eligible fight%s for this character",
-        model.contexts or 0, (model.contexts or 0) == 1 and "" or "s",
-        model.totalEligible or 0, (model.totalEligible or 0) == 1 and "" or "s"))
+        "Choices changed: %d / %d\nExecuted: %d\nObserved impact, not DPS gain",
+        impact.changed or 0, impact.evaluated or 0, impact.executed or 0))
 
     local minimum = math.max(1, model.minContextFights or 8)
     frame.progress:SetMinMaxValues(0, minimum)
     frame.progress:SetValue(math.min(minimum, model.fights or 0))
     frame.progressText:SetText(model.learningSupported == false and "PvP learning not supported"
-        or (model.ready and "Calibration complete" or string.format("Calibration %d/%d", model.fights or 0, minimum)))
+        or (model.ready and "Context ready; each situation needs 4 chosen + 4 alternative fights"
+            or string.format("Calibration %d/%d", model.fights or 0, minimum)))
 
     local arms = UI.FilterArms(model, frame.activeOnly == true)
     for index, arm in ipairs(arms) do RefreshRow(EnsureRow(frame, index), arm, model.maxBias, index) end
@@ -258,7 +271,7 @@ function UI.Refresh()
         elseif (model.fights or 0) == 0 then
             frame.emptyText:SetText("No eligible fights for the current build, level band and solo/group context yet.\nOther saved contexts are preserved, not applied here.\nPlay normally with Combat logger enabled to calibrate this context.")
         else
-            frame.emptyText:SetText("No offensive action outcomes have been learned in this context yet.")
+            frame.emptyText:SetText("No spell opportunities have been recorded in this context yet.")
         end
         frame.emptyText:Show()
     else
@@ -266,7 +279,7 @@ function UI.Refresh()
     end
 
     frame.protectedText:SetText(string.format(
-        "|cff4fe6b0PROTECTED BASELINE|r  Healing, survival, control, interrupts, escape and other non-offensive winners are never displaced by tuning.  ·  %d protected candidate%s observed",
+        "|cff4fe6b0SAFETY FIRST|r  Emergencies stay fixed. Recovery/control are protected under pressure. Cast, range and aura rules are unchanged.  ·  %d fixed action%s observed",
         model.protectedObserved or 0, (model.protectedObserved or 0) == 1 and "" or "s"))
 end
 
@@ -294,7 +307,7 @@ function UI.Create()
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -7)
     subtitle:SetWidth(730)
     subtitle:SetJustifyH("LEFT")
-    subtitle:SetText("Current character/build evidence, refreshed automatically. Bars show the bounded correction around the unchanged base policy.")
+    subtitle:SetText("Local comparisons for this build. Every learned situation stays visible; fixed actions explain their protection. No random exploration.")
 
     frame.profileButtons = {}
     for index, profile in ipairs({"pve", "pvp"}) do
@@ -361,7 +374,7 @@ function UI.Create()
 
     local section = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     section:SetPoint("TOPLEFT", card, "BOTTOMLEFT", 2, -18)
-    section:SetText("LEARNED OFFENSIVE ADJUSTMENTS")
+    section:SetText("SITUATIONAL PRIORITIES")
 
     frame.activeFilter = CreateFrame("CheckButton", nil, frame, "InterfaceOptionsCheckButtonTemplate")
     frame.activeFilter:SetPoint("TOPRIGHT", -194, -257)
@@ -384,17 +397,17 @@ function UI.Create()
     frame.legendText:SetPoint("TOPLEFT", 26, -293)
     frame.legendText:SetWidth(728)
     frame.legendText:SetJustifyH("LEFT")
-    frame.legendText:SetText("|cffff615cLeft (-)|r: lower offensive priority  ·  |cffffd134Center (0)|r: unchanged baseline  ·  |cff2ee6a6Right (+)|r: higher offensive priority\nScore points, not damage %. Small shifts affect close choices only; safety rules remain unchanged.")
+    frame.legendText:SetText("|cffff615cLeft (-)|r: lower priority  ·  |cffffd134Center (0)|r: unchanged baseline  ·  |cff2ee6a6Right (+)|r: higher priority\nScore points, not damage %. Each row is a learned situation; safety rules remain unchanged.")
 
     local actionHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     actionHeader:SetPoint("TOPLEFT", 78, -330)
     actionHeader:SetText("ACTION / EVIDENCE")
     local correctionHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     correctionHeader:SetPoint("TOPLEFT", 304, -330)
-    correctionHeader:SetText("−4        BASE POLICY        +4")
+    correctionHeader:SetText("−12       BASE POLICY       +12")
     local outcomesHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     outcomesHeader:SetPoint("TOPRIGHT", -57, -330)
-    outcomesHeader:SetText("OUTCOMES")
+    outcomesHeader:SetText("COMPARISONS")
 
     frame.scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
     frame.scroll:SetPoint("TOPLEFT", 24, -348)

@@ -100,7 +100,7 @@ SlashCmdList.HCOB = function(msg)
         if not tuner then print("|cffff5555HCOB ADAPTIVE:|r learner unavailable. Try /reload."); return end
         if arg == "on" then
             tuner.SetEnabled(true)
-            print("|cff00ff98HCOB ADAPTIVE:|r ON. Local learning and bounded offensive priority adjustments enabled.")
+            print("|cff00ff98HCOB ADAPTIVE:|r ON. Local situational comparisons enabled; emergency and spell eligibility rules stay fixed.")
             if HCOB_DB.combatLogging == false then print("|cffffcc00HCOB ADAPTIVE:|r Combat logger is OFF; enable it with /hcob log on to collect new samples.") end
         elseif arg == "off" then
             tuner.SetEnabled(false)

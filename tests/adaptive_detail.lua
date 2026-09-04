@@ -121,9 +121,9 @@ environment.HCOneButton.Systems.AdaptiveTuner = {
 ui.Create, ui.Refresh = createActual, refreshActual
 local frame=ui.Create()
 frame:Show()
-assert(frame.legendText.text:find("Left (-)|r: lower offensive priority",1,true)
+assert(frame.legendText.text:find("Left (-)|r: lower priority",1,true)
     and frame.legendText.text:find("Center (0)|r: unchanged baseline",1,true)
-    and frame.legendText.text:find("Right (+)|r: higher offensive priority",1,true)
+    and frame.legendText.text:find("Right (+)|r: higher priority",1,true)
     and frame.legendText.text:find("not damage %",1,true)
     and frame.legendText.text:find("safety rules remain unchanged",1,true),"tuning legend is missing or misleading")
 assert(frame.legendText.points[1][3] == -293 and frame.scroll.points[1][3] <= -348,
@@ -162,6 +162,16 @@ assert(frame.model == nil and not frame.rows[1]:IsShown() and frame.stateText.te
 tuner.GetDisplayModel=getModel
 frame.scripts.OnUpdate(frame,1)
 assert(frame.rows[1]:IsShown() and frame.rows[2]:IsShown(), "refresh did not recover from transient error")
+normal.impact={evaluated=20,changed=7,executed=4}
+normal.arms[2].protected=true
+normal.arms[1].situation="single:normal:main"
+normal.arms[1].chosenFights,normal.arms[1].otherFights=8,5
+ui.Refresh()
+assert(frame.rows[2].delta.text=="FIXED" and frame.rows[1].evidence.text=="8 chosen\n5 alternative",
+    "inspector hid protection or comparative evidence")
+assert(frame.rows[1].meta.text=="1 target / mid resource / >30% HP","situation is not readable")
+assert(frame.accountText.text=="Choices changed: 7 / 20\nExecuted: 4\nObserved impact, not DPS gain",
+    "impact card is misleading or not confined to its three-line layout")
 frame.resetButton.scripts.OnClick(frame.resetButton)
 local warning=frame.protectedText.text
 now=4
