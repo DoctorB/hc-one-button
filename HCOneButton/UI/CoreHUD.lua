@@ -128,7 +128,7 @@ end
 -- inside one visual shell so they read as a single addon component. The secure
 -- BASE button itself remains independent; this frame is purely visual.
 HCOB_CoreShell = CreateFrame("Frame", "HCOneButtonCoreShell", UIParent)
-HCOB_CoreShell:SetSize(376, 118)
+HCOB_CoreShell:SetSize(376, 138)
 HCOB_CoreShell:SetPoint("TOPLEFT", btn, "TOPLEFT", -4, 4)
 HCOB_CoreShell:SetFrameStrata("HIGH")
 HCOB_CoreShell:SetFrameLevel(1)
@@ -317,6 +317,8 @@ function UpdateDPSMeter()
         return
     end
     dpsMeter:Show()
+    -- Live API data, independent of the logger and of stored DPS history.
+    if HCOB.UI.ThreatMeter then HCOB.UI.ThreatMeter.Update() end
     local avg5, avgCount = RecentDPSAverage(5)
     if currentFight then
         local elapsed = math.max(0.05, GetTime() - (currentFight.startClock or GetTime()))

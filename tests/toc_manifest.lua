@@ -39,6 +39,7 @@ assert(positions["Systems/Consumables.lua"] < positions["Advisor/Readiness.lua"]
 assert(positions["Advisor/Readiness.lua"] < positions["Advisor/Engine.lua"], "readiness must load before Advisor Engine")
 assert(positions["Advisor/Engine.lua"] < positions["Classes/Warrior.lua"], "Advisor Engine must load before class modules")
 assert(positions["Classes/Druid.lua"] < positions["UI/CoreHUD.lua"], "all class modules must load before UI")
+assert(positions["UI/ThreatMeter.lua"] < positions["UI/Advisor.lua"], "threat module must load before its DPS parent is built")
 assert(positions["UI/ActionPanel.lua"] < positions["UI/SurvivalStrip.lua"], "Survival strip must anchor after Action Panel")
 assert(positions["UI/WindowManager.lua"] < positions["UI/AdaptiveTuning.lua"], "Window Manager must load before Adaptive Tuning details")
 assert(positions["UI/Options.lua"] < positions["UI/AdaptiveTuning.lua"], "Options must load before its Adaptive Tuning child")

@@ -132,7 +132,7 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
         local _,y=rect(center)
         assert(y<400,class..": hidden Warrior section left a large layout gap")
     end
-    local logger,meter,tuning,details=find(widgets,"Combat logger"),find(widgets,"Mini DPS meter"),
+    local logger,meter,tuning,details=find(widgets,"Combat logger"),find(widgets,"DPS / aggro meter"),
         find(widgets,"Local Adaptive Tuning"),find(widgets,"View learned adjustments...")
     local previousBottom=372+12
     for _, control in ipairs({logger,meter,tuning,details}) do
@@ -142,6 +142,8 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
     end
     logger:SetChecked(false); logger.scripts.OnClick(logger)
     assert(env.HCOB_DB.combatLogging == false,"moved logger toggle did not persist")
+    meter:SetChecked(false); meter.scripts.OnClick(meter)
+    assert(env.HCOB_DB.showDPSMeter == false,"DPS/aggro toggle lost the existing saved key")
     tuning:SetChecked(false); tuning.scripts.OnClick(tuning)
     assert(env.HCOB_CharacterDB.adaptive.enabled == false,"moved tuning checkbox lost per-character persistence")
     for _, button in ipairs({report,bindings}) do
@@ -149,7 +151,7 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
         assert(y+h<=637,"Options CTA overlaps dedicated footer rule at y=647")
     end
     panel:Show()
-    assert(not tuning.checked and not logger.checked,"Options reopening did not refresh moved controls")
+    assert(not tuning.checked and not logger.checked and not meter.checked,"Options reopening did not refresh moved controls")
 end
 local _,reloadWidgets=runtime("WARRIOR",warriorDB)
 assert(find(reloadWidgets,"Smart pre-pull Rend").checked and find(reloadWidgets,"Situational Sunder").checked

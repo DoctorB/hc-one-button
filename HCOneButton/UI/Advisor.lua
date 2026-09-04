@@ -68,9 +68,9 @@ advisorReason:SetHeight(13)
 advisorReason:SetJustifyH("LEFT")
 advisorReason:SetText("No priority")
 
--- Mini DPS meter. Intentionally remains a single compact line.
+-- Compact telemetry footer: existing DPS line plus live target threat.
 dpsMeter = CreateFrame("Frame", nil, UIParent)
-dpsMeter:SetSize(282, 24)
+dpsMeter:SetSize(282, 44)
 dpsMeter:SetPoint("TOPLEFT", advisor, "BOTTOMLEFT", 0, -4)
 dpsMeter:SetFrameStrata("HIGH")
 dpsMeter:SetFrameLevel(5)
@@ -87,16 +87,19 @@ dpsMeter.topLine:SetHeight(1)
 dpsMeter.topLine:SetColorTexture(0.28, 0.38, 0.48, 0.65)
 
 dpsValue = dpsMeter:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-dpsValue:SetPoint("LEFT", dpsMeter, "LEFT", 8, 0)
-dpsValue:SetWidth(76)
+dpsValue:SetPoint("TOPLEFT", dpsMeter, "TOPLEFT", 8, -5)
+dpsValue:SetSize(76, 14)
 dpsValue:SetJustifyH("LEFT")
 dpsValue:SetText("DPS --")
 
 dpsMeta = dpsMeter:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 dpsMeta:SetPoint("LEFT", dpsValue, "RIGHT", 4, 0)
-dpsMeta:SetPoint("RIGHT", dpsMeter, "RIGHT", -8, 0)
+dpsMeta:SetPoint("RIGHT", dpsMeter, "TOPRIGHT", -8, -12)
+dpsMeta:SetHeight(14)
 dpsMeta:SetJustifyH("RIGHT")
 dpsMeta:SetText("AVG5 -- | DMG 0 | 0.0s")
+
+HCOB.UI.ThreatMeter.Init(dpsMeter)
 
 
 function SetDisplay(spellId, title, keyHint, reason, kind)

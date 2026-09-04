@@ -217,7 +217,7 @@ function CreateOptionsPanel()
     learningTitle:SetText("Combat data and learning")
     add(CreateCheckBox(panel, "Combat logger", "Store compact statistics from recent fights in SavedVariables. Use /hcob log last for a summary.", function() return HCOB_DB.combatLogging ~= false end, function(v) HCOB_DB.combatLogging = v; if not v and currentFight then FinalizeCombatTelemetry("logging_off") end end, 350, -392))
 
-    add(CreateCheckBox(panel, "Mini DPS meter", "Show current and recent average DPS below the Advisor. Requires Combat logger.", function() return HCOB_DB.showDPSMeter ~= false end, function(v) HCOB_DB.showDPSMeter = v; RefreshButtonState(); UpdateDPSMeter() end, 350, -422))
+    add(CreateCheckBox(panel, "DPS / aggro meter", "Show DPS and your threat against the current hostile NPC. 100% reaches the aggro threshold; AGGRO means it is on you, PET means your pet holds it. HIGH warns at 85% or elevated threat status. Missing data shows --. Only DPS requires Combat logger.", function() return HCOB_DB.showDPSMeter ~= false end, function(v) HCOB_DB.showDPSMeter = v; RefreshButtonState(); UpdateDPSMeter() end, 350, -422))
 
     add(CreateCheckBox(panel, "Local Adaptive Tuning", "Per-character and persisted. Compares confirmed choices in similar situations while Combat logger is enabled. Safe opportunities can change priority; emergencies and spell eligibility stay fixed. Details show comparison evidence and actual changed choices, not a claimed DPS gain.", Options.IsAdaptiveTuningEnabled, Options.SetAdaptiveTuningEnabled, 350, -452))
 
