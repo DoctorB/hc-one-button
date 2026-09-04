@@ -2,7 +2,39 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.1`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.2`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.2 — 2026-09-04
+
+### Changed — Learning that can change a real choice
+
+- Replaced usage-only priority correlations with local comparisons between confirmed, simultaneously available actions. Safe proc, buff, resource, mitigation, form/aspect and recovery/control opportunities can participate across all nine classes; mandatory emergencies, interrupts and the existing cast/range/aura/swing rules remain protected.
+- Separate comparisons by target count, current resource band and finishing phase. Require four chosen and four alternative-choice fights per situation, an eight-fight context, a minimum effect and variability discount before applying quarter-point corrections up to `±12`.
+- Evaluate effective damage after overkill, health floor and Rage/Energy cap waste. A materially worse health floor vetoes positive preference. These are observational associations, not a promise or measurement of DPS improvement; there is no random exploration.
+- Safe multi-pull/pre-escape spell routes now expose eligible alternatives while preserving their original cold/OFF baseline. No spell is made usable, in range or refreshable by learning.
+- Confirmed player alternatives are no longer discarded just for disagreeing with the Advisor. Preserve pending evidence through cast holds; reject stale/changed-target/emergency windows and deduplicate identical spell roles and cast events.
+
+### Changed — Visible evidence and actual impact
+
+- The inspector retains all recorded situations and observed fixed/zero-bias spells, explains protection, shows chosen/alternative counts and uses `−12…+12` bars. Target selection never hides situations.
+- Show how many displayed choices differed from the same evaluation's baseline and how many were executed. Reader refreshes are not additional decisions; the display explicitly distinguishes observed impact from a measured DPS gain.
+- Preserve local observations, context isolation, ON/OFF and viewing preferences. Previous coefficients are not enlarged or applied without new comparative evidence.
+
+### Fixed — Final review
+
+- Preserve confirmed safe recovery-cast evidence through the dedicated recovery hold, without changing HUD/pixel suppression or permitting another cast.
+- Treat unreadable pet HP as unavailable instead of trusting the fallback 100%; Mend Pet retains protected priority. Normalize numeric safety inputs before comparisons.
+
+### Release
+
+- Aligned TOC, runtime/fallback version and documentation to `1.29.2`. Learner revision `3`, adaptive schema `2`, additive telemetry contract `1`; combat-log schemas, secure actions and Diagnostic Pixel Protocol V3 are unchanged.
+- Prepared the Classic Era addon ZIP and standalone CurseForge release notes. No SavedVariables reset is required.
+
+### Validation
+
+- Two review/refinement cycles cover all-class decision changes, real Warrior candidate/aura gates, multi-pull routing, emergency/pet protection, cast attribution, data robustness, migration and inspector layout mocks.
+- Final automated checks: 46/46 Lua files parse, 25/25 regression harnesses pass, 47/47 TOC references resolve, and root/package documentation matches.
+- The new situational UI and behavior still need in-game smoke testing before publication. Automated decision changes do not establish a real-world DPS benefit.
 
 ## 1.29.1 — 2026-09-04
 
