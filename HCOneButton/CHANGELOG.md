@@ -2,7 +2,31 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.2`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.3`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.3 — 2026-09-04
+
+### New — live aggro awareness beside DPS
+
+- Add a compact threat row beneath DPS for all nine classes: your scaled threat against the current hostile NPC, an amber warning at 85% (or elevated client status), and a red `AGGRO` state when the client reports you hold aggro.
+- Show `PET` / `HIGH / PET` when your pet holds the target, including pulls before the owner enters combat. The percentage always refers to the player, not the pet.
+- Use the client's scaled aggro threshold, not raw threat or group damage share. Missing percentages show `--`; available status-only data remains useful without fabricating a percentage.
+- Clear stale threat on target changes, no target, combat end and friendly/player/dead targets. Missing, failed, restricted and non-finite API values cannot become a made-up percentage.
+- Reuse the persisted meter setting through `DPS / aggro meter` in Options and `/hcob dps on|off`. Live threat does not depend on Combat logger or Advisor visibility; the DPS row keeps its existing logger-backed statistics.
+- Extend the unified HUD footer with reserved space; shared scale, drag position and downstream Action Panel/Survival strip anchors are preserved. The display remains non-interactive and informational, not a raid ranking or an all-enemy threat monitor.
+
+### Fixed — trustworthy release automation
+
+- Isolate GitHub file-command paths in offline tests so a mocked upload of file `999` cannot appear in the real workflow summary.
+- Manual runs now explicitly report validation only/no upload. Package preparation never claims upload success; acceptance is reported only after a successful upload response.
+- Update pinned checkout and artifact actions to Node 24 versions. Publication remains restricted to DoctorB/DoctorCalibano on an explicitly published GitHub release; manual validation never uploads.
+
+### Compatibility and validation
+
+- Align TOC, runtime/fallback version and current documentation to `1.29.3`. Existing meter preference, HUD position, SavedVariables, learner revision `3` and adaptive schema `2` are preserved; no tuning reset or coefficient migration is introduced.
+- Class rotations, safety decisions, secure actions, bindings and Diagnostic Pixel Protocol V3 are unchanged.
+- 47/47 addon Lua files parse, 26/26 Lua regression harnesses pass, 48/48 TOC references resolve, and 19/19 offline release-tool tests pass. Threat coverage exercises 48 API states plus real DPS HUD visibility, history, scale and spacing checks; root/package docs match.
+- The user tested the new aggro meter in game and confirmed it works. This smoke test does not claim exhaustive live coverage of every class/state. Automated validation does not establish CurseForge credential validity or successful upload/moderation.
 
 ## 1.29.2 — 2026-09-04
 

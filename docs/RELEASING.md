@@ -64,7 +64,7 @@ prove the account has upload rights or that CurseForge is currently reachable.
    the exact text uploaded to the CurseForge file's changelog. A blank body
    blocks the upload. The title is not used as a substitute for the changelog.
    The CurseForge display name is always `HCOneButton v<version>`, for example
-   `HCOneButton v1.29.2`, regardless of the GitHub Release title or ZIP filename.
+   `HCOneButton v1.29.3`, regardless of the GitHub Release title or ZIP filename.
    No `ClassicEra`, date or `.zip` suffix is added to the display name.
 4. Choose the release type:
    - ordinary GitHub release → CurseForge **Release**;
@@ -83,11 +83,33 @@ The workflow checks out the event's exact commit, not the latest moving `main`.
 An old tag without this workflow does not acquire it retroactively. Already
 published releases are not automatically backfilled when the workflow is added.
 
+## CurseForge changelog format
+
+Use curated, English, user-facing release notes in the approved format, not a
+raw commit list or the complete historical `CHANGELOG.md`:
+
+1. `# HCOneButton v<version>`.
+2. A short benefit-led headline, a bold blockquote highlighting the release,
+   and a brief introduction.
+3. `New — …`, `Improved — …` and `Fixed — …` sections as applicable, with clear
+   bullets and a concrete gameplay example. Do not invent changes to fill a section.
+4. `Upgrade and safety`, including preservation/reset guidance and useful commands.
+5. `Validation and limitations`, with verified checks and any pending in-game
+   validation stated honestly; never copy another version's results as current.
+6. `Compatibility Target`, followed by `Author` (`DoctorB`).
+
+For 1.29.3, the version-controlled public notes are in
+[`releases/1.29.3.md`](releases/1.29.3.md), with a local distribution copy at
+`release/HCOneButton-v1.29.3-CurseForge-ReleaseNotes.md`. Paste that document into
+the GitHub Release body: the upload code sends the body unchanged as Markdown.
+The manual-run artifact's changelog extract is only a technical preview, not
+the curated public release text. Formatting these notes does not publish them.
+
 ## What is packaged
 
 - `HCOneButton/` is the only root directory inside the ZIP.
 - The TOC, all its referenced files, README, CHANGELOG and LICENSE are included.
-  There are currently 51 files. Future assets must be explicitly supported in
+  There are currently 52 files. Future assets must be explicitly supported in
   the packaging allowlist; the repository coverage test detects omissions.
 - Tests, workflows, local artifacts, development docs and unreferenced local
   files never enter the package. Missing/duplicate/unsafe paths stop the build.
@@ -107,6 +129,34 @@ The ignored local `release/` directory is not fetched from the developer's PC.
 GitHub builds its own `release/ci/` directory. Manual validation uses only the
 current version's `CHANGELOG.md` section as preview notes; genuine publication
 uses the GitHub Release body instead, preserving its Markdown and Unicode.
+
+Manual-run summaries explicitly say **Validation only: no upload to CurseForge**.
+The skipped upload/receipt steps are expected. Test mocks are isolated from the
+runner's summary/output/environment files: a simulated file ID (such as `999`)
+must never appear in the real summary. Package preparation reports only that
+the package is ready; a real upload acceptance message requires a successful
+API response and its receipt. Checkout/artifact actions are pinned Node 24
+versions, not Node 20 actions relying on a forced runtime override.
+
+### 1.29.3 in-game pre-publication check
+
+Status: the user tested the aggro meter in game and confirmed it works. This is
+a reported smoke-test result, not a claim that every case below was exercised.
+Keep this checklist for future regressions.
+
+1. Verify the DPS / aggro row at HUD scales 0.7, 1.0 and 1.6 without overlap
+   with DPS, Action Panel or Survival strip; drag, `/reload` and check position.
+2. On ordinary safe fights, verify `AGGRO` while solo tanking and threat/status
+   updates in a group. Do not deliberately provoke dangerous Hardcore pulls.
+3. On Hunter/Warlock, let the pet engage a safe target first: `PET` may appear
+   with `THREAT --` until the player has threat. Confirm available percentages
+   refer to the player; verify `HIGH / PET` only if it occurs naturally.
+4. Switch targets, clear target, end combat, target a friendly/player/corpse:
+   no old percentage should remain. If the client lacks data, expect `--`.
+5. Disable Combat logger: live threat must still work. Hide/show the combined
+   meter and `/reload`: the choice persists. Check with Advisor hidden too.
+6. Check `/hcob errors` and confirm normal secure actions/pixel behavior.
+   After this passes, commit/push and publish `v1.29.3` with its release notes.
 
 ## Failures and reruns
 

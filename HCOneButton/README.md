@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.2`
+- **Current version:** `1.29.3`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -17,6 +17,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ## README contents
 
 - [What HCOneButton does](#what-hconebutton-does)
+- [DPS and aggro meter](#dps-and-aggro-meter)
 - [Local Adaptive Tuning](#local-adaptive-tuning)
 - [Pre-pull Safety Advisor and Recovery Gate](#pre-pull-safety-advisor-and-recovery-gate)
 - [Survival consumables strip](#survival-consumables-strip)
@@ -33,17 +34,23 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.2` introduces **Situational Adaptive Tuning**: local comparisons between confirmed choices that were available at the same decision, across all nine supported classes. Learning can now adjust safe proc, buff, resource, mitigation and recovery/control priorities, not just ordinary damage choices.
+Version `1.29.3` adds a **live aggro meter alongside DPS**: see your threat against the selected hostile NPC, when you are approaching its aggro threshold, when you have aggro and when your pet holds it. It works across all nine classes, including pet pulls before the owner enters combat, and shows `--` when the client cannot supply a percentage.
+
+The existing **DPS / aggro meter** option and `/hcob dps on|off` control the combined display. Threat is read directly from the client and works with Combat logger disabled. This is informational: it does not change rotation priorities, the pixel protocol or secure actions.
+
+**Upgrade without resetting:** existing settings, HUD position, tuning data and meter visibility are preserved; there is no new learner/schema revision. Release automation now explicitly distinguishes validation-only runs from real uploads, keeps simulated uploads out of the GitHub summary and uses Node 24 actions.
+
+## Local Adaptive Tuning
+
+**Situational Adaptive Tuning**, introduced in `1.29.2`, compares confirmed choices that were available at the same decision across all nine supported classes. Safe proc, buff, resource, mitigation and recovery/control priorities can participate alongside ordinary damage choices.
 
 The inspector shows each recorded situation, chosen/alternative evidence, fixed-action explanations and bounded `−12…+12` corrections. It also reports displayed choices changed by tuning and how many were executed. Explicit `Normal (PvE)` / `PvP` views, automatic refresh, the baseline legend and class-specific Options grouping remain available; PvP learning remains unsupported.
 
-**Upgrade without resetting:** settings and compatible observations are preserved. Previous coefficients are not reused or enlarged: each situation needs new two-sided evidence (at least four chosen and four alternative-choice fights) before a priority correction can apply. A changed suggestion is observable impact, not proof of a DPS increase.
+When upgrading from a learner older than `1.29.2`, compatible observations are preserved but previous coefficients are not reused or enlarged: each situation needs new two-sided evidence (at least four chosen and four alternative-choice fights) before a priority correction can apply. A changed suggestion is observable impact, not proof of a DPS increase.
 
 Emergencies, interrupts and cast/range/aura eligibility rules remain fixed. Ordinary proc, buff, resource, mitigation and safe recovery/control opportunities can participate. Short/incomplete fights, PvP, deaths, mid-fight build changes and uncorrelated choices are excluded. Everything remains in local per-character SavedVariables: no upload, external executable or account. Use `/hcob tuning status`, `/hcob tuning off` or `/hcob tuning reset` at any time.
 
 The `1.28.6` character-scoped telemetry foundation remains intact. New fights use an anonymous per-character profile, account storage remains bounded, and different classes or same-class alts cannot contaminate HUD averages, last-fight output, reports or learned contexts.
-
-## Local Adaptive Tuning
 
 - contexts are separated by class, specialization, five-level band, solo/group play, talents and learned spellbook;
 - easy, even-level, hard and elite targets use separate rolling performance baselines;
@@ -100,12 +107,31 @@ The main HUD contains:
 - **BASE** secure action button;
 - class-aware **Advisor**;
 - HP/resource/swing information;
-- compact live DPS information;
+- compact live DPS and current-target threat information;
 - a secure **Action Panel** directly below the main HUD;
 - a secure **Survival consumables strip** below the Action Panel;
 - visual states for `OK`, `CAUTION` and `DANGER`.
 
 The HUD is draggable while unlocked. Its complete anchor and offsets are persisted immediately to `HCOB_DB`, so `/reload` restores the exact dragged position even when WoW changes the frame's anchor type while moving it. The primary **HUD scale** resizes BASE, Advisor, telemetry, the Fixed Action Panel, Survival strip and Profession Coach together; `/hcob actions scale` remains available only as an optional relative Action Panel adjustment.
+
+### DPS and aggro meter
+
+Below the Advisor, the first row retains current/last DPS, recent average, damage and fight duration. The second row shows **your threat against the current hostile NPC target**, using the client's scaled threat percentage: **100% is the aggro threshold**, not your share of total group damage or raw threat.
+
+| Display | Meaning |
+| --- | --- |
+| `LOW` (teal) | Reported threat below the warning threshold; not a guarantee of safety. |
+| `HIGH` (amber) | At least 85% of the scaled threshold, or the client reports elevated non-tanking threat. |
+| `AGGRO` (red) | The client reports that you hold aggro. Expected when intentionally tanking or playing solo. |
+| `PET` / `HIGH / PET` | Your pet holds aggro; the number still describes **your** threat, not the pet's. |
+| `THREAT --` | Percentage unavailable. A known aggro/pet status can still be shown without inventing a number. |
+| `NO TARGET`, `IDLE`, `N/A`, `NO DATA` | No target, no active combat, an ineligible target (friendly/player/dead), or unavailable threat information. No old percentage is retained. |
+
+Example: while your pet tanks, `THREAT 90%` with `HIGH / PET` warns that you are close to taking aggro. If the mob switches to you and the client reports it, the status becomes `AGGRO`.
+
+Enable/disable the combined panel through **Options → Combat data and learning → DPS / aggro meter** or `/hcob dps on|off`. The existing `showDPSMeter` saved preference is reused. Threat updates even with Combat logger off or the Advisor hidden; DPS statistics still depend on the logger. The new row follows HUD scale/position and does not intercept clicks.
+
+This is a compact, read-only **current-target** display, not a raid threat ranking, all-enemy aggro monitor, taunt timer or PvP predictor. It uses available client threat APIs, not combat-log estimation; missing/failed API reads remain unknown. No learned coefficients, recommendations, bindings or pixel data are changed by the meter.
 
 ### Advisor Engine 2.0
 
@@ -889,7 +915,7 @@ Both aliases are supported:
 | `/hcob prep on\|off` | Enable/disable the persistent pre-pull Recovery Gate. |
 | `/hcob consumables` | Print current Survival strip item assignments, quantities and cooldowns. |
 | `/hcob consumables on\|off` | Show/hide the secure Survival consumables strip. Must be changed out of combat. |
-| `/hcob dps on\|off` | Show/hide compact DPS information. |
+| `/hcob dps on\|off` | Show/hide the combined compact DPS / aggro meter. |
 | `/hcob swing on\|off` | Show/hide swing timer. |
 | `/hcob sound on\|off` | Enable/disable sound alerts. |
 | `/hcob danger N` | Set danger HP threshold (`20`–`70`). |
@@ -1100,11 +1126,13 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-The `1.29.2` source baseline currently passes:
+The `1.29.3` source baseline currently passes:
 
-- **46/46 Lua chunks** pass syntax parsing in the current validation environment;
-- **25/25 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **47/47 TOC references** resolved (`46 Lua + Bindings.xml`);
+- **47/47 Lua chunks** pass syntax parsing in the current validation environment;
+- **26/26 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **48/48 TOC references** resolved (`47 Lua + Bindings.xml`);
+- **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
+- threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
@@ -1132,7 +1160,7 @@ The `1.29.2` source baseline currently passes:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The previous `1.29.1` Options and tuning-inspector layout passed the user's in-game visual check. The new `1.29.2` situational rows and behavior have automated coverage but still require an in-game smoke check. Automated checks cannot fully reproduce WoW secure-frame, binding and UI behavior or prove a DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The user tested the new `1.29.3` aggro meter in game and confirmed it works. This is a reported smoke-test result, not exhaustive live-client coverage of every class and threat state. The prior adaptive review record remains in `docs/ADAPTIVE_REVIEW.md`; no new in-game validation of that feature is claimed here. Automated checks cannot fully reproduce WoW secure-frame, binding and UI behavior or prove a DPS improvement.
 
 ---
 
