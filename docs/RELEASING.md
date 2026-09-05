@@ -139,12 +139,12 @@ versions, not Node 20 actions relying on a forced runtime override.
 
 ### 1.29.4 in-game pre-publication check
 
-Status: pending. Use the current checklist in
+Status: the user completed the 1.29.4 in-game smoke test and reported that the
+result looks correct. This does not claim every class or checklist item was
+tested. Keep the regression checklist in
 [`ADAPTIVE_REVIEW.md`](ADAPTIVE_REVIEW.md#1294-in-game-gate-before-publication).
-Verify grouped/expandable tuning rows, saved settings, Warrior queued-strike
-attribution, a caster's natural cast/interrupt path, status and `/hcob errors`.
-Update the pending-validation statements in the public notes and root/package
-documentation only after the actual in-game result is available.
+Public notes and root/package documentation now record that user-reported
+result. No runtime code or version changed after this confirmation.
 
 After validation, commit/push the final documentation and code, optionally run
 **Actions → CurseForge release → Run workflow** for a validation-only package,

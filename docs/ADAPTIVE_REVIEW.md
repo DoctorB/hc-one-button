@@ -2,8 +2,9 @@
 
 ## 1.29.4 — attribution and inspector follow-up
 
-Status: prepared for the existing GitHub → CurseForge pipeline; in-game
-validation is pending. Learner revision 4, adaptive schema 2, telemetry
+Status: ready for the existing GitHub → CurseForge pipeline; the user completed
+an in-game smoke test and reported that the result looks correct. This is not
+exhaustive live coverage of all classes or cases. Learner revision 4, adaptive schema 2, telemetry
 contract 1. No automatic history conversion or learning reset.
 
 ### Review cycle 1 — event attribution across classes
@@ -58,6 +59,9 @@ in-game DPS benefit or exhaustive real-client event timing.
 
 ### 1.29.4 in-game gate before publication
 
+Result: user-reported smoke test OK. The checklist below is retained for future
+regressions; this confirmation does not assert that every item was exercised.
+
 1. Back up SavedVariables; install the prepared ZIP without resetting learning.
    Check preserved ON/OFF, HUD position, scale and existing spell observations.
 2. Open the inspector from Options: one main row per spell. Expand Shout/Clap/
@@ -72,8 +76,8 @@ in-game DPS benefit or exhaustive real-client event timing.
    imply completed learning. New comparisons require naturally co-eligible
    choices; do not expect guaranteed corrections after nine fights.
 6. Confirm layout at the user's normal scale and return-to-Options/combat-close
-   behavior. Update the pending-validation statements only after these checks;
-   then publish the exact version tag through the existing release pipeline.
+   behavior. Record only the checks actually performed; publish the exact
+   version tag through the existing release pipeline.
 
 ## Archived review — 1.29.2
 

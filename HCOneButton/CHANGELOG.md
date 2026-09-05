@@ -26,7 +26,7 @@ The current release is `1.29.4`, targeting WoW Classic Era / Hardcore interface 
 - Version `1.29.4`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. No reset is required: existing observations, comparative coefficients, settings, HUD positions and combat history are preserved. Missing historical comparisons are not reconstructed.
 - Class eligibility, emergency policy, secure actions, bindings, DPS/aggro HUD and Diagnostic Pixel Protocol V3 are unchanged. This fixes evidence collection/inspection, not spell thresholds or a guaranteed DPS gain.
 - Two review/refinement passes cover all nine classes, delayed cast/swing attribution, rank-safe outcomes, protected/expired/changed-target cases, grouping, legacy data and UI mocks. All 47 addon Lua files parse; 28/28 Lua harnesses and 48/48 TOC references pass. 19/19 offline release-tool tests pass; root/package documentation matches.
-- In-game validation of the `1.29.4` changes is pending. The prior release's smoke test is not reused. Public release notes are in `docs/releases/1.29.4.md`; publish through the existing authorized GitHub → CurseForge release workflow only after the in-game check.
+- The user completed an in-game smoke test of `1.29.4` and reported that the result looks correct. This does not claim exhaustive live coverage of all classes or test cases. Public release notes are in `docs/releases/1.29.4.md`; the build is ready for the existing authorized GitHub → CurseForge release workflow, with no upload performed by local preparation.
 
 ## 1.29.3 — 2026-09-04
 

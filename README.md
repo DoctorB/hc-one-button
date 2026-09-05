@@ -1165,7 +1165,7 @@ The `1.29.4` source baseline currently passes:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The `1.29.4` tuning fixes and expanded inspector still require in-game validation before publication; the earlier `1.29.3` aggro-meter smoke test is not validation of this release. The review record and checklist are in `docs/ADAPTIVE_REVIEW.md`. Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding and UI behavior or prove a DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The user completed an in-game smoke test of `1.29.4` and reported that the result looks correct. This is a user-reported check, not exhaustive live coverage of all nine classes, event sequences or checklist items. The review record and regression checklist are in `docs/ADAPTIVE_REVIEW.md`. Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding and UI behavior or prove a DPS improvement.
 
 ---
 
