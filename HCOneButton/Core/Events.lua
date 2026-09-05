@@ -10,7 +10,7 @@ local events = {
     "PLAYER_LEVEL_UP", "SPELLS_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_TALENT_UPDATE",
     "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_AURA", "UNIT_TARGET",
     "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "PLAYER_COMBO_POINTS",
-    "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_SUCCEEDED",
+    "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_FAILED",
     "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_CHANNEL_INTERRUPTED",
     "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS",
     "COMBAT_LOG_EVENT_UNFILTERED", "UNIT_PET", "PET_BAR_UPDATE", "UNIT_HAPPINESS",
@@ -120,6 +120,14 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             EnsureSavedVariablesReady()
         end
 
+        if eventArg1 == "player" then
+            if (event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START") and CaptureTuningPending then
+                CaptureTuningPending(eventArg3, eventArg2)
+            elseif (event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_CHANNEL_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED") and CancelTuningPending then
+                CancelTuningPending(eventArg3, eventArg2)
+            end
+        end
+        if event == "CURRENT_SPELL_CAST_CHANGED" and RecordTuningQueueState then RecordTuningQueueState() end
         if event == "UNIT_SPELLCAST_SUCCEEDED" and eventArg1 == "player" and AcknowledgeDiagnosticPixelCast then
             AcknowledgeDiagnosticPixelCast(eventArg3)
         end
@@ -170,6 +178,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             end
             MigrateOldBindings()
         elseif event == "PLAYER_TARGET_CHANGED" then
+            if ClearTuningPending then ClearTuningPending() end
             activeTargetCast=nil
             if HCOB.Advisor.Engine and HCOB.Advisor.Engine.ResetDynamics then HCOB.Advisor.Engine.ResetDynamics() end
             if HCOB.Advisor.Engine and HCOB.Advisor.Engine.ResetStabilization then HCOB.Advisor.Engine.ResetStabilization() end

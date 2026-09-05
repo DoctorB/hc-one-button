@@ -310,7 +310,91 @@ local function CloseDecision(fight, now)
     if not state then return end
     local bucket = tuning.decisions[state.key]
     if bucket then bucket.seconds = (bucket.seconds or 0) + math.max(0, now - (state.since or now)) end
+    state.closedAt = now
+    tuning._recentDecisions = tuning._recentDecisions or {}
+    table.insert(tuning._recentDecisions, state)
+    if #tuning._recentDecisions > 8 then table.remove(tuning._recentDecisions, 1) end
     tuning._decision = nil
+end
+
+local function SameTarget(state)
+    return state and (not state.target or (SafeUnitGUID and SafeUnitGUID("target") == state.target))
+end
+
+local function WindowContains(window, spellId)
+    for _, candidate in ipairs(window and window.candidates or {}) do
+        if SameAction(candidate.spellId, spellId) then return true end
+    end
+    return false
+end
+
+local function RecentDecision(tuning, spellId)
+    local state = tuning._decision
+    if state and not state.invalidated and SameAction(state.spellId, spellId) and SameTarget(state) and not state.accepted then return state end
+    -- Aura/power/queue events can refresh the HUD just before PostClick or cast
+    -- success. This is a bounded event-order grace, not a stale advice fallback.
+    for i=#(tuning._recentDecisions or {}),1,-1 do
+        state = tuning._recentDecisions[i]
+        if not state.invalidated and GetTime() - state.closedAt <= 0.35 and SameTarget(state)
+           and SameAction(state.spellId, spellId) and not state.accepted then return state end
+    end
+end
+
+function T.CapturePending(spellId, castGUID)
+    local tuning = currentFight and currentFight.tuning
+    spellId = CanonicalActionId(spellId)
+    if not tuning or not spellId then return end
+    local now = GetTime()
+    tuning._pendingActions = tuning._pendingActions or {}
+    for id, pending in pairs(tuning._pendingActions) do
+        if now > pending.expires or not SameTarget(pending) then tuning._pendingActions[id] = nil end
+    end
+    local existing = tuning._pendingActions[spellId]
+    if existing then
+        if castGUID then existing.castGUID = castGUID end
+        return -- repeated inputs never extend evidence
+    end
+    local state = RecentDecision(tuning, spellId)
+    if not state and SameTarget(tuning._decision) and not tuning._decision.invalidated and WindowContains(tuning._choiceWindow, spellId) then
+        state = tuning._decision -- explicitly chosen, co-eligible manual alternative
+    end
+    if not state or CountKeys(tuning._pendingActions) >= 8 then return end
+    local duration = math.max(0, Finite(SpellCastSeconds and SpellCastSeconds(spellId), 0))
+    if spellId == S.HEROIC_STRIKE or spellId == S.CLEAVE then
+        duration = math.max(duration, Finite(Call(UnitAttackSpeed, "player"), 0), 2.5)
+    end
+    local window = state.window
+    if window and (now > window.expires or window.consumed) then window = nil end
+    tuning._pendingActions[spellId] = {decision=state, window=window, target=state.target, castGUID=castGUID,
+        expires=now + math.min(15, math.max(0.8, duration + 0.8))}
+end
+
+function T.CancelPending(spellId, castGUID)
+    local tuning = currentFight and currentFight.tuning
+    if not tuning then return end
+    spellId = CanonicalActionId(spellId)
+    if not spellId then return end
+    local pending = tuning._pendingActions and tuning._pendingActions[spellId]
+    if pending and castGUID and pending.castGUID and pending.castGUID ~= castGUID then return end
+    if IsQueuedMeleeSwingSpell and IsQueuedMeleeSwingSpell(spellId) then return end
+    if tuning._pendingActions then tuning._pendingActions[spellId] = nil end
+    if WindowContains(tuning._choiceWindow, spellId) then tuning._choiceWindow = nil end
+    local state = RecentDecision(tuning, spellId)
+    if state then state.window = nil; state.invalidated = true end
+end
+
+function T.ClearPending()
+    local tuning = currentFight and currentFight.tuning
+    if not tuning then return end
+    tuning._choiceWindow, tuning._pendingActions, tuning._recentDecisions = nil, nil, nil
+    if tuning._decision then tuning._decision.window = nil; tuning._decision.invalidated = true end
+end
+
+function T.RecordQueueState()
+    if not IsQueuedMeleeSwingSpell then return end
+    for _, id in ipairs({S.HEROIC_STRIKE, S.CLEAVE}) do
+        if id and IsQueuedMeleeSwingSpell(id) then T.CapturePending(id) end
+    end
 end
 
 local function SampleCandidates(tuning, selectedSpellId)
@@ -367,6 +451,16 @@ function T.RecordRecommendation(spellId, title, keyHint, kind, reserve, enemies,
     local now = GetTime()
     local elapsed = math.max(0, now - (fight.startClock or now))
     local candidate = SelectedCandidate(spellId)
+    local previous = tuning._decision
+    local displaySignature = tostring(spellId) .. ":" .. tostring(kind) .. ":" .. tostring(title)
+    local retained = not candidate and previous and previous.displaySignature == displaySignature
+        and SameTarget(previous)
+    if (kind == "danger" or kind == "interrupt") and previous and not retained then
+        -- Unstarted opportunities must not survive a safety escalation. An
+        -- already captured input keeps its own decision snapshot.
+        previous.window = nil
+        for _, recent in ipairs(tuning._recentDecisions or {}) do recent.window = nil end
+    end
     local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
     local engine = HCOB.Advisor and HCOB.Advisor.Engine
     local baseline = engine and engine.lastBaseline
@@ -394,14 +488,18 @@ function T.RecordRecommendation(spellId, title, keyHint, kind, reserve, enemies,
             tuning._choiceWindow = window
         else
             tuning._choiceWindow = nil
+            if previous then previous.window = nil end
         end
-    elseif title ~= "CAST ACTIVE" and title ~= "CHANNEL ACTIVE" and title ~= "RECOVERY ACTIVE" then
+    elseif not retained and title ~= "CAST ACTIVE" and title ~= "CHANNEL ACTIVE" and title ~= "RECOVERY ACTIVE" then
         tuning._choiceWindow = nil
     end
+    -- The stabilizer may still show the previous candidate for 0.20s while the
+    -- fresh eligibility list has already changed. Keep its original identity.
+    if retained then candidate = previous.candidate end
     local key = DecisionKey(spellId, kind, title, candidate and candidate.tag)
     local signature = key .. ":" .. Clean(kind or "idle", 16) .. ":" .. Clean(title, 40)
     local state = tuning._decision
-    if not state or state.signature ~= signature then
+    if not state or state.signature ~= signature or state.invalidated or not SameTarget(state) then
         CloseDecision(fight, now)
         local bucket = DecisionBucket(tuning, key, spellId, kind, title, keyHint)
         bucket.offers = (bucket.offers or 0) + 1
@@ -410,11 +508,14 @@ function T.RecordRecommendation(spellId, title, keyHint, kind, reserve, enemies,
             bucket.lastScore = Finite(candidate.effectiveScore or candidate.score, nil)
             bucket.meta = CopyMeta(candidate.tuningMeta)
         end
-        tuning._decision = {key=key, signature=signature, spellId=CanonicalActionId(spellId), since=now, elapsed=elapsed, accepted=false}
+        tuning._decision = {key=key, signature=signature, displaySignature=displaySignature,
+            spellId=CanonicalActionId(spellId), since=now, elapsed=elapsed, accepted=false,
+            target=SafeUnitGUID and SafeUnitGUID("target"), candidate=candidate and {tag=candidate.tag}}
         state = tuning._decision
     end
     if window then
         window.decision = state
+        state.window = window
         tuning.impact = tuning.impact or {evaluated=0, changed=0, executed=0}
         if not state.adaptiveEvaluated then
             tuning.impact.evaluated = tuning.impact.evaluated + 1
@@ -470,9 +571,15 @@ function T.RecordInput(spellId, source)
     local dedupe = tostring(spellId) .. ":" .. source
     if tuning._lastInputKey == dedupe and (now - (tuning._lastInputAt or 0)) < 0.08 then return end
     tuning._lastInputKey, tuning._lastInputAt = dedupe, now
+    T.CapturePending(spellId)
     local stats = tuning.inputStats[tostring(spellId or source)] or {spellId=spellId, source=source, count=0, matched=0}
     stats.count = stats.count + 1
     local event = EventSnapshot(fight, spellId, source)
+    local pending = tuning._pendingActions and tuning._pendingActions[spellId]
+    if pending then
+        event.recommendedId = pending.decision.spellId
+        event.match = SameAction(event.recommendedId, spellId)
+    end
     if event.match then stats.matched = stats.matched + 1 end
     tuning.inputStats[tostring(spellId or source)] = stats
     if #tuning.inputs < T.MAX_INPUT_EVENTS then tuning.inputs[#tuning.inputs + 1] = event
@@ -493,31 +600,45 @@ function T.RecordAction(spellId, source)
     if not tuning or not spellId then return end
     source = Clean(source or "cast", 20)
     local now = GetTime()
-    if tuning._lastActionId == spellId and (now - (tuning._lastActionAt or 0)) < 0.18
-       and tuning._lastActionSource ~= source then return end
-    tuning._lastActionId, tuning._lastActionAt, tuning._lastActionSource = spellId, now, source
+    tuning._confirmations = tuning._confirmations or {}
+    for id, confirmation in pairs(tuning._confirmations) do
+        if now - confirmation.at >= 0.18 then tuning._confirmations[id] = nil end
+    end
+    local confirmation = tuning._confirmations[spellId]
+    if confirmation and confirmation.source ~= source then return end
+    tuning._confirmations[spellId] = {at=now, source=source}
 
-    local window = tuning._choiceWindow
-    local validWindow = window and now <= window.expires
-       and (not window.target or (SafeUnitGUID and SafeUnitGUID("target") == window.target))
+    local pending = tuning._pendingActions and tuning._pendingActions[spellId]
+    if pending and (now > pending.expires or not SameTarget(pending)) then pending = nil end
+    local state = pending and pending.decision or RecentDecision(tuning, spellId)
+    local window
+    if pending then window = pending.window
+    else window = state and state.window or tuning._choiceWindow end
+    local validWindow = window and not window.consumed and WindowContains(window, spellId)
+        and (pending or now <= window.expires) and SameTarget(window)
     if validWindow then
         local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
         if tuner and tuner.RecordChoice then tuner.RecordChoice(fight, window, spellId) end
+        window.consumed = true
         if window.changed and window.recommendedId == spellId and not window.decision.adaptiveExecuted then
             tuning.impact = tuning.impact or {evaluated=0, changed=0, executed=0}
             tuning.impact.executed = tuning.impact.executed + 1
             window.decision.adaptiveExecuted = true
         end
     end
-    tuning._choiceWindow = nil
+    if window == tuning._choiceWindow and validWindow then tuning._choiceWindow = nil end
+    if tuning._pendingActions then tuning._pendingActions[spellId] = nil end
 
     local event = EventSnapshot(fight, spellId, source)
     local stats = tuning.actionStats[tostring(spellId)] or {spellId=spellId, count=0, matched=0, deviations=0, reactionSum=0, reactionSamples=0}
     stats.count = stats.count + 1
-    local state = tuning._decision
-    if validWindow and (not state or not state.spellId) then
-        state = window.decision
-        event.recommendedId, event.match = window.recommendedId, SameAction(window.recommendedId, spellId)
+    state = state or (validWindow and window.decision) or tuning._decision
+    if state and (state.invalidated or not SameTarget(state)) then
+        state = nil
+        event.recommendedId, event.match = nil, false
+    end
+    if state then
+        event.recommendedId, event.match = state.spellId, SameAction(state.spellId, spellId)
     end
     if state and state.spellId then
         tuning.comparableActions = (tuning.comparableActions or 0) + 1
@@ -551,7 +672,8 @@ function T.RecordAction(spellId, source)
         local queue = tuning.queue[tostring(spellId)] or {spellId=spellId, armed=0, consumed=0, missed=0, cleared=0}
         queue.armed = queue.armed + 1
         tuning.queue[tostring(spellId)] = queue
-        tuning._lastQueuedSpell = spellId
+        -- Success is emitted when the queued strike executes. It must not
+        -- re-arm the queue after a damage/miss event already consumed it.
     end
 end
 
@@ -597,6 +719,7 @@ function T.SampleResources(fight)
     if snapshot.petHP then secondary.petHpSum = secondary.petHpSum + snapshot.petHP; secondary.petHpSamples = secondary.petHpSamples + 1 end
 
     if PLAYER_CLASS == "WARRIOR" and IsQueuedMeleeSwingSpell then
+        T.RecordQueueState()
         local queued = IsQueuedMeleeSwingSpell(S.HEROIC_STRIKE) and S.HEROIC_STRIKE or (IsQueuedMeleeSwingSpell(S.CLEAVE) and S.CLEAVE or nil)
         if tuning._lastQueuedSpell and not queued and (GetTime() - (tuning._lastQueueOutcomeAt or 0)) > 0.25 then
             tuning.queue = tuning.queue or {}
@@ -643,6 +766,7 @@ function T.FinalizeFight(fight)
     if not tuning then return end
     CloseDecision(fight, GetTime())
     tuning._choiceWindow = nil -- erase ephemeral target identity before any finalization can fail
+    tuning._recentDecisions, tuning._pendingActions, tuning._confirmations = nil, nil, nil
     for _, bucket in pairs(tuning.resources or {}) do
         local samples = math.max(1, bucket.samples or 0)
         bucket.average = (bucket.sum or 0) / samples
@@ -731,6 +855,10 @@ RecordTuningInput = T.RecordInput
 RecordTuningBaseInput = T.RecordBaseInput
 RecordTuningAction = T.RecordAction
 RecordTuningQueueOutcome = T.RecordQueueOutcome
+CaptureTuningPending = T.CapturePending
+CancelTuningPending = T.CancelPending
+ClearTuningPending = T.ClearPending
+RecordTuningQueueState = T.RecordQueueState
 SampleTuningResources = T.SampleResources
 FinalizeFightTuningTelemetry = T.FinalizeFight
 TuningMetricIncrement = T.Increment

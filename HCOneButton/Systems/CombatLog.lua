@@ -454,7 +454,7 @@ function ProcessCombatTelemetry(args)
                 currentFight.outgoingHits = currentFight.outgoingHits + 1
                 currentFight.maxHitDone = math.max(currentFight.maxHitDone, amount)
                 if critical then currentFight.crits = currentFight.crits + 1 end
-                if RecordTuningQueueOutcome and (spellId == S.HEROIC_STRIKE or spellId == S.CLEAVE) then
+                if RecordTuningQueueOutcome then
                     RecordTuningQueueOutcome(spellId, "consumed")
                 end
             else
@@ -477,7 +477,7 @@ function ProcessCombatTelemetry(args)
                 if missType == "PARRY" then currentFight.parries = currentFight.parries + 1 end
                 if missType == "BLOCK" then currentFight.blocks = currentFight.blocks + 1 end
                 if missType == "RESIST" then currentFight.resists = currentFight.resists + 1 end
-                if RecordTuningQueueOutcome and (spellId == S.HEROIC_STRIKE or spellId == S.CLEAVE) then
+                if RecordTuningQueueOutcome then
                     RecordTuningQueueOutcome(spellId, "missed")
                 end
             end
