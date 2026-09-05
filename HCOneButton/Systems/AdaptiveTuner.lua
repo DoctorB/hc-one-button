@@ -9,7 +9,7 @@ HCOB.Systems.AdaptiveTuner = HCOB.Systems.AdaptiveTuner or {}
 local A = HCOB.Systems.AdaptiveTuner
 
 A.SCHEMA_VERSION = 2
-A.REVISION = 3
+A.REVISION = 4
 A.MIN_CONTEXT_FIGHTS = 8
 A.MIN_ARM_FIGHTS = 4
 A.MAX_SCORE_BIAS = 12
@@ -491,9 +491,18 @@ function A.LearnFight(fight)
         end
     end
     local activeAdjustments = RecomputeBiases(context)
+    local comparativeSituations = 0
+    for _, arm in pairs(context.arms) do
+        for _, situation in pairs(type(arm.situations) == "table" and arm.situations or {}) do
+            if type(situation) == "table" and Finite(type(situation.chosen) == "table" and situation.chosen.n, 0) >= A.MIN_ARM_FIGHTS
+               and Finite(type(situation.other) == "table" and situation.other.n, 0) >= A.MIN_ARM_FIGHTS then
+                comparativeSituations = comparativeSituations + 1
+            end
+        end
+    end
     tuning.learning.processed = true
     tuning.learning.contextFights = context.fights
-    tuning.learning.ready = context.fights >= A.MIN_CONTEXT_FIGHTS
+    tuning.learning.ready = context.fights >= A.MIN_CONTEXT_FIGHTS and comparativeSituations > 0
     tuning.learning.reward = reward
     tuning.learning.survival = survival
     tuning.learning.difficulty = difficulty
@@ -501,7 +510,7 @@ function A.LearnFight(fight)
     store.lastLearnedAt = Now()
     if context.fights >= A.MIN_CONTEXT_FIGHTS and not context.readyAnnounced then
         context.readyAnnounced = true
-        print("|cff00ff98HCOB ADAPTIVE:|r context ready; each situation needs comparable chosen and alternative fights.")
+        print("|cff00ff98HCOB ADAPTIVE:|r fight baseline collected; priority learning still needs 4 chosen + 4 alternative fights per situation.")
     end
     if activeAdjustments > 0 and not context.comparisonsAnnounced then
         context.adjustmentsAnnounced = true
@@ -548,6 +557,7 @@ function A.Status()
         activeAdjustments=model.activeAdjustments or 0, ready=model.ready == true,
         viewProfile=model.viewProfile, mode=model.mode, contextKey=model.contextKey,
         contextAvailable=model.contextAvailable == true, learningSupported=model.learningSupported, impact=model.impact,
+        state=model.state, comparisonSituations=model.comparisonSituations, matureSituations=model.matureSituations,
     }
 end
 
@@ -563,7 +573,8 @@ function A.GetDisplayModel(profile)
         minArmFights=A.MIN_ARM_FIGHTS,
         maxBias=A.MAX_SCORE_BIAS,
         viewProfile=profile, learningSupported=profile ~= "pvp",
-        arms={}, protectedObserved=0, impact={evaluated=0, changed=0, executed=0},
+        arms={}, spells={}, protectedObserved=0, impact={evaluated=0, changed=0, executed=0},
+        comparisonSituations=0, matureSituations=0,
     }
     if not store then return model end
 
@@ -595,31 +606,35 @@ function A.GetDisplayModel(profile)
     model.levelBand = levelBand or math.max(1, math.floor(Finite(liveContext and liveContext.level, 1) or 1))
     model.contextAvailable = liveKey ~= nil
     model.fights = context and math.max(0, math.floor(Finite(context.fights, 0) or 0)) or 0
-    model.ready = model.fights >= A.MIN_CONTEXT_FIGHTS
+    model.contextCalibrated = model.fights >= A.MIN_CONTEXT_FIGHTS
     for _, name in ipairs({"evaluated", "changed", "executed"}) do
         model.impact[name] = Finite(context and type(context.impact) == "table" and context.impact[name], 0)
     end
 
-    local learnedActions, activeAdjustments = 0, 0
+    local activeAdjustments = 0
     local arms = context and type(context.arms) == "table" and context.arms or {}
     for key, arm in pairs(arms) do
         if type(arm) == "table" then
-            if arm.spellId then
+            local spellId = Finite(arm.spellId, nil)
+            if spellId and spellId > 0 and spellId == math.floor(spellId) then
                 local fights = math.max(0, math.floor(Finite(arm.fights, 0) or 0))
                 local tunable, policy = A.Policy(arm, {hp=100, petHP=100, reserve=100, readable=true, enemies=1})
-                learnedActions = learnedActions + 1
-                if not tunable then model.protectedObserved = model.protectedObserved + 1 end
                 local situations = type(arm.situations) == "table" and arm.situations or {}
                 local hasRows = false
                 local function addRow(situationKey, situation)
                     local bias = tunable and ComparisonBias(situation, model.fights) or 0
                     if math.abs(bias) >= 0.25 then activeAdjustments = activeAdjustments + 1 end
+                    local chosen = situation and Finite(type(situation.chosen) == "table" and situation.chosen.n, 0) or 0
+                    local other = situation and Finite(type(situation.other) == "table" and situation.other.n, 0) or 0
+                    local mature = tunable and model.contextCalibrated and chosen >= A.MIN_ARM_FIGHTS and other >= A.MIN_ARM_FIGHTS
+                    if tunable and chosen + other > 0 then model.comparisonSituations = model.comparisonSituations + 1 end
+                    if mature then model.matureSituations = model.matureSituations + 1 end
                     model.arms[#model.arms + 1] = {
-                        key=tostring(key) .. ":" .. tostring(situationKey or "observed"), spellId=Finite(arm.spellId, nil),
+                        key=tostring(key) .. ":" .. tostring(situationKey or "observed"), spellId=spellId,
                         title=tostring(arm.title or arm.spellId or "Unknown action"), policy=policy, protected=not tunable,
                         situation=situationKey, tag=tostring(arm.tag or "action"), fights=fights,
-                        chosenFights=situation and Finite(type(situation.chosen) == "table" and situation.chosen.n, 0) or 0,
-                        otherFights=situation and Finite(type(situation.other) == "table" and situation.other.n, 0) or 0,
+                        role=tostring(key):match(":([^:]+)$") or tostring(arm.tag or "action"),
+                        chosenFights=chosen, otherFights=other, mature=mature,
                         opportunities=math.max(0, math.floor(Finite(arm.opportunities, 0) or 0)),
                         accepted=math.max(0, math.floor(Finite(arm.accepted, 0) or 0)),
                         userOverrides=math.max(0, math.floor(Finite(arm.userOverrides, 0) or 0)),
@@ -640,8 +655,49 @@ function A.GetDisplayModel(profile)
         if left.title ~= right.title then return left.title < right.title end
         return left.key < right.key
     end)
-    model.learnedActions = learnedActions
+    -- Group presentation only: never merge roles/situations or promote legacy
+    -- unclassified outcomes into comparative training data.
+    local groups = {}
+    for _, row in ipairs(model.arms) do
+        local group = groups[row.spellId]
+        if not group then
+            local name = SpellName and SpellName(row.spellId)
+            group = {key="spell:" .. row.spellId, spellId=row.spellId, title=name or row.title,
+                details={}, summary=true, protected=true, active=false, minBias=0, maxBias=0,
+                roleCount=0, situationCount=0, comparisonCount=0, matureCount=0, roles={}}
+            groups[row.spellId] = group
+            model.spells[#model.spells + 1] = group
+        end
+        group.details[#group.details + 1] = row
+        if not group.roles[row.role] then group.roles[row.role]=true; group.roleCount=group.roleCount + 1 end
+        if row.situation then group.situationCount = group.situationCount + 1 end
+        if not row.protected and row.chosenFights + row.otherFights > 0 then group.comparisonCount = group.comparisonCount + 1 end
+        if row.mature then group.matureCount = group.matureCount + 1 end
+        group.protected = group.protected and row.protected
+        group.active = group.active or row.active
+        if not row.protected and row.situation then
+            group.minBias = group.hasRange and math.min(group.minBias, row.bias) or row.bias
+            group.maxBias = group.hasRange and math.max(group.maxBias, row.bias) or row.bias
+            group.hasRange = true
+        end
+    end
+    for _, group in ipairs(model.spells) do
+        table.sort(group.details, function(left, right) return left.key < right.key end)
+        group.state = group.protected and "FIXED" or (group.active and "LEARNED"
+            or (group.matureCount > 0 and "BASELINE" or (group.comparisonCount > 0 and "COMPARING" or "OBSERVING")))
+        if group.protected then model.protectedObserved = model.protectedObserved + 1 end
+    end
+    table.sort(model.spells, function(left, right)
+        if left.active ~= right.active then return left.active end
+        if left.title ~= right.title then return left.title < right.title end
+        return left.key < right.key
+    end)
+    model.learnedActions = #model.spells
     model.activeAdjustments = activeAdjustments
+    model.ready = model.matureSituations > 0
+    model.state = not model.learningSupported and "NOT SUPPORTED" or (not model.enabled and "DISABLED"
+        or (not model.contextAvailable and "NO CONTEXT" or (activeAdjustments > 0 and "ADAPTED"
+        or (model.ready and "BASELINE" or (model.comparisonSituations > 0 and "COMPARING" or "OBSERVING")))))
     return model
 end
 
@@ -649,10 +705,8 @@ function A.PrintStatus()
     local status = A.Status()
     print(string.format("|cff00ff98HCOB ADAPTIVE:|r %s | eligible fights %d | contexts %d",
         status.enabled and "ON" or "OFF", status.totalEligible, status.contexts))
-    local state = not status.learningSupported and "NOT SUPPORTED"
-        or (not status.contextAvailable and "NO CONTEXT")
-        or (not status.enabled and "DISABLED") or (status.ready and "READY" or "CALIBRATING")
-    print(string.format("%s / %s: %d/%d fights | learned actions %d | learned corrections %d | %s",
+    local state = status.state or "UNAVAILABLE"
+    print(string.format("%s / %s: %d/%d fights | observed spells %d | learned corrections %d | %s",
         status.viewProfile == "pvp" and "PvP" or "Normal (PvE)", tostring(status.mode or "unknown"),
         status.contextFights, A.MIN_CONTEXT_FIGHTS, status.learnedActions, status.activeAdjustments,
         state))

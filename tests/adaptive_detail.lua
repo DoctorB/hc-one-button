@@ -172,6 +172,23 @@ assert(frame.rows[2].delta.text=="FIXED" and frame.rows[1].evidence.text=="8 cho
 assert(frame.rows[1].meta.text=="1 target / mid resource / >30% HP","situation is not readable")
 assert(frame.accountText.text=="Choices changed: 7 / 20\nExecuted: 4\nObserved impact, not DPS gain",
     "impact card is misleading or not confined to its three-line layout")
+-- One summary per spell, explicitly expandable details and both ends of the
+-- learned range. Returning to another profile must not reuse expanded rows.
+normal.spells={{key="spell:772",spellId=772,title="Rend",summary=true,active=true,
+    minBias=-2,maxBias=3,state="LEARNED",roleCount=1,situationCount=2,matureCount=2,
+    details={normal.arms[1],normal.arms[2]}}}
+normal.state="COMPARING"
+ui.Refresh()
+assert(frame.rows[1].name.text=="[+] Rend" and not frame.rows[2]:IsShown(),"spell summary did not collapse details")
+assert(frame.rows[1].delta.text=="VARIES" and frame.rows[1].bar.negative:IsShown() and frame.rows[1].bar.positive:IsShown(),
+    "opposing learned situations were concealed by one averaged bar")
+assert(frame.stateText.text=="COMPARING","comparison collection displayed as ready")
+frame.rows[1].scripts.OnMouseUp(frame.rows[1],"LeftButton")
+assert(frame.rows[1].name.text=="[-] Rend" and frame.rows[3]:IsShown(),"spell details failed to expand")
+frame.profileButtons.pvp.scripts.OnClick(); frame.profileButtons.pve.scripts.OnClick()
+assert(not frame.rows[2]:IsShown() and not frame.rows[3]:IsShown(),"profile change retained old expansion")
+normal.spells,normal.state=nil,nil
+ui.Refresh()
 frame.resetButton.scripts.OnClick(frame.resetButton)
 local warning=frame.protectedText.text
 now=4

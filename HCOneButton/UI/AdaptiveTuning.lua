@@ -47,9 +47,11 @@ local function StatusFor(model)
     if model.learningSupported == false then return "NOT SUPPORTED", 0.70, 0.72, 0.76 end
     if not model.enabled then return "DISABLED", 0.55, 0.58, 0.62 end
     if not model.contextAvailable then return "NO CONTEXT", 0.95, 0.60, 0.24 end
+    if model.state == "OBSERVING" then return "OBSERVING", 1.00, 0.78, 0.22 end
+    if model.state == "COMPARING" then return "COMPARING", 1.00, 0.78, 0.22 end
     if not model.ready then return "CALIBRATING", 1.00, 0.78, 0.22 end
     if (model.activeAdjustments or 0) > 0 then return "ADAPTED", 0.18, 0.95, 0.64 end
-    return "READY · BASELINE", 0.35, 0.82, 1.00
+    return "BASELINE", 0.35, 0.82, 1.00
 end
 
 local function ContextLabel(model)
@@ -61,10 +63,15 @@ local function ContextLabel(model)
         tostring(model.mode or "solo"):upper())
 end
 
-function UI.FilterArms(model, activeOnly)
+function UI.FilterArms(model, activeOnly, expanded)
     local result = {}
-    for _, arm in ipairs(model and model.arms or {}) do
-        if not activeOnly or arm.active then result[#result + 1] = arm end
+    for _, arm in ipairs(model and (model.spells or model.arms) or {}) do
+        if not activeOnly or arm.active then
+            result[#result + 1] = arm
+            if expanded and expanded[arm.key] then
+                for _, detail in ipairs(arm.details or {}) do result[#result + 1] = detail end
+            end
+        end
     end
     return result
 end
@@ -127,6 +134,13 @@ local function EnsureRow(frame, index)
         if not GameTooltip or not self.arm then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(self.arm.title or "Adaptive action", 1, 0.82, 0.2)
+        if self.arm.summary then
+            GameTooltip:AddLine("Click to expand/collapse roles and situations. Counters are kept separate; corrections are never averaged.", 0.82, 0.84, 0.88, true)
+            GameTooltip:AddLine(string.format("Learned range: %+.2f to %+.2f score points", self.arm.minBias or 0, self.arm.maxBias or 0), 0.25, 0.95, 0.68, true)
+            GameTooltip:AddLine("A learned correction applies only with tuning ON and matching eligible gameplay conditions. It is not a measured DPS gain.", 0.72, 0.76, 0.82, true)
+            GameTooltip:Show()
+            return
+        end
         GameTooltip:AddLine(self.arm.policy or "Base eligibility rules remain unchanged.", 0.82, 0.84, 0.88, true)
         GameTooltip:AddLine("Situation: " .. UI.SituationLabel(self.arm.situation), 0.82, 0.84, 0.88, true)
         GameTooltip:AddLine("Resource: low <=35%, high >=80%. HP phase refers to the target.", 0.72, 0.76, 0.82, true)
@@ -136,6 +150,13 @@ local function EnsureRow(frame, index)
         GameTooltip:Show()
     end)
     row:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    row:SetScript("OnMouseUp", function(self, button)
+        if button ~= "LeftButton" or not self.arm or not self.arm.summary then return end
+        frame.expanded = frame.expanded or {}
+        frame.expanded[self.arm.key] = not frame.expanded[self.arm.key]
+        if GameTooltip then GameTooltip:Hide() end
+        UI.Refresh()
+    end)
 
     frame.rows[index] = row
     return row
@@ -151,6 +172,20 @@ local function RefreshRow(row, arm, maxBias, index)
         or UI.SituationLabel(arm.situation))
     row.evidence:SetText(string.format("%d chosen\n%d alternative", arm.chosenFights or 0, arm.otherFights or 0))
     row.delta:SetText(arm.protected and "FIXED" or string.format("%+.2f", bias))
+    if arm.summary then
+        local expanded = UI.frame and UI.frame.expanded and UI.frame.expanded[arm.key]
+        row.name:SetText((expanded and "[-] " or "[+] ") .. (arm.title or "Unknown action"))
+        row.meta:SetText(string.format("%s / %d role%s", arm.state or "OBSERVING", arm.roleCount or 1, arm.roleCount == 1 and "" or "s"))
+        row.evidence:SetText(string.format("%d situations\n%d ready", arm.situationCount or 0, arm.matureCount or 0))
+        local low, high = Finite(arm.minBias, 0), Finite(arm.maxBias, 0)
+        bias = low == high and low or 0
+        row.delta:SetText(arm.protected and "FIXED" or (low ~= high and "VARIES" or string.format("%+.2f", bias)))
+    elseif arm.key then
+        local role = arm.role or arm.tag or "action"
+        if role == "action" then role = "unclassified history" end
+        row.name:SetText("    " .. role .. (arm.protected and " / FIXED" or ""))
+        row.meta:SetText(arm.situation and UI.SituationLabel(arm.situation) or "Observed only; no comparisons")
+    end
     if bias > 0 then row.delta:SetTextColor(0.18, 0.95, 0.65)
     elseif bias < 0 then row.delta:SetTextColor(1.00, 0.38, 0.36)
     else row.delta:SetTextColor(0.66, 0.69, 0.74) end
@@ -159,16 +194,18 @@ local function RefreshRow(row, arm, maxBias, index)
     row.bar.negative:ClearAllPoints()
     row.bar.positive:Hide()
     row.bar.negative:Hide()
-    local width = math.max(1, math.min(BAR_HALF_WIDTH, math.abs(bias) / maxBias * BAR_HALF_WIDTH))
-    if bias > 0 then
+    local positive = arm.summary and math.max(0, Finite(arm.maxBias, 0)) or math.max(0, bias)
+    local negative = arm.summary and math.min(0, Finite(arm.minBias, 0)) or math.min(0, bias)
+    if positive > 0 then
         row.bar.positive:SetPoint("TOPLEFT", row.bar, "TOP", 1, -1)
         row.bar.positive:SetPoint("BOTTOMLEFT", row.bar, "BOTTOM", 1, 1)
-        row.bar.positive:SetWidth(width)
+        row.bar.positive:SetWidth(math.max(1, math.min(BAR_HALF_WIDTH, positive / maxBias * BAR_HALF_WIDTH)))
         row.bar.positive:Show()
-    elseif bias < 0 then
+    end
+    if negative < 0 then
         row.bar.negative:SetPoint("TOPRIGHT", row.bar, "TOP", -1, -1)
         row.bar.negative:SetPoint("BOTTOMRIGHT", row.bar, "BOTTOM", -1, 1)
-        row.bar.negative:SetWidth(width)
+        row.bar.negative:SetWidth(math.max(1, math.min(BAR_HALF_WIDTH, -negative / maxBias * BAR_HALF_WIDTH)))
         row.bar.negative:Show()
     end
     row.accent:SetColorTexture(bias > 0 and 0.12 or (bias < 0 and 0.92 or 0.38),
@@ -228,6 +265,7 @@ function UI.Refresh()
 
     local viewSignature = tostring(model.contextKey or "none") .. ":" .. tostring(frame.activeOnly == true)
     if frame.viewSignature ~= viewSignature then
+        if frame.contextKey ~= model.contextKey then frame.expanded = {}; frame.contextKey = model.contextKey end
         frame.viewSignature = viewSignature
         frame.scroll:SetVerticalScroll(0)
     end
@@ -238,7 +276,7 @@ function UI.Refresh()
     frame.stateText:SetTextColor(r, g, b)
     frame.stateAccent:SetColorTexture(r, g, b, 0.92)
     frame.summaryText:SetText(string.format(
-        "%d/%d eligible fights in this context  ·  %d observed actions  ·  %d learned corrections",
+        "%d/%d eligible fights in this context  ·  %d observed spells  ·  %d learned corrections",
         model.fights or 0, model.minContextFights or 8, model.learnedActions or 0, model.activeAdjustments or 0))
     if model.learningSupported == false then
         frame.summaryText:SetText("Viewing PvP only. Learning and priority corrections are not supported for this profile.")
@@ -252,10 +290,10 @@ function UI.Refresh()
     frame.progress:SetMinMaxValues(0, minimum)
     frame.progress:SetValue(math.min(minimum, model.fights or 0))
     frame.progressText:SetText(model.learningSupported == false and "PvP learning not supported"
-        or (model.ready and "Context ready; each situation needs 4 chosen + 4 alternative fights"
-            or string.format("Calibration %d/%d", model.fights or 0, minimum)))
+        or ((model.fights or 0) >= minimum and string.format("Fight baseline collected / %d situations ready", model.matureSituations or 0)
+            or string.format("Fight baseline %d/%d / comparisons still required", model.fights or 0, minimum)))
 
-    local arms = UI.FilterArms(model, frame.activeOnly == true)
+    local arms = UI.FilterArms(model, frame.activeOnly == true, frame.expanded)
     for index, arm in ipairs(arms) do RefreshRow(EnsureRow(frame, index), arm, model.maxBias, index) end
     for index=#arms + 1,#frame.rows do frame.rows[index]:Hide() end
     frame.rowContent:SetHeight(math.max(1, #arms * ROW_HEIGHT))
@@ -307,7 +345,7 @@ function UI.Create()
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -7)
     subtitle:SetWidth(730)
     subtitle:SetJustifyH("LEFT")
-    subtitle:SetText("Local comparisons for this build. Every learned situation stays visible; fixed actions explain their protection. No random exploration.")
+    subtitle:SetText("One entry per spell. Click to inspect its roles and situations. OBSERVING collects data; COMPARING builds evidence; ADAPTED has learned corrections.")
 
     frame.profileButtons = {}
     for index, profile in ipairs({"pve", "pvp"}) do
@@ -397,7 +435,7 @@ function UI.Create()
     frame.legendText:SetPoint("TOPLEFT", 26, -293)
     frame.legendText:SetWidth(728)
     frame.legendText:SetJustifyH("LEFT")
-    frame.legendText:SetText("|cffff615cLeft (-)|r: lower priority  ·  |cffffd134Center (0)|r: unchanged baseline  ·  |cff2ee6a6Right (+)|r: higher priority\nScore points, not damage %. Each row is a learned situation; safety rules remain unchanged.")
+    frame.legendText:SetText("|cffff615cLeft (-)|r: lower priority  ·  |cffffd134Center (0)|r: unchanged baseline  ·  |cff2ee6a6Right (+)|r: higher priority\nScore points, not damage %. VARIES shows a range: expand the spell for details; safety rules remain unchanged.")
 
     local actionHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     actionHeader:SetPoint("TOPLEFT", 78, -330)
