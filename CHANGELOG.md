@@ -2,7 +2,31 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.3`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.4`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.4 — 2026-09-05
+
+### Fixed — reliable Local Adaptive Tuning evidence
+
+- Preserve the original spell role through stabilized HUD transitions. Battle Shout/Thunder Clap and equivalent all-class cases no longer create an extra generic `action` entry when fresh candidates change just before cast confirmation.
+- Capture bounded pending decisions at input, cast start or confirmed swing queue. Heroic Strike/Cleave retain their recommendation, comparison alternatives and execution attribution while the Advisor moves on; a queued strike is not a false deviation from the next Sunder suggestion.
+- Use cast/swing-aware expiry, target invalidation and failure/interruption handling. Failed repeated inputs cannot cancel a different in-progress cast or an armed queue. Input repetition never extends a pending decision indefinitely.
+- Canonicalize learned Heroic Strike/Cleave ranks before recording damage/miss queue outcomes. Cast success cannot re-arm an already consumed queue. Interleaved unit/combat-log confirmations are deduplicated per spell.
+- Discard unstarted opportunities on safety escalation; preserve the original snapshot only for an already captured action. Transient target/cast identities are erased before fight finalization.
+
+### Improved — one spell, clear evidence
+
+- Show one expandable entry per spell, with localized spell names and separate role/situation details. Historic danger/caution and unclassified entries remain inspectable without duplicating the main spell list or being converted into new comparisons.
+- Display the range of differing learned corrections as `VARIES`, including both sides of the baseline when applicable. Never average opposing corrections or sum comparison-fight counts across situations.
+- Distinguish `OBSERVING`, `COMPARING`, `BASELINE` and `ADAPTED`. Eight eligible fights alone are not a ready learner: each situation still requires four chosen and four alternative fights. Slash status and the inspector share the same state/counts.
+- Preserve explicit PvE/PvP views, ON/OFF, active-only filtering, automatic refresh, two-step reset and existing window navigation/combat closure.
+
+### Compatibility and validation
+
+- Version `1.29.4`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. No reset is required: existing observations, comparative coefficients, settings, HUD positions and combat history are preserved. Missing historical comparisons are not reconstructed.
+- Class eligibility, emergency policy, secure actions, bindings, DPS/aggro HUD and Diagnostic Pixel Protocol V3 are unchanged. This fixes evidence collection/inspection, not spell thresholds or a guaranteed DPS gain.
+- Two review/refinement passes cover all nine classes, delayed cast/swing attribution, rank-safe outcomes, protected/expired/changed-target cases, grouping, legacy data and UI mocks. All 47 addon Lua files parse; 28/28 Lua harnesses and 48/48 TOC references pass. 19/19 offline release-tool tests pass; root/package documentation matches.
+- In-game validation of the `1.29.4` changes is pending. The prior release's smoke test is not reused. Public release notes are in `docs/releases/1.29.4.md`; publish through the existing authorized GitHub → CurseForge release workflow only after the in-game check.
 
 ## 1.29.3 — 2026-09-04
 

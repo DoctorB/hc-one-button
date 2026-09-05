@@ -1,5 +1,84 @@
 # Situational Adaptive Tuning — review record
 
+## 1.29.4 — attribution and inspector follow-up
+
+Status: prepared for the existing GitHub → CurseForge pipeline; in-game
+validation is pending. Learner revision 4, adaptive schema 2, telemetry
+contract 1. No automatic history conversion or learning reset.
+
+### Review cycle 1 — event attribution across classes
+
+The supplied Warrior session contained nine eligible fights, 14 executed
+Heroic Strikes with no recommendation matches, role-split Shout/Clap records,
+and no saved comparisons. A two-candidate HS/Sunder decision lost its evidence
+when the HUD advanced before the queued strike succeeded. Learned-rank damage
+also failed a rank-1-only guard before the queue-outcome recorder.
+
+Refinements and checks:
+
+- Preserve a stabilized recommendation's semantic role when fresh candidates
+  disappear. Exercise buff, mitigation, proc, sustain, control, resource and
+  form cases across all nine classes with the real engine/telemetry/learner.
+- Separate bounded pending execution snapshots from the current displayed
+  recommendation. Test input before/after refresh, queue-event capture, slow
+  swings, the HS/Sunder sequence, and both Heroic Strike and Cleave.
+- Canonicalize ranks inside the queue-outcome API before filtering. Test actual
+  combat-log damage/miss ingestion, not only a mocked call to that API.
+- Test cast-start attribution on five caster-class fixtures, timeout,
+  interruptions, target changes and interleaved duplicate confirmations.
+- Keep snapshots runtime-only and clear them before finalization; no user
+  supplied Lua is executed or committed as a test fixture.
+
+### Review cycle 2 — safety, history and honest presentation
+
+- Clear unstarted comparison evidence when a fresh safety policy protects the
+  action. Preserve the original snapshot only for an already captured action;
+  do not alter emergency selection or spell eligibility.
+- Distinguish a failed repeated keypress from the actual in-progress cast by
+  transient cast GUID; an armed swing cannot be cancelled by a failed repeat.
+- Clear pending/recent evidence on target transitions, including away-and-back.
+  Do not extend pending lifetime from repeated inputs or re-arm a queue at
+  success after damage/miss already consumed it.
+- Keep pending windows frozen: a missing old comparison must never fall back
+  to a newer window with the pending action's extended expiry.
+- Group the inspector by spell, not storage key. Keep role/situation details
+  expandable, label unclassified history, use real spell names for safety
+  guidance, and count distinct spells. Do not merge learned statistics.
+- Show opposing learned ranges without averaging; exclude unclassified fixed
+  history from the correction range. Test old duplicates, malformed spell IDs,
+  expansion/filter/profile navigation and UI row reuse.
+- Replace fight-count-only readiness with observed/comparing/baseline/adapted
+  states shared by the UI and slash status. Enough fights without two-sided
+  evidence still mean observation, not completed training.
+
+Automated result: 47/47 addon Lua chunks, 28/28 Lua harnesses, 48/48 TOC
+references and 19/19 offline release-tool tests pass. Root/package documentation
+and versions agree. Fixtures are controlled regression checks, not proof of
+in-game DPS benefit or exhaustive real-client event timing.
+
+### 1.29.4 in-game gate before publication
+
+1. Back up SavedVariables; install the prepared ZIP without resetting learning.
+   Check preserved ON/OFF, HUD position, scale and existing spell observations.
+2. Open the inspector from Options: one main row per spell. Expand Shout/Clap/
+   Hamstring and verify separately labelled roles/situations, `VARIES` where
+   appropriate, active-only filtering, reopen/refresh and explicit PvE/PvP views.
+3. Play ordinary safe Warrior fights. Queue HS (and Cleave if learned): normal
+   HUD/pixel suppression must remain; executed actions should now correlate
+   with their original suggestion, including learned-rank hits/misses.
+4. On an available caster, check a natural non-instant spell, interruption and
+   target change. Do not deliberately provoke risky Hardcore encounters.
+5. Check `/hcob tuning status` and `/hcob errors`. Combat counts alone must not
+   imply completed learning. New comparisons require naturally co-eligible
+   choices; do not expect guaranteed corrections after nine fights.
+6. Confirm layout at the user's normal scale and return-to-Options/combat-close
+   behavior. Update the pending-validation statements only after these checks;
+   then publish the exact version tag through the existing release pipeline.
+
+## Archived review — 1.29.2
+
+The following record is historical, not the validation status of 1.29.4.
+
 Status: release preparation for 1.29.2. Local learner revision 3, SavedVariables
 schema 2, additive telemetry contract-1 fields. Release artifacts are generated
 under the ignored `release/` directory; this review record stays in the repository.

@@ -58,18 +58,18 @@ prove the account has upload rights or that CurseForge is currently reachable.
 1. Complete the in-game checks, update the TOC/runtime/fallback version and
    root/package documentation together, then commit and push the intended code.
 2. In GitHub **Releases → Draft a new release**, select that commit with a tag
-   exactly matching `v` plus the TOC version, e.g. `v1.29.3` for version `1.29.3`.
+   exactly matching `v` plus the TOC version, e.g. `v1.29.4` for version `1.29.4`.
    Use a new version/tag for new releases; do not move or recycle published tags.
 3. Paste the user-facing Markdown release notes into the release body. This is
    the exact text uploaded to the CurseForge file's changelog. A blank body
    blocks the upload. The title is not used as a substitute for the changelog.
    The CurseForge display name is always `HCOneButton v<version>`, for example
-   `HCOneButton v1.29.3`, regardless of the GitHub Release title or ZIP filename.
+   `HCOneButton v1.29.4`, regardless of the GitHub Release title or ZIP filename.
    No `ClassicEra`, date or `.zip` suffix is added to the display name.
 4. Choose the release type:
    - ordinary GitHub release → CurseForge **Release**;
    - GitHub prerelease → CurseForge **Beta**;
-   - a tag such as `v1.29.3-alpha.1`, marked as a GitHub prerelease → **Alpha**.
+   - a tag such as `v1.29.4-alpha.1`, marked as a GitHub prerelease → **Alpha**.
    Alpha/beta suffixes must also be present in the TOC/runtime version. A tag
    ending in `-beta.1` must be marked as a prerelease; inconsistent flags fail.
 5. Click **Publish release**. This is the action that authorizes the upload.
@@ -98,9 +98,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    validation stated honestly; never copy another version's results as current.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.3, the version-controlled public notes are in
-[`releases/1.29.3.md`](releases/1.29.3.md), with a local distribution copy at
-`release/HCOneButton-v1.29.3-CurseForge-ReleaseNotes.md`. Paste that document into
+For 1.29.4, the version-controlled public notes are in
+[`releases/1.29.4.md`](releases/1.29.4.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -138,7 +137,23 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.3 in-game pre-publication check
+### 1.29.4 in-game pre-publication check
+
+Status: pending. Use the current checklist in
+[`ADAPTIVE_REVIEW.md`](ADAPTIVE_REVIEW.md#1294-in-game-gate-before-publication).
+Verify grouped/expandable tuning rows, saved settings, Warrior queued-strike
+attribution, a caster's natural cast/interrupt path, status and `/hcob errors`.
+Update the pending-validation statements in the public notes and root/package
+documentation only after the actual in-game result is available.
+
+After validation, commit/push the final documentation and code, optionally run
+**Actions → CurseForge release → Run workflow** for a validation-only package,
+then publish GitHub tag `v1.29.4` with the curated notes as the release body.
+Use display title **HCOneButton v1.29.4**. No workflow or secret changes are
+needed. Preparing local artifacts, committing, pushing or saving a draft does
+not upload anything; only publishing the release triggers the authorized upload.
+
+### Archived 1.29.3 aggro-meter smoke test
 
 Status: the user tested the aggro meter in game and confirmed it works. This is
 a reported smoke-test result, not a claim that every case below was exercised.
