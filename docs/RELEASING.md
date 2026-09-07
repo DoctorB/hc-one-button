@@ -58,18 +58,18 @@ prove the account has upload rights or that CurseForge is currently reachable.
 1. Complete the in-game checks, update the TOC/runtime/fallback version and
    root/package documentation together, then commit and push the intended code.
 2. In GitHub **Releases → Draft a new release**, select that commit with a tag
-   exactly matching `v` plus the TOC version, e.g. `v1.29.4` for version `1.29.4`.
+   exactly matching `v` plus the TOC version, e.g. `v1.29.5` for version `1.29.5`.
    Use a new version/tag for new releases; do not move or recycle published tags.
 3. Paste the user-facing Markdown release notes into the release body. This is
    the exact text uploaded to the CurseForge file's changelog. A blank body
    blocks the upload. The title is not used as a substitute for the changelog.
    The CurseForge display name is always `HCOneButton v<version>`, for example
-   `HCOneButton v1.29.4`, regardless of the GitHub Release title or ZIP filename.
+   `HCOneButton v1.29.5`, regardless of the GitHub Release title or ZIP filename.
    No `ClassicEra`, date or `.zip` suffix is added to the display name.
 4. Choose the release type:
    - ordinary GitHub release → CurseForge **Release**;
    - GitHub prerelease → CurseForge **Beta**;
-   - a tag such as `v1.29.4-alpha.1`, marked as a GitHub prerelease → **Alpha**.
+   - a tag such as `v1.29.5-alpha.1`, marked as a GitHub prerelease → **Alpha**.
    Alpha/beta suffixes must also be present in the TOC/runtime version. A tag
    ending in `-beta.1` must be marked as a prerelease; inconsistent flags fail.
 5. Click **Publish release**. This is the action that authorizes the upload.
@@ -98,8 +98,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    validation stated honestly; never copy another version's results as current.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.4, the version-controlled public notes are in
-[`releases/1.29.4.md`](releases/1.29.4.md). Paste that document into
+For 1.29.5, the version-controlled public notes are in
+[`releases/1.29.5.md`](releases/1.29.5.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -137,7 +137,26 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.4 in-game pre-publication check
+### 1.29.5 in-game pre-publication check
+
+Status: offline validation passes; the new Rogue flow, prominent restart notice
+and sound still need a confirmed in-game smoke test. Follow
+[`ROGUE_LEVELING_REVIEW.md`](ROGUE_LEVELING_REVIEW.md#in-game-checklist-pending),
+especially a normal non-stealthed pull, Gouge pause/resume, a missed Gouge,
+the one-press BASE restart, notice readability/scale and **Alert sounds**.
+Verify `/hcob errors`, ordinary secure actions and preserved settings after reload.
+An approved explanation of the flow is not an in-game test result.
+
+After that check, record the result in the review, root/package documentation
+and public notes; rerun the tests and rebuild the local package if those files
+change. Push the final commits, optionally run **Actions → CurseForge release →
+Run workflow** for validation only, then publish a GitHub Release with tag
+`v1.29.5`, title **HCOneButton v1.29.5**, and the complete curated notes above as
+its body. Use an ordinary GitHub release for CurseForge **Release**. Only DoctorB
+or DoctorCalibano can start the workflow; no workflow/secret changes are needed.
+Local ZIP preparation, commits and push do not upload a release.
+
+### Archived 1.29.4 in-game smoke test
 
 Status: the user completed the 1.29.4 in-game smoke test and reported that the
 result looks correct. This does not claim every class or checklist item was
@@ -146,12 +165,7 @@ tested. Keep the regression checklist in
 Public notes and root/package documentation now record that user-reported
 result. No runtime code or version changed after this confirmation.
 
-After validation, commit/push the final documentation and code, optionally run
-**Actions → CurseForge release → Run workflow** for a validation-only package,
-then publish GitHub tag `v1.29.4` with the curated notes as the release body.
-Use display title **HCOneButton v1.29.4**. No workflow or secret changes are
-needed. Preparing local artifacts, committing, pushing or saving a draft does
-not upload anything; only publishing the release triggers the authorized upload.
+This result applies to 1.29.4 only and does not validate the later Rogue changes.
 
 ### Archived 1.29.3 aggro-meter smoke test
 

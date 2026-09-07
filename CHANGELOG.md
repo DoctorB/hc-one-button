@@ -2,7 +2,30 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.4`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.5`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.5 — 2026-09-07
+
+### Improved — Rogue leveling flow
+
+- Account for invested talents from the first point, not just the dominant talent tree. Use client energy costs with rank-safe, talent-aware fallbacks; learned Hemorrhage/Blade Flurry/Adrenaline Rush remain available in mixed builds.
+- Bring Eviscerate forward in short finishing windows, protect required finishers from tuning, and remove the builder dead zone below 20% target HP. Moderate caution and healthy two-target pulls no longer automatically replace offense with escape preparation.
+- Require observed lifetime, useful talent-adjusted duration and a remaining builder's energy before investing in Slice and Dice. Keep maintained buffs combat-only and never refresh an active Slice and Dice. A bounded character-runtime target trend supports Combat logger OFF without treating unknown lifetime as long.
+- Fix unreachable Gouge pooling (previously requiring both at most 25 energy and an affordable 45-energy spell). Use situational solo control before energy runs out; do not plan an energy pause through known Rogue periodic damage, group damage or a short finishing window.
+- Respect the actual Gouge aura with immediate no-action/pixel guidance, a short cast-to-aura bridge and bounded expiry. Keep low-HP and multi-attacker responses available; stop auto-attacks in Gouge's secure slot and modifier macro. Add an affordable/range-checked interrupt fallback when Kick is unavailable.
+
+### New — unmistakable attack restart guidance
+
+- Add a binding-aware `ATTACK STOPPED / PRESS <BASE binding> ONCE` HUD fallback when no ability is available and melee auto-attack is confirmed stopped. Preserve stealth, control and cast/channel pauses; do not infer a stopped attack from a long swing or unknown API/range data. Withdraw the hint when it is no longer needed and keep its pixel black. Render energy waits as `WAIT FOR ENERGY` instead of misleading BASE-spam guidance.
+- Make the restart request prominent: a high-contrast amber panel replaces the small Advisor labels, with a large outlined key instruction, one-press caption and slowly pulsing border. Follow existing HUD position, scale and visibility without covering BASE, health/resources or DPS; the player never needs to interpret the diagnostic pixel.
+- Play a distinct native sound when the restart notice appears, respecting the existing persisted **Alert sounds** toggle. Sound once per notice, at least five seconds apart; do not repeat during a persistent notice or interfere with danger/interrupt sound throttles. Missing audio support leaves the visual cue functional.
+
+### Compatibility and validation
+
+- Version `1.29.5`, Interface `11509`, learner revision `4`, adaptive schema `2` and telemetry contract `1`. No reset is required: settings, positions, combat history, tuning data and ON/OFF preferences are preserved. Learned-rank name casting, fixed Action Panel slots and Pixel V3 encoding remain unchanged.
+- BASE does not deliberately break Stealth; openings are a separate path. Independent external BASE presses are not blocked or coordinated by this change and must respect the selected action/pause. No external executable, new positional ability or automatic protected action is introduced.
+- 47/47 addon Lua files parse; 30/30 Lua harnesses and 48/48 TOC references pass. The Rogue harness covers 110 checks and the restart HUD/audio harness 78 checks, including unavailable APIs, timing, bindings, visibility, layout and emergency guards. 19/19 offline release-tool tests pass; root/package documentation matches.
+- In-game validation of this Rogue revision, notice readability and sound is still pending. Automated state tests do not establish a measured DPS or TTK gain. The review/checklist is in `docs/ROGUE_LEVELING_REVIEW.md`; curated public notes are in `docs/releases/1.29.5.md`. Local release preparation does not publish to GitHub or CurseForge.
 
 ## 1.29.4 — 2026-09-05
 

@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.4`
+- **Current version:** `1.29.5`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -22,6 +22,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 - [Pre-pull Safety Advisor and Recovery Gate](#pre-pull-safety-advisor-and-recovery-gate)
 - [Survival consumables strip](#survival-consumables-strip)
 - [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts)
+- [Rogue leveling flow](#rogue-leveling-flow)
 - [Hunter pet management](#hunter-pet-management)
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
@@ -34,11 +35,11 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.4` makes **Local Adaptive Tuning evidence more reliable and easier to read**. Executed spells retain their original recommendation and role through short HUD transitions, cast holds and queued swings. Heroic Strike/Cleave damage and misses recognize learned ranks, and a queued strike is no longer mistaken for ignoring the next suggestion.
+Version `1.29.5` focuses on **smoother Rogue leveling and clear attack-restart guidance**. The baseline considers invested talents from level 10, actual energy costs, earlier finishing opportunities and whether Slice and Dice has time to pay off. It removes the builder dead zone on nearly defeated targets and makes situational Gouge recovery affordable.
 
-The inspector now starts with **one expandable entry per spell**, with separate role/situation details and no averaging of different corrections. `OBSERVING`, `COMPARING`, `BASELINE` and `ADAPTED` distinguish collected fights from usable comparisons and learned corrections. Eight fights alone no longer report a ready learner.
+A real Gouge control window pauses the next recommendation. If attacks remain stopped and no ability is available, a prominent amber **PRESS BUTTON4** notice (your actual BASE binding) asks for one press, accompanied by a distinct sound when **Alert sounds** is enabled. You do not need to interpret the diagnostic pixel. Stealth openings remain a separate path: BASE does not deliberately break Stealth.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4` retains adaptive schema `2` and the existing comparative coefficients; old unclassified observations remain inspectable, not converted into new comparisons. Missing evidence from old logs is not reconstructed. The DPS / aggro meter, secure actions and Diagnostic Pixel V3 behavior remain unchanged. The existing GitHub → CurseForge pipeline publishes only an explicitly published GitHub release.
+**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, the grouped tuning inspector, DPS/aggro HUD, fixed slots and Pixel V3 encoding remain unchanged. Gouge's secure macro now stops auto-attacks; all protected actions still require player input. This build passes offline regressions; the new Rogue flow, notice and sound still need an in-game smoke test. The existing GitHub → CurseForge pipeline publishes only an explicitly published GitHub release.
 
 ## Local Adaptive Tuning
 
@@ -175,6 +176,30 @@ Current class coverage:
 | Druid | ✅ Engine 2.0 |
 
 Emergency states such as interrupts, critical HP and dangerous multi-pulls remain hard-priority safety gates.
+
+#### Rogue leveling flow
+
+The Rogue baseline targets ordinary leveling fights from the first learned abilities, including the first talent point at level 10. It does not wait for a complete endgame build or for Local Adaptive Tuning to learn a usable rotation.
+
+- Read individual invested talent ranks by localized name across all three trees; refresh on login, talent updates and spell changes. Improved Sinister Strike affects the fallback energy cost (`45 / 42 / 40`), Improved Eviscerate modestly widens short-fight spending windows, and Improved Slice and Dice / Improved Gouge affect duration-dependent decisions. Actual client energy costs take precedence; learned Hemorrhage, Blade Flurry and Adrenaline Rush are not gated by the tree with the most points.
+- Spend Eviscerate at four or more combo points, or earlier in finishing windows: on normal nearby-level NPCs, three CP at approximately `45%` target HP, two CP at approximately `30%`, or one CP at `12%`. Improved Eviscerate adjusts the three/two-CP HP thresholds by its damage bonus. A credible remaining lifetime of `6s` / `3s` also permits three/two-CP finishers; elite, much higher-level and player targets do not inherit the new normal-mob percentage shortcuts. The original two-CP / `22%` fallback remains available. These are leveling heuristics, not exact lethal-damage predictions. Required finishing windows cannot be displaced by tuning.
+- Slice and Dice requires a missing buff, one or two CP, a credible remaining lifetime of at least `11s`, at least `10s` of useful buff duration, and enough energy left for the next builder. Unknown TTK is not evidence of a long fight. A small, target-scoped health trend also works with Combat logger off; target changes, healing and combat end reset that fallback.
+- Builders use actual affordability and continue below `20%` target HP when a finisher is not appropriate. Healthy two-target pulls and moderate caution can retain offensive guidance; low-HP emergencies and dangerous multi-pulls still take precedence. Energy waits are explicit, and unmet requirements are not mislabeled as low energy.
+- Gouge is affordable control, not a mandatory DPS cooldown. Proactive energy recovery requires solo melee pressure, suitable energy, enough target life and no detected Garrote/Rupture/Deadly Poison; it is suppressed in groups and against player targets. Improved Gouge can make a moderate-pressure window eligible. Kick remains the preferred interrupt; an affordable, in-range Gouge can substitute against a target facing the player when Kick is unavailable.
+- A confirmed Gouge clears the recommendation/pixel while its actual control aura lasts, until `80` energy or an emergency. The cast-to-aura grace is only `0.20s`; misses, aura breaks, expiry and target changes cannot leave a full-duration phantom hold. Multiple attackers bypass the single-target pause. Gouge's secure slot/modifier macro stops rather than restarts auto-attacks.
+- If no ability is available and the client confirms auto-attack is stopped, the HUD shows `ATTACK STOPPED / PRESS <BASE binding> ONCE` (for example, `PRESS BUTTON4 ONCE`). With no BASE binding it shows `CLICK BASE ONCE`. The hint requires a live, engaged target in confirmed melee range; it is suppressed during stealth, casts/channels and Rogue breakable control. Unknown attack/range data never becomes a restart request. The hint is withdrawn on the next refresh once attacks resume or another recommendation takes over; its pixel remains black and no new slot is allocated. Energy waits display `WAIT FOR ENERGY`, not a generic BASE-spam instruction.
+
+Secure actions still require user input. The addon cannot cancel independently generated BASE presses: a reader must send no key on black/no-action and must not send BASE alongside a different suggested action. Otherwise it can break Gouge or spend energy intended for Eviscerate. Existing slot numbers, default bindings, highest-learned-rank name casting and Pixel V3 encoding are unchanged. No new Ambush/Backstab slot or positional automation is introduced in this change.
+
+The restart request is a prominent amber notice covering the existing `282 x 82` Advisor area: `ATTACK STOPPED`, a large outlined `PRESS BUTTON4` (actual binding), and `ONCE TO RESUME ATTACK`. Only its thick border pulses slowly; the instruction stays fully readable. It follows HUD position/scale, fits long binding names, hides with the HUD/Advisor and does not cover BASE, HP/energy or DPS. Gouge, healing waits and higher-priority recommendations clear it. The diagnostic pixel is for the external reader, not the player's cue to resume.
+
+With **Alert sounds** enabled, a distinct native sound accompanies the restart notice once when it appears, with at least `5s` between restart sounds. It does not repeat while the notice stays visible or when its binding label changes. Muted/hidden notices, Gouge and recovery waits do not play a restart cue; danger and interrupt sounds keep their separate throttles. This is an attention sound, not a spoken button name. No extra audio file or saved option is required.
+
+Sinister Strike and learned Hemorrhage already use fixed slots `1` and `2`, including when their Advisor key hint says `BASE`. An independent BASE loop is not required to expose those recommendations. If attacks remain stopped during an energy wait, follow the one-press restart hint; movement, facing and target selection remain manual. The addon displays the key bound in WoW, not an unmapped physical mouse button configured only in external software.
+
+**Example — ordinary pull, starting outside Stealth:** select a hostile target, move into melee range and press BASE once to start auto-attacks. Follow the supported SS/Hemorrhage and finisher suggestions; wait when the HUD asks for energy. If Gouge creates a control window, let it finish. Resume through the next offensive action, or press BASE once if the large restart notice appears. Movement and targeting remain manual. If Stealth has already been applied, BASE will not break it: use an appropriate opener instead of assuming the same one-press pull path.
+
+The `1.29.5` Rogue flow, visual notice and sound still need an in-game leveling check; automated state tests do not establish a measured DPS or TTK improvement.
 
 While `UnitCastingInfo` or `UnitChannelInfo` reports an active player action, the Advisor displays `LET IT FINISH`, clears the Action Panel highlight and emits black/no-action through Diagnostic Pixel. Rotation evaluation resumes only after the real cast/channel ends or is interrupted, so haste, pushback and non-instant offensive spells do not produce an early next suggestion.
 
@@ -1121,7 +1146,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.4` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.5` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1129,10 +1154,10 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-The `1.29.4` source baseline currently passes:
+The `1.29.5` source baseline currently passes:
 
 - **47/47 Lua chunks** pass syntax parsing in the current validation environment;
-- **28/28 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **30/30 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **48/48 TOC references** resolved (`47 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
@@ -1161,11 +1186,12 @@ The `1.29.4` source baseline currently passes:
 - Warrior escape-Rage coverage verifies low-Rage Hamstring priority, excess-Rage spending, proc/core/queued-strike ordering, controlled two-target spending and strict panic preemption at low HP or 3+ enemies;
 - Warrior multi-pull coverage verifies defensive-debuff refresh boundaries, healthy x2 return to the core DPS scorer, low-reserve escape preservation and stance/equipment-aware Retaliation and interrupt selection;
 - Warrior swing-queue coverage verifies the adaptive Heroic Strike/Cleave window, immediate queue suppression, special hit/miss timer reset, first-swing fallback, Execute pooling/release boundaries, slot-20 Cleave priority and queue-safe secure actions;
+- Rogue leveling coverage verifies first-point talents/respec, localized rank-safe costs/macros, mixed-tree learned actives, early finishers, affordable Slice and Dice, logger-independent target trends, Gouge affordability/control/range/expiry and immediate pause display, emergency precedence and protected finishing windows under tuning. Restart-hint coverage checks actual attack state, unknown data, range/control/cast guards, immediate withdrawal and the real HUD/pixel renderer with changed or missing bindings and no-spam energy waits. The development checklist is in `docs/ROGUE_LEVELING_REVIEW.md` (repository only);
 - cross-class aura coverage verifies combat-only maintenance for Paladin, Priest, Mage, Warlock, Druid and Shaman, healthy-aura suppression, the final-ten-second refresh boundary, Warrior Battle Shout policy, Hunter/Rogue aura guards, rank-safe cast acknowledgement, stale refresh metadata and bounded player/pet aura-miss debouncing;
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The user completed an in-game smoke test of `1.29.4` and reported that the result looks correct. This is a user-reported check, not exhaustive live coverage of all nine classes, event sequences or checklist items. The review record and regression checklist are in `docs/ADAPTIVE_REVIEW.md`. Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding and UI behavior or prove a DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The `1.29.5` Rogue changes, large restart notice and sound have not yet received a confirmed in-game smoke test. The release review and live checklist are in `docs/ROGUE_LEVELING_REVIEW.md`; prior tuning review history remains in `docs/ADAPTIVE_REVIEW.md`. Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
 
 ---
 
