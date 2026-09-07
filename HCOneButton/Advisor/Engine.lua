@@ -109,6 +109,9 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
         or CooldownRemaining(state.spellId) <= 1.60
     local oldStillPlausible = state.spellId == nil or (IsKnown(state.spellId)
         and IsUsable(state.spellId) and oldCooldownPlausible)
+    -- Once live class state withdraws a one-press restart hint, do not retain
+    -- it for swap confirmation and invite an unnecessary second BASE press.
+    if state.key == "PRESS BASE ONCE" then oldStillPlausible = false end
     if state.spellId and oldStillPlausible and IsQueuedMeleeSwingSpell
        and IsQueuedMeleeSwingSpell(state.spellId) then
         -- Once an on-next-swing spell is armed, drop its pixel immediately.
@@ -223,17 +226,25 @@ function HCOB.Advisor.Engine.DebugPrint()
 end
 
 
+local lastRestartSound
 function PlayAlert(kind)
     if not HCOB_DB.soundAlerts or not PlaySound then return end
     local now = GetTime()
+    local kit = SOUNDKIT and (SOUNDKIT.RAID_WARNING or SOUNDKIT.ALARM_CLOCK_WARNING_3)
     if kind == "danger" then
         if now - lastDangerSound < 8 then return end
         lastDangerSound = now
     elseif kind == "interrupt" then
         if now - lastInterruptSound < 2 then return end
         lastInterruptSound = now
+    elseif kind == "restart" then
+        -- Separate cue and throttle: a transient stop/resume cannot chatter,
+        -- and restart alerts never consume the danger/interrupt sound budget.
+        if lastRestartSound and now - lastRestartSound < 5 then return end
+        kit = SOUNDKIT and (SOUNDKIT.READY_CHECK or SOUNDKIT.ALARM_CLOCK_WARNING_3)
+        if not kit then return end
+        lastRestartSound = now
     end
-    local kit = SOUNDKIT and (SOUNDKIT.RAID_WARNING or SOUNDKIT.ALARM_CLOCK_WARNING_3)
     if kit then pcall(PlaySound, kit, "Master") end
 end
 
@@ -362,6 +373,15 @@ function Recommend()
             source="danger_hp", hp=hp, enemies=enemies, targetHP=targetHP,
         })
         return id, title or "DANGER", key or "ALL MODS", reason or "Consider escaping", "danger"
+    end
+
+    -- Class-owned control windows (e.g. Rogue Gouge) clear the action/pixel
+    -- immediately, before normal trend/multi-pull scoring can break the pause.
+    -- Real HP emergencies above still take precedence. No secure input is blocked.
+    local actionClass = ActiveClassModule()
+    if actionClass and actionClass.GetActionHold then
+        local hid, htitle, hkey, hreason, hkind = actionClass:GetActionHold(inCombat, hostile)
+        if htitle then return hid, htitle, hkey, hreason, hkind end
     end
 
     -- An interruptible cast remains higher priority than CAUTION warnings: risk

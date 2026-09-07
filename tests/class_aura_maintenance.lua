@@ -199,6 +199,10 @@ expect(HunterClass:GetRecommendation(true, true, 80, 1), nil, "HUNTER active Men
 
 known, buffs, petBuffs = {[S.SLICE_DICE]=true}, {}, {}
 local RogueClass = environment.HCOneButton.Classes.ROGUE
+-- Maintenance is still combat-only, but the leveling policy now also requires
+-- a credible payoff window and a small, sufficiently long combo-point buff.
+environment.GetComboPoints = function() return 2 end
+Engine.RollingDynamics = function() return {confidence=1, ttk=16} end
 expect(RogueClass:GetRecommendation(false, true, 80, 2), nil, "ROGUE Slice and Dice out of combat")
 expect(RogueClass:GetRecommendation(true, true, 80, 2), S.SLICE_DICE, "ROGUE missing Slice and Dice aura")
 buffs[S.SLICE_DICE] = 8

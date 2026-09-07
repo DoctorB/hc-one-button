@@ -12,7 +12,7 @@ local function widget(kind, parent)
 end
 for _, name in ipairs({"SetFrameStrata","SetFrameLevel","SetClampedToScreen","SetMovable",
     "RegisterForDrag","RegisterForClicks","SetAllPoints","SetTexture","SetBlendMode","SetAlpha",
-    "SetJustifyH","StartMoving","StopMovingOrSizing","SetVertexColor"}) do
+    "SetJustifyH","StartMoving","StopMovingOrSizing","SetVertexColor","SetFont"}) do
     methods[name] = function() end
 end
 function methods:SetPoint(...) self.points[#self.points+1]={...} end
@@ -157,6 +157,8 @@ for _,scale in ipairs({0.7,1,1.6}) do
     assert(env.dpsMeter.scale==scale and env.HCOB_CoreShell.scale==scale)
     assert(meter.row.parent==env.dpsMeter and meter.row.scale==nil,"threat row should inherit scale")
     assert(env.diagPixel.scale==nil)
+    assert(env.advisor.restartNotice.parent==env.advisor and env.advisor.restartNotice.scale==nil,
+        "restart notice must inherit HUD scale without double-scaling")
 end
 assert(not meter.row.mouse and not env.dpsMeter.mouse,"threat display must not intercept gameplay clicks")
 

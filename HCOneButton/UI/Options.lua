@@ -162,7 +162,7 @@ function CreateOptionsPanel()
 
     add(CreateCheckBox(panel, "Show HUD", "Show or hide the complete HC One Button combat HUD.", function() return HCOB_DB.visible end, function(v) HCOB_DB.visible = v; RefreshButtonState() end, 24, -118))
     add(CreateCheckBox(panel, "Lock position", "Disable button dragging.", function() return HCOB_DB.locked end, function(v) HCOB_DB.locked = v end, 24, -145))
-    add(CreateCheckBox(panel, "Alert sounds", "Play sounds for danger and interrupts.", function() return HCOB_DB.soundAlerts end, function(v) HCOB_DB.soundAlerts = v end, 24, -172))
+    add(CreateCheckBox(panel, "Alert sounds", "Play sounds for danger, interrupts and the Rogue's manual attack restart notice. Restart sounds play once per notice, at least 5 seconds apart.", function() return HCOB_DB.soundAlerts end, function(v) HCOB_DB.soundAlerts = v end, 24, -172))
     add(CreateCheckBox(panel, "Show swing timer", "Show the next auto-attack swing bar.", function() return HCOB_DB.showSwing end, function(v) HCOB_DB.showSwing = v; UpdateDisplay() end, 24, -199))
     add(CreateCheckBox(panel, "Smart HUD", "Analyze buffs, target, cooldowns and danger. If an API errors, Smart HUD is disabled for the session without stopping the secure button.", function() return HCOB_DB.smartDisplay ~= false end, function(v) HCOB_DB.smartDisplay = v; if v then runtimeSmartDisabled = false end; UpdateDisplay() end, 24, -226))
     add(CreateCheckBox(panel, "Show Advisor", "Show the right-side panel with the situational spell to cast manually.", function() return HCOB_DB.showAdvisor ~= false end, function(v) HCOB_DB.showAdvisor = v; RefreshButtonState(); UpdateDisplay() end, 24, -253))

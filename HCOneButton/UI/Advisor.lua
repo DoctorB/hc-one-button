@@ -68,6 +68,69 @@ advisorReason:SetHeight(13)
 advisorReason:SetJustifyH("LEFT")
 advisorReason:SetText("No priority")
 
+-- Human-facing restart cue, independent of the 8x8 machine-readable pixel.
+-- Occupy the existing Advisor area: no new window, input capture or overlap
+-- with the secure BASE button, HP/resource bars, DPS or fixed action slots.
+local restartNotice = CreateFrame("Frame", nil, advisor)
+advisor.restartNotice = restartNotice
+restartNotice:SetAllPoints(advisor)
+restartNotice:SetFrameLevel(6)
+restartNotice:EnableMouse(false)
+restartNotice.edge = restartNotice:CreateTexture(nil, "BACKGROUND")
+restartNotice.edge:SetAllPoints()
+restartNotice.edge:SetColorTexture(1, 0.65, 0.10, 1)
+restartNotice.body = restartNotice:CreateTexture(nil, "ARTWORK")
+restartNotice.body:SetPoint("TOPLEFT", 3, -3)
+restartNotice.body:SetPoint("BOTTOMRIGHT", -3, 3)
+restartNotice.body:SetColorTexture(0.16, 0.08, 0.015, 1)
+restartNotice.title = restartNotice:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+restartNotice.title:SetPoint("TOP", 0, -7)
+restartNotice.title:SetSize(258, 14)
+restartNotice.title:SetTextColor(1, 0.80, 0.35)
+restartNotice.key = restartNotice:CreateFontString(nil, "OVERLAY")
+restartNotice.key:SetPoint("TOP", 0, -24)
+restartNotice.key:SetHeight(30)
+restartNotice.key:SetJustifyH("CENTER")
+restartNotice.key:SetTextColor(1, 0.97, 0.80)
+restartNotice.footer = restartNotice:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+restartNotice.footer:SetPoint("BOTTOM", 0, 8)
+restartNotice.footer:SetSize(258, 14)
+restartNotice.footer:SetText("ONCE TO RESUME ATTACK")
+restartNotice.elapsed = 0
+restartNotice:SetScript("OnUpdate", function(self, elapsed)
+    self.elapsed = (self.elapsed + elapsed) % 1.4
+    -- Pulse only the border; the large instruction stays fully readable.
+    self.edge:SetAlpha(0.78 + 0.22 * math.cos(self.elapsed * math.pi * 2 / 1.4))
+end)
+restartNotice:SetScript("OnHide", function(self)
+    self.elapsed = 0
+    self.announced = false
+    self.edge:SetAlpha(1)
+end)
+restartNotice:Hide()
+
+local function UpdateRestartNotice(active, inputText, kind)
+    if not active then restartNotice:Hide(); return end
+    restartNotice.title:SetText(kind == "caution" and "CAUTION - ATTACK STOPPED" or "ATTACK STOPPED")
+    if restartNotice.inputText ~= inputText then
+        restartNotice.inputText = inputText
+        local font = STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
+        restartNotice.key:SetFont(font, 26, "OUTLINE")
+        restartNotice.key:SetWidth(0) -- measure the full label before constraining it
+        restartNotice.key:SetText(inputText)
+        local width = restartNotice.key:GetStringWidth()
+        if width and width > 258 then
+            restartNotice.key:SetFont(font, 26 * 258 / width, "OUTLINE")
+        end
+        restartNotice.key:SetWidth(258)
+    end
+    restartNotice:Show()
+    if not restartNotice.announced then
+        restartNotice.announced = true
+        if PlayAlert then PlayAlert("restart") end
+    end
+end
+
 -- Compact telemetry footer: existing DPS line plus live target threat.
 dpsMeter = CreateFrame("Frame", nil, UIParent)
 dpsMeter:SetSize(282, 44)
@@ -108,7 +171,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         HCOB.UI.ActionPanel.Highlight(spellId)
         HCOB.UI.ActionPanel.UpdateStates()
     end
-    if HCOB_DB.showAdvisor == false then return end
+    if HCOB_DB.showAdvisor == false then restartNotice:Hide(); return end
 
     -- Do not show a ? when there is simply no manual priority.
     -- While idle use the base action icon; for warnings without a spell use
@@ -142,11 +205,17 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     local actionHint = keyHint or "CAST MANUALLY"
     local baseKey = nil
     if GetBindingKey then baseKey = GetBindingKey("CLICK HCOneButtonFrame:LeftButton") end
+    local baseOnceHint = baseKey and ("PRESS " .. baseKey .. " ONCE") or "CLICK BASE ONCE"
+    local restartInput = baseKey and ("PRESS " .. baseKey) or "CLICK BASE"
     baseKey = baseKey or "HCOB KEY"
     local manual = (actionHint == "CAST MANUALLY")
     local clickable = HCOB_DB.secureActions ~= false and HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.Has(spellId)
     local holdAction = (actionHint == "LET IT RUN")
-    local baseAction = (actionHint == "PRESS BASE" or actionHint == "KEEP SPAMMING" or actionHint == "BASE SPAM OK")
+    local baseOnce = (actionHint == "PRESS BASE ONCE")
+    UpdateRestartNotice(baseOnce and not spellId and HCOB_DB.visible ~= false
+        and kind ~= "danger" and kind ~= "interrupt", restartInput, kind)
+    local passiveHint = not spellId and (actionHint == "WAIT FOR ENERGY" or actionHint == "CHECK TARGET")
+    local baseAction = (baseOnce or actionHint == "PRESS BASE" or actionHint == "KEEP SPAMMING" or actionHint == "BASE SPAM OK")
     local modifier = (actionHint == "SHIFT" or actionHint == "CTRL" or actionHint == "ALT" or actionHint == "CTRL+SHIFT" or actionHint == "ALT+SHIFT" or actionHint == "ALT+CTRL" or actionHint == "CTRL+ALT+SHIFT")
 
     -- v1.27.2: CoreShell border is alert-only. Only CAUTION/DANGER (including
@@ -168,7 +237,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         elseif modifier then
             advisorKey:SetText(actionHint .. " + " .. baseKey)
         else
-            advisorKey:SetText(actionHint)
+            advisorKey:SetText(baseOnce and baseOnceHint or actionHint)
         end
         advisorKey:SetTextColor(1, 0.46, 0.38)
         advisorTitle:SetTextColor(1, 0.38, 0.24)
@@ -188,7 +257,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         elseif modifier then
             advisorKey:SetText(actionHint .. " + " .. baseKey)
         else
-            advisorKey:SetText(actionHint)
+            advisorKey:SetText(baseOnce and baseOnceHint or actionHint)
         end
         advisorKey:SetTextColor(1, 0.78, 0.30)
         advisorTitle:SetTextColor(1, 0.78, 0.22)
@@ -218,29 +287,29 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         advisorTitle:SetTextColor(1, 0.82, 0)
         advisor:SetAlpha(1.0)
         if advisorIcon.SetDesaturated then advisorIcon:SetDesaturated(false) end
-    elseif holdAction then
-        advisorMode:SetText("AUTO ACTIVE")
+    elseif holdAction or passiveHint then
+        advisorMode:SetText(passiveHint and (actionHint == "WAIT FOR ENERGY" and "ENERGY WAIT" or "CHECK TARGET") or "AUTO ACTIVE")
         advisorMode:SetTextColor(0.72, 0.92, 1)
         advisorBanner:SetColorTexture(0.04, 0.24, 0.38, 0.96)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
         HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
-        advisorKey:SetText("LET IT RUN")
+        advisorKey:SetText(actionHint)
         advisorKey:SetTextColor(0.70, 0.90, 1)
         advisorTitle:SetTextColor(0.80, 0.90, 1)
         advisor:SetAlpha(0.86)
         if advisorIcon.SetDesaturated then advisorIcon:SetDesaturated(false) end
     elseif baseAction then
-        advisorMode:SetText(title == "PULL READY" and "PULL READY" or (PLAYER_CLASS == "HUNTER" and "PULL" or "BASE SPAM"))
+        advisorMode:SetText(baseOnce and "RESUME" or (title == "PULL READY" and "PULL READY" or (PLAYER_CLASS == "HUNTER" and "PULL" or "BASE SPAM")))
         advisorMode:SetTextColor(0.75, 1, 0.75)
         advisorBanner:SetColorTexture(0.04, 0.35, 0.10, 0.96)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
         HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
-        advisorKey:SetText((PLAYER_CLASS == "HUNTER" and "PRESS " or "SPAM ") .. baseKey)
+        advisorKey:SetText(baseOnce and baseOnceHint or ((PLAYER_CLASS == "HUNTER" and "PRESS " or "SPAM ") .. baseKey))
         advisorKey:SetTextColor(0.65, 1, 0.65)
         advisorTitle:SetTextColor(1, 0.82, 0)
-        advisor:SetAlpha(0.92)
+        advisor:SetAlpha(baseOnce and 1.0 or 0.92)
         if advisorIcon.SetDesaturated then advisorIcon:SetDesaturated(false) end
     else
         advisorMode:SetText("OK")
