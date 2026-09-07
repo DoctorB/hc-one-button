@@ -1,6 +1,6 @@
 # Rogue leveling baseline — 1.29.5 release review
 
-Scope: version 1.29.5, leveling with the character's actual learned abilities and invested talents, including level 10's first point. This is local release preparation, not confirmation of publication or in-game validation. No SavedVariables schema, fixed action slot, binding or protocol change is required.
+Scope: version 1.29.5, leveling with the character's actual learned abilities and invested talents, including level 10's first point. The user has reported a successful in-game smoke test; local release preparation does not confirm publication. No SavedVariables schema, fixed action slot, binding or protocol change is required.
 
 ## Evidence and first review
 
@@ -39,13 +39,13 @@ The full suite also covers other class contracts, aura policies, cast holds, sta
 
 The restart extension tests real Rogue/engine transitions (stopped/active, affordable next spell, energy pooling, range unknown/out, control grace, channel/cast, danger and failed/unreadable APIs). `tests/advisor_input_hints.lua` loads the real HUD and diagnostic pixel: changed/missing binding labels, single-press/energy-wait text, black restart state, unchanged SS/Hemorrhage slots and preserved Hunter/Warrior input modes.
 
-Large-cue regressions cover label size/long-key fitting, opaque high-contrast display, non-overlapping text geometry, slow border-only pulse/reset, frame parenting/input passthrough, hidden HUD/Advisor, and replacement by recovery/emergency/normal action states. The real Core HUD scale test verifies inherited scaling at 0.7, 1.0 and 1.6. Visual readability still needs the in-game check below.
+Large-cue regressions cover label size/long-key fitting, opaque high-contrast display, non-overlapping text geometry, slow border-only pulse/reset, frame parenting/input passthrough, hidden HUD/Advisor, and replacement by recovery/emergency/normal action states. The real Core HUD scale test verifies inherited scaling at 0.7, 1.0 and 1.6. The user-reported in-game result is recorded below; it does not establish live coverage at every scale.
 
 The same real engine/HUD test exercises sound on first appearance (including session time zero), repeated refreshes, binding changes, five-second throttle boundaries, long-lived notices, mute/unmute, independent danger/interrupt throttles, hidden/control/recovery states, missing APIs/kits, fallback sound and caught playback failures.
 
-## In-game checklist (pending)
+## In-game smoke test and regression checklist
 
-Approval of the described flow and the request to prepare the release are not recorded as an in-game test. Complete this checklist before publishing `v1.29.5`. The ordinary one-press pull example assumes the Rogue is not already in Stealth; BASE does not break it and a stealth opener has its own requirements.
+On 2026-09-07, after the prepared build was handed over for in-game verification, the user reported: "ok tutto a posto". Record this as a successful user-reported smoke test of `1.29.5`, not confirmation that every scenario below was exercised or a measured DPS/TTK improvement. No runtime code or version changed after that result; only validation documentation and local artifacts were refreshed. Keep the checklist for future regressions. The ordinary one-press pull example assumes the Rogue is not already in Stealth; BASE does not break it and a stealth opener has its own requirements.
 
 1. On the level 15/16 Rogue, record short solo fights with similar mobs/equipment. Check earlier 2/3-CP Eviscerate, continued builder availability at low target HP and absence of automatic first-CP Slice and Dice on an unknown/short lifetime.
 2. Check actual talent ranks, especially Improved Sinister Strike at one/two points. Train a new spell rank or change a talent: costs/eligibility must update without a custom rank-bound macro or resetting tuning.
@@ -59,4 +59,4 @@ Approval of the described flow and the request to prepare the release are not re
 
 ## External input boundary
 
-The secure BASE macro cannot be rewritten or conditionally disabled in combat based on Lua combo points or auras. The addon only provides recommendations; it never injects protected input. A reader must not send BASE independently during a black/no-action interval or alongside a different suggested slot. Otherwise it may break Gouge or consume energy before Eviscerate. The supplied input trace shows this coordination requires an explicit live check. No external executable was changed.
+The secure BASE macro cannot be rewritten or conditionally disabled in combat based on Lua combo points or auras. The addon only provides recommendations; it never injects protected input. A reader must not send BASE independently during a black/no-action interval or alongside a different suggested slot. Otherwise it may break Gouge or consume energy before Eviscerate. The supplied input trace motivated the retained live coordination checks; the general smoke-test confirmation is not exhaustive external-reader validation. No external executable was changed.

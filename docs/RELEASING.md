@@ -139,17 +139,15 @@ versions, not Node 20 actions relying on a forced runtime override.
 
 ### 1.29.5 in-game pre-publication check
 
-Status: offline validation passes; the new Rogue flow, prominent restart notice
-and sound still need a confirmed in-game smoke test. Follow
-[`ROGUE_LEVELING_REVIEW.md`](ROGUE_LEVELING_REVIEW.md#in-game-checklist-pending),
-especially a normal non-stealthed pull, Gouge pause/resume, a missed Gouge,
-the one-press BASE restart, notice readability/scale and **Alert sounds**.
-Verify `/hcob errors`, ordinary secure actions and preserved settings after reload.
-An approved explanation of the flow is not an in-game test result.
+Status: offline validation passes, and on 2026-09-07 the user reported a
+successful in-game smoke test of `1.29.5`. This is not exhaustive live coverage
+of every class, HUD/audio setting or checklist item, nor a measured DPS gain.
+The result and retained regression checklist are recorded in
+[`ROGUE_LEVELING_REVIEW.md`](ROGUE_LEVELING_REVIEW.md#in-game-smoke-test-and-regression-checklist).
+Only validation documentation and local artifacts changed after confirmation;
+the tested runtime code and version remain unchanged.
 
-After that check, record the result in the review, root/package documentation
-and public notes; rerun the tests and rebuild the local package if those files
-change. Push the final commits, optionally run **Actions → CurseForge release →
+Push the final commits, optionally run **Actions → CurseForge release →
 Run workflow** for validation only, then publish a GitHub Release with tag
 `v1.29.5`, title **HCOneButton v1.29.5**, and the complete curated notes above as
 its body. Use an ordinary GitHub release for CurseForge **Release**. Only DoctorB

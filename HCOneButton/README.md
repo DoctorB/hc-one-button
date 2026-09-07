@@ -39,7 +39,7 @@ Version `1.29.5` focuses on **smoother Rogue leveling and clear attack-restart g
 
 A real Gouge control window pauses the next recommendation. If attacks remain stopped and no ability is available, a prominent amber **PRESS BUTTON4** notice (your actual BASE binding) asks for one press, accompanied by a distinct sound when **Alert sounds** is enabled. You do not need to interpret the diagnostic pixel. Stealth openings remain a separate path: BASE does not deliberately break Stealth.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, the grouped tuning inspector, DPS/aggro HUD, fixed slots and Pixel V3 encoding remain unchanged. Gouge's secure macro now stops auto-attacks; all protected actions still require player input. This build passes offline regressions; the new Rogue flow, notice and sound still need an in-game smoke test. The existing GitHub → CurseForge pipeline publishes only an explicitly published GitHub release.
+**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, the grouped tuning inspector, DPS/aggro HUD, fixed slots and Pixel V3 encoding remain unchanged. Gouge's secure macro now stops auto-attacks; all protected actions still require player input. This build passes offline regressions, and the user reported a successful in-game smoke test of `1.29.5`. The existing GitHub → CurseForge pipeline publishes only an explicitly published GitHub release.
 
 ## Local Adaptive Tuning
 
@@ -199,7 +199,7 @@ Sinister Strike and learned Hemorrhage already use fixed slots `1` and `2`, incl
 
 **Example — ordinary pull, starting outside Stealth:** select a hostile target, move into melee range and press BASE once to start auto-attacks. Follow the supported SS/Hemorrhage and finisher suggestions; wait when the HUD asks for energy. If Gouge creates a control window, let it finish. Resume through the next offensive action, or press BASE once if the large restart notice appears. Movement and targeting remain manual. If Stealth has already been applied, BASE will not break it: use an appropriate opener instead of assuming the same one-press pull path.
 
-The `1.29.5` Rogue flow, visual notice and sound still need an in-game leveling check; automated state tests do not establish a measured DPS or TTK improvement.
+The user reported a successful in-game smoke test of `1.29.5`. This is not exhaustive live coverage of every Rogue state or a measured DPS/TTK improvement.
 
 While `UnitCastingInfo` or `UnitChannelInfo` reports an active player action, the Advisor displays `LET IT FINISH`, clears the Action Panel highlight and emits black/no-action through Diagnostic Pixel. Rotation evaluation resumes only after the real cast/channel ends or is interrupted, so haste, pushback and non-instant offensive spells do not produce an early next suggestion.
 
@@ -1191,7 +1191,7 @@ The `1.29.5` source baseline currently passes:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The `1.29.5` Rogue changes, large restart notice and sound have not yet received a confirmed in-game smoke test. The release review and live checklist are in `docs/ROGUE_LEVELING_REVIEW.md`; prior tuning review history remains in `docs/ADAPTIVE_REVIEW.md`. Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The user reported a successful in-game smoke test of `1.29.5`; this does not claim that every class or checklist item was exercised. The release review and retained regression checklist are in `docs/ROGUE_LEVELING_REVIEW.md`; prior tuning review history remains in `docs/ADAPTIVE_REVIEW.md`. Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
 
 ---
 

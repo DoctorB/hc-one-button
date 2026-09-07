@@ -25,7 +25,7 @@ The current release is `1.29.5`, targeting WoW Classic Era / Hardcore interface 
 - Version `1.29.5`, Interface `11509`, learner revision `4`, adaptive schema `2` and telemetry contract `1`. No reset is required: settings, positions, combat history, tuning data and ON/OFF preferences are preserved. Learned-rank name casting, fixed Action Panel slots and Pixel V3 encoding remain unchanged.
 - BASE does not deliberately break Stealth; openings are a separate path. Independent external BASE presses are not blocked or coordinated by this change and must respect the selected action/pause. No external executable, new positional ability or automatic protected action is introduced.
 - 47/47 addon Lua files parse; 30/30 Lua harnesses and 48/48 TOC references pass. The Rogue harness covers 110 checks and the restart HUD/audio harness 78 checks, including unavailable APIs, timing, bindings, visibility, layout and emergency guards. 19/19 offline release-tool tests pass; root/package documentation matches.
-- In-game validation of this Rogue revision, notice readability and sound is still pending. Automated state tests do not establish a measured DPS or TTK gain. The review/checklist is in `docs/ROGUE_LEVELING_REVIEW.md`; curated public notes are in `docs/releases/1.29.5.md`. Local release preparation does not publish to GitHub or CurseForge.
+- The user reported a successful in-game smoke test of `1.29.5`. This does not claim exhaustive coverage of every class, HUD/audio setting or checklist item, nor a measured DPS/TTK gain. The review/checklist is in `docs/ROGUE_LEVELING_REVIEW.md`; curated public notes are in `docs/releases/1.29.5.md`. Local release preparation does not publish to GitHub or CurseForge.
 
 ## 1.29.4 — 2026-09-05
 
