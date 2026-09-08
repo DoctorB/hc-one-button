@@ -2,7 +2,7 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.5`
+- **Current version:** `1.29.6`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
@@ -35,11 +35,11 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.5` focuses on **smoother Rogue leveling and clear attack-restart guidance**. The baseline considers invested talents from level 10, actual energy costs, earlier finishing opportunities and whether Slice and Dice has time to pay off. It removes the builder dead zone on nearly defeated targets and makes situational Gouge recovery affordable.
+Version `1.29.6` adds **dagger-aware Rogue openings, clearer preparation advice and more reliable interrupt timing**. Ambush joins the supported Stealth openers when a main-hand dagger is equipped; relevant invested talents and actual energy costs inform the opening. A quiet `CHECK GEAR` notice highlights lagging weapon skills or missing weapon coatings before a pull. Shared target-cast tracking uses live client information when available and retains a bounded Classic Era combat-event fallback.
 
 A real Gouge control window pauses the next recommendation. If attacks remain stopped and no ability is available, a prominent amber **PRESS BUTTON4** notice (your actual BASE binding) asks for one press, accompanied by a distinct sound when **Alert sounds** is enabled. You do not need to interpret the diagnostic pixel. Stealth openings remain a separate path: BASE does not deliberately break Stealth.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, the grouped tuning inspector, DPS/aggro HUD, fixed slots and Pixel V3 encoding remain unchanged. Gouge's secure macro now stops auto-attacks; all protected actions still require player input. This build passes offline regressions, and the user reported a successful in-game smoke test of `1.29.5`. The existing GitHub → CurseForge pipeline publishes only an explicitly published GitHub release.
+**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, the grouped tuning inspector and DPS/aggro HUD are unchanged. Rogue slots `1–17` retain their assignments; Ambush is appended at slot `18`, with unchanged Pixel V3 encoding. Protected actions require player input; the diagnostic pixel is read-only guidance for passive inspection. Automated checks pass; **in-game validation of `1.29.6` remains pending**. The maintainer explicitly chose an ordinary Release. The existing GitHub → CurseForge pipeline publishes only an explicitly published GitHub release.
 
 ## Local Adaptive Tuning
 
@@ -189,17 +189,25 @@ The Rogue baseline targets ordinary leveling fights from the first learned abili
 - A confirmed Gouge clears the recommendation/pixel while its actual control aura lasts, until `80` energy or an emergency. The cast-to-aura grace is only `0.20s`; misses, aura breaks, expiry and target changes cannot leave a full-duration phantom hold. Multiple attackers bypass the single-target pause. Gouge's secure slot/modifier macro stops rather than restarts auto-attacks.
 - If no ability is available and the client confirms auto-attack is stopped, the HUD shows `ATTACK STOPPED / PRESS <BASE binding> ONCE` (for example, `PRESS BUTTON4 ONCE`). With no BASE binding it shows `CLICK BASE ONCE`. The hint requires a live, engaged target in confirmed melee range; it is suppressed during stealth, casts/channels and Rogue breakable control. Unknown attack/range data never becomes a restart request. The hint is withdrawn on the next refresh once attacks resume or another recommendation takes over; its pixel remains black and no new slot is allocated. Energy waits display `WAIT FOR ENERGY`, not a generic BASE-spam instruction.
 
-Secure actions still require user input. The addon cannot cancel independently generated BASE presses: a reader must send no key on black/no-action and must not send BASE alongside a different suggested action. Otherwise it can break Gouge or spend energy intended for Eviscerate. Existing slot numbers, default bindings, highest-learned-rank name casting and Pixel V3 encoding are unchanged. No new Ambush/Backstab slot or positional automation is introduced in this change.
+**Stealth openings:** a learned, affordable, ready Ambush is a burst option only with a confirmed main-hand dagger; a dagger in the off hand is not sufficient. The HUD explicitly says `AMBUSH - BEHIND`: move behind the target yourself. Improved Ambush and Opportunity add bounded opener preference; actual client costs take precedence, with Dirty Deeds reflected in Garrote/Cheap Shot fallback costs. Cheap Shot retains required opening-control priority against difficult targets when available. Garrote remains a bleed alternative, with a reminder that its damage takes time and prevents a planned Gouge recovery pause. Known out-of-range spells are excluded. Without a usable opener, `CHECK OPENER` asks you to check energy, equipment and position rather than press BASE.
+
+Ambush, Garrote and Cheap Shot use Stealth-only secure casts without a preceding auto-attack command. There is no reliable behind-target inference: positioning, weapon changes and the actual cast remain manual. Highest-learned-rank localized name casting is preserved. Rogue slots `1–17` and their bindings are unchanged; new slot `18` is Ambush (default `CTRL+SHIFT+8`). Backstab is not added.
+
+**Interrupts:** Kick checks known range and explicit interrupt immunity. When supplied by the client, target cast/channel timestamps reflect delays and updates; confirmed stops, failures and target changes clear obsolete casts. Recommendations are suppressed in the final `0.15s`. Classic Era targets without readable cast APIs retain a bounded combat-event fallback. Unknown immunity is not treated as confirmed immunity, and immunity to Kick does not automatically exclude a class-owned Gouge/control fallback; this is not a guarantee that control will land.
+
+**Optional preparation:** with **Options → Pre-pull safety gate** enabled, an out-of-combat `CHECK GEAR` badge appears in the upper-right Advisor area when an equipped weapon skill trails its readable maximum by at least `10` points, or a weapon lacks a temporary coating after poisons are learned at level `20+`. Hover **BASE** for full advice, including the affected hand and skill values. A valid sharpening stone or other coating is not mislabeled as missing poison; the check does not identify the optimal poison. Missing APIs/data stay quiet. Checks are cached for up to one second and invalidated on relevant equipment/skill events. This badge never blocks `PULL READY`, replaces an action, plays a sound or creates chat reminders. It uses the existing persisted toggle; no extra setting or reset is needed.
+
+Secure actions require the player's click or key press. During a Gouge recovery window, allow the pause to work rather than manually breaking it with another attack. Diagnostic Pixel and external readers are documented exclusively for passive observation, not input generation.
 
 The restart request is a prominent amber notice covering the existing `282 x 82` Advisor area: `ATTACK STOPPED`, a large outlined `PRESS BUTTON4` (actual binding), and `ONCE TO RESUME ATTACK`. Only its thick border pulses slowly; the instruction stays fully readable. It follows HUD position/scale, fits long binding names, hides with the HUD/Advisor and does not cover BASE, HP/energy or DPS. Gouge, healing waits and higher-priority recommendations clear it. The diagnostic pixel is for the external reader, not the player's cue to resume.
 
 With **Alert sounds** enabled, a distinct native sound accompanies the restart notice once when it appears, with at least `5s` between restart sounds. It does not repeat while the notice stays visible or when its binding label changes. Muted/hidden notices, Gouge and recovery waits do not play a restart cue; danger and interrupt sounds keep their separate throttles. This is an attention sound, not a spoken button name. No extra audio file or saved option is required.
 
-Sinister Strike and learned Hemorrhage already use fixed slots `1` and `2`, including when their Advisor key hint says `BASE`. An independent BASE loop is not required to expose those recommendations. If attacks remain stopped during an energy wait, follow the one-press restart hint; movement, facing and target selection remain manual. The addon displays the key bound in WoW, not an unmapped physical mouse button configured only in external software.
+Sinister Strike and learned Hemorrhage use fixed slots `1` and `2`, including when their Advisor key hint says `BASE`. Execute the suggested action with its secure button or binding. If attacks remain stopped during an energy wait, follow the one-press restart hint. The addon displays the BASE key bound in WoW; movement, facing and target selection remain manual.
 
 **Example — ordinary pull, starting outside Stealth:** select a hostile target, move into melee range and press BASE once to start auto-attacks. Follow the supported SS/Hemorrhage and finisher suggestions; wait when the HUD asks for energy. If Gouge creates a control window, let it finish. Resume through the next offensive action, or press BASE once if the large restart notice appears. Movement and targeting remain manual. If Stealth has already been applied, BASE will not break it: use an appropriate opener instead of assuming the same one-press pull path.
 
-The user reported a successful in-game smoke test of `1.29.5`. This is not exhaustive live coverage of every Rogue state or a measured DPS/TTK improvement.
+The new `1.29.6` behavior has automated regression coverage, but its in-game smoke test is still pending. The prior `1.29.5` smoke test does not validate these additions. No measured DPS/TTK improvement is claimed.
 
 While `UnitCastingInfo` or `UnitChannelInfo` reports an active player action, the Advisor displays `LET IT FINISH`, clears the Action Panel highlight and emits black/no-action through Diagnostic Pixel. Rotation evaluation resumes only after the real cast/channel ends or is interrupted, so haste, pushback and non-instant offensive spells do not produce an early next suggestion.
 
@@ -241,7 +249,7 @@ The modular architecture keeps the central Advisor class-agnostic. Each class ow
 
 The shared Advisor is responsible for context, scoring, hysteresis and final selection rather than hard-coding individual spells such as Serpent Sting, Overpower or Life Tap.
 
-Maintained self auras follow one cross-class contract. They are never requested out of combat, so an external reader is not kept busy by idle buff upkeep. In combat, missing maintenance can compete with the current class actions; an active aura is ignored until its final `10` seconds. Player spellcast acknowledgement and a bounded aura-observation cache absorb transient `UNIT_AURA` misses and stale pre-refresh durations. Proc auras, class forms, Stealth and hostile target debuffs remain contextual combat/opening mechanics rather than maintenance reminders.
+Maintained self auras follow one cross-class contract. They are never requested out of combat, keeping idle buff upkeep out of the HUD and diagnostic signal. In combat, missing maintenance can compete with the current class actions; an active aura is ignored until its final `10` seconds. Player spellcast acknowledgement and a bounded aura-observation cache absorb transient `UNIT_AURA` misses and stale pre-refresh durations. Proc auras, class forms, Stealth and hostile target debuffs remain contextual combat/opening mechanics rather than maintenance reminders.
 
 For Paladin, Divine Shield is immediate at `25%` HP or lower. From `26%` through `35%`, it requires concrete lethal pressure: at least two active enemies, Survival Reserve at `28` or lower, or a confident estimated TTD of `6` seconds or less. Above `35%`, an unfavorable trend or a healthy 3+ enemy pull preserves Divine Shield and prefers Divine Protection, Hammer of Justice, healing or escape guidance. Lay on Hands retains priority at `18%` HP or lower.
 
@@ -442,6 +450,7 @@ The following class layouts are deterministic. Unknown spells keep their slot. E
 | 15 | Blind |
 | 16 | Adrenaline Rush |
 | 17 | Riposte |
+| 18 | Ambush |
 
 </details>
 
@@ -769,6 +778,7 @@ HCOneButton/
 │   ├── Warlock.lua
 │   ├── Priest.lua
 │   ├── Rogue.lua
+│   ├── RoguePreparation.lua
 │   ├── Paladin.lua
 │   ├── Shaman.lua
 │   └── Druid.lua
@@ -1047,7 +1057,7 @@ Fight schema `13` embeds adaptive telemetry contract `1`. The contract is shared
 
 ## Diagnostic Pixel and external reader protocol
 
-HCOneButton can expose a small diagnostic pixel intended for passive external diagnostics.
+HCOneButton can expose a small diagnostic pixel intended for passive external diagnostics. A reader observes recommendation state only; this documentation does not describe input automation. Combat actions remain player-executed through WoW's secure buttons and bindings.
 
 The current implementation renders it as an unscaled **8×8 frame** so it remains easy for an external reader to sample. The encoded color, not the frame dimensions, is the protocol contract.
 
@@ -1146,7 +1156,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.5` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.6` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1154,11 +1164,11 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-The `1.29.5` source baseline currently passes:
+The `1.29.6` source baseline currently passes:
 
-- **47/47 Lua chunks** pass syntax parsing in the current validation environment;
-- **30/30 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **48/48 TOC references** resolved (`47 Lua + Bindings.xml`);
+- **48/48 Lua chunks** pass syntax parsing in the current validation environment;
+- **31/31 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **49/49 TOC references** resolved (`48 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
 - no duplicate TOC entry;
@@ -1182,6 +1192,8 @@ The `1.29.5` source baseline currently passes:
 - Doctor report coverage verifies BASE/range API probes, macro/pet/binding/SavedVariables diagnostics, slash-command dispatch, error containment/path sanitization, privacy exclusions and absence of SavedVariables mutation;
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
+- 81 target-cast checks cover live casts/channels, Classic shifted API signatures, delay/expiry, stop versus stale API data, old same-spell stop events, target changes, bounded combat-event fallback and shared interrupt/control contracts across all nine classes;
+- 151 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, safe Stealth-only macros, low skill/coating advice, API failures, caching and existing leveling decisions; 85 Advisor checks cover the gear badge, preserved action text, passive opener hints and restart display/audio;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - Warrior escape-Rage coverage verifies low-Rage Hamstring priority, excess-Rage spending, proc/core/queued-strike ordering, controlled two-target spending and strict panic preemption at low HP or 3+ enemies;
 - Warrior multi-pull coverage verifies defensive-debuff refresh boundaries, healthy x2 return to the core DPS scorer, low-reserve escape preservation and stance/equipment-aware Retaliation and interrupt selection;
@@ -1191,7 +1203,7 @@ The `1.29.5` source baseline currently passes:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The user reported a successful in-game smoke test of `1.29.5`; this does not claim that every class or checklist item was exercised. The release review and retained regression checklist are in `docs/ROGUE_LEVELING_REVIEW.md`; prior tuning review history remains in `docs/ADAPTIVE_REVIEW.md`. Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). In-game validation of `1.29.6` is pending; the maintainer explicitly authorized an ordinary Release with this limitation stated. Two review/refinement passes and the retained live checklist are recorded in `docs/ROGUE_1296_REVIEW.md`; historical reviews remain in `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
 
 ---
 

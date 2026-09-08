@@ -2,7 +2,31 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.5`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.6`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.6 — 2026-09-08
+
+### New — Rogue dagger openings and preparation advice
+
+- Add learned Ambush as a Stealth opener when a main-hand dagger is confirmed equipped. State the behind-target requirement explicitly; retain Garrote as a bleed alternative and required Cheap Shot control on difficult targets. Respect actual costs, cooldowns, known range and relevant invested talents (Improved Ambush, Opportunity and Dirty Deeds).
+- Append Ambush at Rogue slot `18` (default `CTRL+SHIFT+8`), preserving slots `1–17`. All three supported openers use localized, rank-free, Stealth-only secure casts without a preceding auto-attack. If no opener is usable, show `CHECK OPENER`, not a BASE instruction. Positioning, equipment changes and casting remain manual.
+- Add a quiet out-of-combat `CHECK GEAR` badge under the existing persisted **Pre-pull safety gate** option. Hover BASE for details: equipped weapon skill at least ten points behind its readable maximum, or missing temporary weapon coatings once poisons are learned at level 20+. Check each equipped hand, avoid duplicate skill advice and accept valid non-poison coatings.
+- Cache preparation checks for up to one second with event invalidation. Missing equipment/skill APIs do not invent advice. The badge fits beside the Advisor mode banner, does not replace action text or sound, and never blocks `PULL READY`.
+
+### Improved — interrupt timing and Classic cast tracking
+
+- Prefer readable target cast/channel timestamps and explicit interruptibility, including delays and updates. Preserve bounded combat-event fallback for Classic Era targets whose cast APIs provide no data.
+- Clear obsolete casts on confirmed stop/failure, target changes and combat end. Retain cast identity across refreshes so a delayed stop for an earlier cast cannot erase a newer cast of the same spell; suppress stale positive API data after a confirmed stop.
+- Skip interrupt suggestions during the final `0.15s`. Rogue Kick also rejects known out-of-range casts and explicit direct-interrupt immunity. Preserve existing class-owned control fallbacks: interrupt immunity alone does not imply immunity to Gouge or stuns.
+- Handle Classic API signatures where the spell ID shifts into the absent interruptibility field; a numeric spell ID is never interpreted as an immunity flag. Unknown immunity remains unknown, and the addon does not claim complete NPC control-immunity knowledge.
+
+### Compatibility and validation
+
+- Version `1.29.6`, Interface `11509`, learner revision `4`, adaptive schema `2` and telemetry contract `1`. No SavedVariables reset or new option is required; settings, positions, history, tuning and ON/OFF preferences are preserved.
+- Existing class slots retain their assignments; only Rogue slot 18 is appended. Diagnostic Pixel V3 encoding is unchanged and documented exclusively as passive diagnostics. Every protected combat action requires the player's click/key press; no external executable or data upload is introduced.
+- Two review/refinement cycles completed. 48/48 addon Lua files parse; 31/31 Lua harnesses, 49/49 TOC references and 19/19 offline release-tool tests pass. Coverage includes 151 Rogue checks, 85 Advisor UI/hint/audio checks, 81 target-cast checks and shared regressions across all nine classes. Root/package documentation matches.
+- **In-game validation of 1.29.6 is pending.** The maintainer explicitly authorized publication as an ordinary Release with this limitation disclosed. Automated tests are not proof of a measured DPS/TTK improvement or exhaustive live-client behavior.
+- Review and live checklist: `docs/ROGUE_1296_REVIEW.md`. Curated CurseForge notes: `docs/releases/1.29.6.md`. Publication uses the existing authorized GitHub Release → CurseForge workflow.
 
 ## 1.29.5 — 2026-09-07
 
@@ -23,7 +47,7 @@ The current release is `1.29.5`, targeting WoW Classic Era / Hardcore interface 
 ### Compatibility and validation
 
 - Version `1.29.5`, Interface `11509`, learner revision `4`, adaptive schema `2` and telemetry contract `1`. No reset is required: settings, positions, combat history, tuning data and ON/OFF preferences are preserved. Learned-rank name casting, fixed Action Panel slots and Pixel V3 encoding remain unchanged.
-- BASE does not deliberately break Stealth; openings are a separate path. Independent external BASE presses are not blocked or coordinated by this change and must respect the selected action/pause. No external executable, new positional ability or automatic protected action is introduced.
+- BASE does not deliberately break Stealth; openings are a separate path. The player executes secure actions and observes control/recovery pauses. The diagnostic signal is for passive inspection only. No external executable, new positional ability or automatic protected action is introduced.
 - 47/47 addon Lua files parse; 30/30 Lua harnesses and 48/48 TOC references pass. The Rogue harness covers 110 checks and the restart HUD/audio harness 78 checks, including unavailable APIs, timing, bindings, visibility, layout and emergency guards. 19/19 offline release-tool tests pass; root/package documentation matches.
 - The user reported a successful in-game smoke test of `1.29.5`. This does not claim exhaustive coverage of every class, HUD/audio setting or checklist item, nor a measured DPS/TTK gain. The review/checklist is in `docs/ROGUE_LEVELING_REVIEW.md`; curated public notes are in `docs/releases/1.29.5.md`. Local release preparation does not publish to GitHub or CurseForge.
 
@@ -226,7 +250,7 @@ The goal is a more personal Advisor that understands differences between charact
 
 ### Changed
 
-- The Heroic Strike queue window scales with current main-hand speed and is clamped to `0.45–0.65` seconds. Normal `0.20`-second recommendation confirmation leaves a short, stable reader-visible input window without occupying the complete swing.
+- The Heroic Strike queue window scales with current main-hand speed and is clamped to `0.45–0.65` seconds. Normal `0.20`-second recommendation confirmation leaves a short, stable recommendation window without occupying the complete swing.
 - Queue-safe `!Heroic Strike` and `!Cleave` macros prevent duplicate key samples from toggling an already armed strike back off.
 - When Execute is learned, queued Rage dumps pause between `21%` and `30%` target HP. `POOL FOR EXECUTE` keeps auto attacks running and releases spending at `85` Rage to avoid wasting generation near the cap; efficient core strikes remain available.
 - Cleave now occupies the appended deterministic Warrior slot 20 (`CTRL+SHIFT+0`) and is preferred over Heroic Strike as the queued dump when at least two enemies are actively engaged. Existing Warrior slots 1–19 do not move.
@@ -258,7 +282,7 @@ The goal is a more personal Advisor that understands differences between charact
 
 - Missing maintenance auras are handled in combat by their class policy. Healthy active auras are ignored; finite long buffs become refreshable only in their final `10` seconds.
 - The combat-only policy covers Warrior Battle Shout; Paladin Blessing of Might and seals; Priest Inner Fire/Fortitude and protective auras; Mage armor, Arcane Intellect and shields; Warlock Demon Armor/Skin; Druid Mark of the Wild; Shaman Lightning Shield/weapon imbues; Hunter aspects/Mend Pet; and Rogue Slice and Dice.
-- Paladin Crusader-seal setup now begins after combat starts on a suitable durable target instead of occupying the pre-pull reader.
+- Paladin Crusader-seal setup now begins after combat starts on a suitable durable target instead of occupying the pre-pull display.
 - Proc auras, Stealth, Druid forms, class openers and hostile target debuffs remain contextual mechanics and are not treated as idle maintenance reminders.
 
 ### Compatibility
@@ -473,7 +497,7 @@ The goal is a more personal Advisor that understands differences between charact
 ### Documentation
 
 - Moved historical release notes out of the README and into this changelog.
-- Added README navigation, an explicit all-class support summary and operational external-reader instructions for Diagnostic Pixel Protocol V3.
+- Added README navigation, an explicit all-class support summary and a passive diagnostic reference for Diagnostic Pixel Protocol V3.
 - Removed the duplicate plaintext release-history file.
 - Included the MIT license in the distributable addon directory so packaged documentation links remain valid.
 
