@@ -28,7 +28,7 @@ local actions = evaluate(extractTable(source, "HCOB.UI.ActionPanel.actions"), {S
 local defaultKeys = evaluate(extractTable(source, "HCOB.UI.ActionPanel.defaultSlotKeys"))
 
 local expectedCounts = {
-    WARRIOR=20, PALADIN=14, HUNTER=20, ROGUE=17, PRIEST=16,
+    WARRIOR=20, PALADIN=14, HUNTER=20, ROGUE=18, PRIEST=16,
     MAGE=19, WARLOCK=15, DRUID=20, SHAMAN=15,
 }
 
@@ -71,6 +71,8 @@ for classToken in pairs(actions) do
     assert(expectedCounts[classToken], "unexpected class layout: " .. tostring(classToken))
 end
 assert(classCount == 9, "all nine Classic classes must have deterministic layouts")
+assert(actions.ROGUE[17] == spells.RIPOSTE, "Rogue existing slot 17 changed")
+assert(actions.ROGUE[18] == spells.AMBUSH, "Ambush must append at Rogue slot 18")
 assert(actions.WARRIOR[19] == spells.CHARGE, "Warrior existing slot 19 changed")
 assert(actions.WARRIOR[20] == spells.CLEAVE, "Warrior Cleave must append at slot 20")
 assert(source:find('if id == S.HEROIC_STRIKE or id == S.CLEAVE then', 1, true),

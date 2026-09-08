@@ -9,7 +9,8 @@ Class.fallbackSpec = 2
 
 -- Read invested ranks, not the winning talent tab: even one point at level 10
 -- matters, and a mixed leveling build can learn an active from another tree.
-local TALENT = {SINISTER=13732, GOUGE=13741, SLICE=14165, EVISCERATE=14162}
+local TALENT = {SINISTER=13732, GOUGE=13741, SLICE=14165, EVISCERATE=14162,
+    AMBUSH=14079, OPPORTUNITY=14057, DIRTY_DEEDS=14082}
 local talentRanks
 local controlWindow
 local targetTrend
@@ -58,6 +59,11 @@ function Class:EnergyCost(id)
     end
     if id == S.HEMORRHAGE or id == S.EVISCERATE then return 35 end
     if id == S.SLICE_DICE then return 25 end
+    if id == S.KICK then return 25 end
+    if id == S.AMBUSH then return 60 end
+    if id == S.GARROTE or id == S.CHEAP_SHOT then
+        return (id == S.GARROTE and 50 or 60) - 10 * math.min(2, self:GetTalentRank(TALENT.DIRTY_DEEDS))
+    end
     return 45 -- Gouge
 end
 
@@ -112,6 +118,7 @@ function Class:LevelingTTK(targetHP, dynamics)
 end
 
 function Class:HandleEvent(event, unit, _, spellID)
+    if self.InvalidatePreparation then self:InvalidatePreparation(event) end
     if event == "PLAYER_LOGIN" or event == "PLAYER_TALENT_UPDATE" or event == "SPELLS_CHANGED" then
         talentRanks = nil
     end
@@ -198,12 +205,30 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
             local targetLevel = SafeUnitLevel("target", level) or level
             local classification = SafeUnitClassification("target", "normal") or "normal"
             local tough = classification == "elite" or classification == "rareelite" or targetLevel >= level + 1
-            if tough and IsKnown(S.CHEAP_SHOT) and IsUsable(S.CHEAP_SHOT) then
-                HCOB.Advisor.Engine.AddCandidate(candidates, S.CHEAP_SHOT, "CHEAP SHOT", "CAST MANUALLY", "Difficult target: buy time before the damage race", 82, "opener")
+            local engine = HCOB.Advisor.Engine
+            local function Ready(id)
+                return IsKnown(id) and IsUsable(id) and CooldownReady(id) and energy >= self:EnergyCost(id)
+                    and (not engine.SpellRange or engine.SpellRange(id, "target") ~= false)
             end
-            if IsKnown(S.GARROTE) and IsUsable(S.GARROTE) then
-                HCOB.Advisor.Engine.AddCandidate(candidates, S.GARROTE, "GARROTE", "CAST MANUALLY", "Efficient opener if the bleed can tick", tough and 76 or 84, "opener")
+            if tough and Ready(S.CHEAP_SHOT) then
+                engine.AddCandidate(candidates, S.CHEAP_SHOT, "CHEAP SHOT", "CAST MANUALLY",
+                    "Difficult target: prefer opening control; requires Stealth and melee range", 100, "opener", nil, {required=true})
             end
+            local weapon = self.GetEquippedWeapon and self:GetEquippedWeapon(16)
+            if weapon and weapon.subclassID == 15 and Ready(S.AMBUSH) then
+                local ambush = math.min(3, self:GetTalentRank(TALENT.AMBUSH))
+                local opportunity = math.min(5, self:GetTalentRank(TALENT.OPPORTUNITY))
+                engine.AddCandidate(candidates, S.AMBUSH, "AMBUSH - BEHIND", "CAST MANUALLY",
+                    "Dagger burst opener; move behind the target in Stealth | Improved Ambush " .. ambush
+                    .. "/3, Opportunity " .. opportunity .. "/5", 86 + ambush * 2 + opportunity * 0.5, "opener")
+            end
+            if Ready(S.GARROTE) and not HasMyTargetDebuff(S.GARROTE) then
+                engine.AddCandidate(candidates, S.GARROTE, "GARROTE - BEHIND", "CAST MANUALLY",
+                    "Bleed opener; move behind the target in Stealth. Damage takes time; it prevents a Gouge recovery pause",
+                    tough and 76 or 78, "opener")
+            end
+            if #candidates == 0 then return nil, "STEALTH - POSITION", "CHECK OPENER",
+                "Check your learned opener, energy, weapon and melee position; BASE preserves Stealth", "idle" end
         end
         return HCOB.Advisor.Engine.SelectCandidate(candidates)
     end
@@ -371,8 +396,14 @@ end
 
 -- Class interrupt contract. Advisor/Threat only detects the cast;
 -- the class decides which control/interrupt spell is valid.
-function Class:GetInterruptRecommendation()
-        if IsKnown(S.KICK) and CooldownReady(S.KICK) and IsUsable(S.KICK) then return S.KICK, "INTERRUPT!", "CTRL+SHIFT", "Kick" end
+function Class:GetInterruptRecommendation(cast)
+        if cast and cast.remaining and cast.remaining <= 0.15 then return nil end
+        local engine = HCOB.Advisor.Engine
+        local kickRange = engine.SpellRange and engine.SpellRange(S.KICK, "target")
+        if (not cast or cast.interruptible ~= false) and IsKnown(S.KICK)
+           and CooldownReady(S.KICK) and IsUsable(S.KICK) and kickRange ~= false then
+            return S.KICK, "INTERRUPT!", "CTRL+SHIFT", "Kick"
+        end
         if IsKnown(S.GOUGE) and CooldownReady(S.GOUGE) and IsUsable(S.GOUGE)
             and GougeInReach() and HCOB.Advisor.Engine.TargetOnPlayer() then
             return S.GOUGE, "INTERRUPT!", "CTRL", "Gouge while Kick is unavailable"
@@ -401,6 +432,9 @@ end
 
 function Class:BuildActionPanelMacro(id)
     if id == S.GOUGE then return "/stopattack\n" .. BuildSpellMacro(id, "harm") end
+    if id == S.AMBUSH or id == S.GARROTE or id == S.CHEAP_SHOT then
+        return BuildSpellMacro(id, "stealth,harm")
+    end
 end
 
 function Class:GetBaseActionInfo(spec)

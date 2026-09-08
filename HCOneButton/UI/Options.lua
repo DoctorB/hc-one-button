@@ -174,7 +174,7 @@ function CreateOptionsPanel()
         local prof = HCOB.Systems and HCOB.Systems.ProfessionCoach
         if prof and prof.SetEnabled then prof.SetEnabled(v) else HCOB_DB.profCoach = v end
     end, 24, -280))
-    add(CreateCheckBox(panel, "Pre-pull safety gate", "Require healthy HP/resources/pet state before the Advisor displays PULL READY; warns about missing healing stock on tough targets.", function()
+    add(CreateCheckBox(panel, "Pre-pull safety gate", "Check HP/resources/pet recovery and healing stock on tough targets. Also enables optional Rogue CHECK GEAR advice in the BASE tooltip; weapon/poison advice never blocks PULL READY.", function()
         return HCOB_DB.prePullSafety ~= false
     end, function(v)
         HCOB_DB.prePullSafety = v

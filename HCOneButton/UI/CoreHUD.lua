@@ -355,7 +355,15 @@ btn:SetScript("OnEnter", function(self)
     local specIndex, specName = TalentSpec()
     GameTooltip:AddLine("HC One Button v" .. VERSION)
     GameTooltip:AddLine(localizedClass .. " L" .. PlayerLevel() .. " - " .. tostring(specName) .. " (tree " .. specIndex .. ")", 1, 1, 1)
-    GameTooltip:AddLine("SPAM: safe base action. Advisor: situational spell to cast manually.", 0.3, 1, 0.3, true)
+    GameTooltip:AddLine(PLAYER_CLASS == "ROGUE"
+        and "BASE: start attacking once. Advisor: situational spell to cast manually."
+        or "SPAM: safe base action. Advisor: situational spell to cast manually.", 0.3, 1, 0.3, true)
+    local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
+    local preparation = class and class.GetPreparationNotice and class:GetPreparationNotice()
+    if preparation then
+        GameTooltip:AddLine("Rogue preparation (optional)", 1, 0.76, 0.28)
+        GameTooltip:AddLine(preparation, 1, 0.86, 0.55, true)
+    end
     if currentMods and currentMods.desc then
         local d = currentMods.desc
         GameTooltip:AddLine(ModifierLine("SHIFT", d.shift) or "", 0.8,0.8,0.8, true)

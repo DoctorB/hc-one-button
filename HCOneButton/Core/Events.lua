@@ -12,6 +12,7 @@ local events = {
     "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "PLAYER_COMBO_POINTS",
     "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_FAILED",
     "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_CHANNEL_INTERRUPTED",
+    "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_UPDATE", "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "SKILL_LINES_CHANGED",
     "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS",
     "COMBAT_LOG_EVENT_UNFILTERED", "UNIT_PET", "PET_BAR_UPDATE", "UNIT_HAPPINESS",
     "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL",
@@ -74,12 +75,15 @@ local function EventNeedsAdvisorRefresh(event, unit)
     if event == "UNIT_PET" or event == "PET_BAR_UPDATE" or event == "UNIT_HAPPINESS" then return true end
     if event == "START_AUTOREPEAT_SPELL" or event == "STOP_AUTOREPEAT_SPELL" then return true end
     if event == "CURRENT_SPELL_CAST_CHANGED" then return true end
+    if event == "SKILL_LINES_CHANGED" then return true end
     if event == "PLAYER_LEVEL_UP" or event == "SPELLS_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_TALENT_UPDATE" then return true end
     if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then return unit == "player" end
     if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" or event == "UNIT_AURA" then return unit == "player" or unit == "target" or unit == "pet" end
     if event == "UNIT_TARGET" then return unit == "target" or unit == "pet" end
     if event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_SUCCEEDED"
-       or event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" or event == "UNIT_SPELLCAST_CHANNEL_INTERRUPTED" then
+       or event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" or event == "UNIT_SPELLCAST_CHANNEL_INTERRUPTED"
+       or event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_DELAYED" or event == "UNIT_SPELLCAST_CHANNEL_UPDATE"
+       or event == "UNIT_SPELLCAST_INTERRUPTIBLE" or event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
         return unit == "target" or unit == "player"
     end
     if event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" or event == "GET_ITEM_INFO_RECEIVED" then return true end
@@ -113,6 +117,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     end
 
     local function HandleEvent()
+        if HandleTargetCastEvent then HandleTargetCastEvent(event, eventArg1, eventArg2, eventArg3) end
         if event == "PLAYER_LOGIN" then
             -- ADDON_LOADED is the normal initialization point. Keep this
             -- fallback for test harnesses or unusual load paths that omit it,

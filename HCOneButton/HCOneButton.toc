@@ -37,6 +37,7 @@ Classes/Mage.lua
 Classes/Warlock.lua
 Classes/Priest.lua
 Classes/Rogue.lua
+Classes/RoguePreparation.lua
 Classes/Paladin.lua
 Classes/Shaman.lua
 Classes/Druid.lua

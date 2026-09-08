@@ -407,4 +407,111 @@ expect(recommend(),S.EVISCERATE,"required finishing window survives adversarial 
 for _, candidate in ipairs(Engine.lastCandidates) do
     expect(candidate.adaptiveBias,0,"required baseline disables alternative tuning")
 end
+-- 1.29.6 openers and optional read-only preparation.
+loadInto("HCOneButton/Classes/RoguePreparation.lua")
+for _, id in ipairs({14079,14057,14082,2842}) do names[id]="Localized"..id end
+talentIDs[3]={14079,14057,14082}
+local mainWeapon,offWeapon=1,2
+local weaponTypes={[1]=15,[2]=7,[3]=15}
+env.GetInventoryItemID=function(_,slot) if slot==16 then return mainWeapon else return offWeapon end end
+env.GetItemInfoInstant=function(id)
+    return id,"Weapon",weaponTypes[id]==15 and "Daggers" or "Swords","INVTYPE_WEAPON",1,2,weaponTypes[id]
+end
+reset(); combat=false; level=18; buffs[S.STEALTH]=30
+learn(S.AMBUSH); learn(S.GARROTE)
+expect(recommend(),S.AMBUSH,"dagger burst opener")
+mainWeapon=2
+expect(recommend(),S.GARROTE,"sword never suggests Ambush")
+mainWeapon=nil; offWeapon=3
+expect(recommend(),S.GARROTE,"offhand dagger cannot qualify Ambush")
+mainWeapon=1; offWeapon=2
+enemyLevel=level+1; learn(S.CHEAP_SHOT)
+expect(recommend(),S.CHEAP_SHOT,"difficult target retains control opener")
+enemyLevel=level
+energy=59
+expect(recommend(),S.GARROTE,"unaffordable Ambush falls back")
+energy=49
+local openerID,openerTitle,openerKey=recommend()
+expect(openerID,nil,"no unaffordable opener")
+expect(openerKey,"CHECK OPENER","Stealth wait never requests BASE spam")
+invest(14082,1)
+expect(Rogue:EnergyCost(S.GARROTE),40,"first Dirty Deeds point changes Garrote cost")
+expect(recommend(),S.GARROTE,"talented Garrote becomes affordable")
+invest(14082,2)
+expect(Rogue:EnergyCost(S.CHEAP_SHOT),40,"full Dirty Deeds Cheap Shot cost")
+energy=100
+invest(14079,2); invest(14057,3)
+expect(recommend(),S.AMBUSH,"invested opener talents recognized")
+expect(Engine.lastCandidates[1].score,91.5,"opener talent ranks inform bounded score")
+Engine.SpellRange=function() return false end
+expect(recommend(),nil,"known bad opener range suppresses all slots")
+Engine.SpellRange=nil
+local getItem=env.GetItemInfoInstant
+env.GetItemInfoInstant=function() error("uncached item") end
+expect(recommend(),S.GARROTE,"unknown equipment never assumes dagger")
+env.GetItemInfoInstant=nil
+env.C_Item={GetItemInfoInstant=getItem}
+expect(recommend(),S.AMBUSH,"modern item API fallback")
+env.GetItemInfoInstant=getItem; env.C_Item=nil
+local ambushMacro=Rogue:BuildActionPanelMacro(S.AMBUSH)
+expect(ambushMacro,"/cast [stealth,harm] "..names[S.AMBUSH],"rank-free secure Ambush")
+expect(ambushMacro:find("/startattack",1,true),nil,"opener cannot break Stealth first")
+expect(Rogue:BuildActionPanelMacro(S.CHEAP_SHOT):find("[stealth,harm]",1,true)~=nil,true,"Cheap Shot remains stealth-gated")
+reset(); energy=100; learn(S.KICK); learn(S.GOUGE)
+Engine.SpellRange=function(id) return id~=S.KICK end
+expect(Rogue:GetInterruptRecommendation({remaining=2}),S.GOUGE,"known Kick range failure permits valid control fallback")
+expect(Rogue:GetInterruptRecommendation({remaining=0.15}),nil,"no late Kick/Gouge")
+Engine.SpellRange=function() return true end
+expect(Rogue:GetInterruptRecommendation({remaining=2,interruptible=false}),S.GOUGE,"interrupt immunity still permits class control")
+cooldowns[S.GOUGE]=true
+expect(Rogue:GetInterruptRecommendation({remaining=2,interruptible=false}),nil,"never Kick a known immune cast")
+expect(Rogue:GetInterruptRecommendation({remaining=2}),S.KICK,"Era unknown flag preserves viable Kick")
+
+local daggerRank,swordRank,mhEnchant,ohEnchant=65,75,true,true
+local mhMS,ohMS=60000,60000
+env.GetNumSkillLines=function() return 2 end
+env.GetSkillLineInfo=function(i) return i==1 and "Daggers" or "Swords",false,false,i==1 and daggerRank or swordRank,0,0,75 end
+env.GetWeaponEnchantInfo=function() return mhEnchant,mhMS,0,1,ohEnchant,ohMS,0,2 end
+local function prep() Rogue:InvalidatePreparation("SKILL_LINES_CHANGED"); return Rogue:GetPreparationNotice() end
+local function has(text,needle) return text and text:find(needle,1,true)~=nil or false end
+reset(); combat=false; mainWeapon=1; offWeapon=2
+expect(has(prep(),"Daggers skill 65/75"),true,"two-level weapon deficit is visible")
+daggerRank=66
+expect(prep(),nil,"small post-level deficit stays quiet")
+daggerRank=20; offWeapon=3
+expect(select(2,prep():gsub("Daggers","")),1,"same weapon skill is not duplicated")
+offWeapon=2; daggerRank=75; level=19
+learn(2842); mhEnchant=false; ohEnchant=false
+expect(prep(),nil,"no poison nag before level 20")
+level=20
+expect(has(prep(),"MH coating missing"),true,"main hand missing coating")
+expect(has(prep(),"OH coating missing"),true,"off hand missing coating")
+mhEnchant=true
+expect(has(prep(),"MH coating missing"),false,"valid alternate coating is respected, even with zero charges")
+mhMS=0
+expect(has(prep(),"MH coating missing"),true,"expired coating reported")
+mhMS=60000; mhEnchant=nil; ohEnchant=nil
+expect(has(prep(),"OH coating missing"),true,"Classic nil absence convention")
+offWeapon=nil
+expect(has(prep(),"OH coating missing"),false,"empty off hand is not a missing poison")
+local enchantAPI=env.GetWeaponEnchantInfo
+env.GetWeaponEnchantInfo=function() error("API unavailable") end
+expect(prep(),nil,"failed enchant API is not a missing coating")
+env.GetWeaponEnchantInfo=enchantAPI
+combat=true
+expect(prep(),nil,"preparation disappears in combat")
+combat=false; E.HCOB_DB.prePullSafety=false
+expect(prep(),nil,"existing preparation preference disables badge")
+E.HCOB_DB.prePullSafety=true
+env.UnitIsDeadOrGhost=function() return true end
+expect(prep(),nil,"no corpse preparation warning")
+env.UnitIsDeadOrGhost=nil
+known[2842]=nil; E.RebuildKnownSpellNames()
+expect(prep(),nil,"unlearned poison skill does not nag")
+learn(2842)
+expect(has(prep(),"MH coating missing"),true,"learning poison enables advice without reset")
+mhEnchant=true
+expect(has(Rogue:GetPreparationNotice(),"MH coating missing"),true,"preparation scan is cached within one second")
+now=now+1
+expect(Rogue:GetPreparationNotice(),nil,"enchant change appears on bounded refresh")
 print("Rogue leveling/talents/control regression: " .. checks .. " checks PASS")

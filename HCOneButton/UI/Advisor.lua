@@ -68,6 +68,15 @@ advisorReason:SetHeight(13)
 advisorReason:SetJustifyH("LEFT")
 advisorReason:SetText("No priority")
 
+-- Passive pre-pull equipment badge fits beside the existing mode banner.
+-- Full details are in the BASE tooltip; no new action, sound or pull gate.
+advisor.preparationHint = advisor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+advisor.preparationHint:SetPoint("TOPRIGHT", advisor, "TOPRIGHT", -8, -12)
+advisor.preparationHint:SetSize(100, 17)
+advisor.preparationHint:SetJustifyH("RIGHT")
+advisor.preparationHint:SetTextColor(1, 0.76, 0.28)
+advisor.preparationHint:SetText("")
+
 -- Human-facing restart cue, independent of the 8x8 machine-readable pixel.
 -- Occupy the existing Advisor area: no new window, input capture or overlap
 -- with the secure BASE button, HP/resource bars, DPS or fixed action slots.
@@ -166,12 +175,17 @@ HCOB.UI.ThreatMeter.Init(dpsMeter)
 
 
 function SetDisplay(spellId, title, keyHint, reason, kind)
+    advisor.preparationHint:SetText("")
     UpdateDiagnosticPixel(spellId)
     if HCOB.UI.ActionPanel then
         HCOB.UI.ActionPanel.Highlight(spellId)
         HCOB.UI.ActionPanel.UpdateStates()
     end
     if HCOB_DB.showAdvisor == false then restartNotice:Hide(); return end
+    local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
+    if HCOB_DB.visible ~= false and class and class.GetPreparationNotice and class:GetPreparationNotice() then
+        advisor.preparationHint:SetText("CHECK GEAR")
+    end
 
     -- Do not show a ? when there is simply no manual priority.
     -- While idle use the base action icon; for warnings without a spell use
@@ -214,7 +228,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     local baseOnce = (actionHint == "PRESS BASE ONCE")
     UpdateRestartNotice(baseOnce and not spellId and HCOB_DB.visible ~= false
         and kind ~= "danger" and kind ~= "interrupt", restartInput, kind)
-    local passiveHint = not spellId and (actionHint == "WAIT FOR ENERGY" or actionHint == "CHECK TARGET")
+    local passiveHint = not spellId and (actionHint == "WAIT FOR ENERGY" or actionHint == "CHECK TARGET" or actionHint == "CHECK OPENER")
     local baseAction = (baseOnce or actionHint == "PRESS BASE" or actionHint == "KEEP SPAMMING" or actionHint == "BASE SPAM OK")
     local modifier = (actionHint == "SHIFT" or actionHint == "CTRL" or actionHint == "ALT" or actionHint == "CTRL+SHIFT" or actionHint == "ALT+SHIFT" or actionHint == "ALT+CTRL" or actionHint == "CTRL+ALT+SHIFT")
 
@@ -288,7 +302,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         advisor:SetAlpha(1.0)
         if advisorIcon.SetDesaturated then advisorIcon:SetDesaturated(false) end
     elseif holdAction or passiveHint then
-        advisorMode:SetText(passiveHint and (actionHint == "WAIT FOR ENERGY" and "ENERGY WAIT" or "CHECK TARGET") or "AUTO ACTIVE")
+        advisorMode:SetText(passiveHint and (actionHint == "WAIT FOR ENERGY" and "ENERGY WAIT" or actionHint) or "AUTO ACTIVE")
         advisorMode:SetTextColor(0.72, 0.92, 1)
         advisorBanner:SetColorTexture(0.04, 0.24, 0.38, 0.96)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)

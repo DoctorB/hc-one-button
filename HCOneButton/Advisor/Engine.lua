@@ -115,8 +115,8 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
     if state.spellId and oldStillPlausible and IsQueuedMeleeSwingSpell
        and IsQueuedMeleeSwingSpell(state.spellId) then
         -- Once an on-next-swing spell is armed, drop its pixel immediately.
-        -- Holding it for the normal 0.20s swap confirmation would ask a 50Hz
-        -- reader to press the same key several more times.
+        -- Holding it for the normal 0.20s swap confirmation would expose a
+        -- stale action to both the player and passive diagnostic readers.
         oldStillPlausible = false
     end
     if state.spellId and oldStillPlausible and HCOB.Advisor.Engine.IsRangedHostileSpell(state.spellId)
@@ -389,7 +389,7 @@ function Recommend()
     -- critical states above still keep absolute priority.
     local cast = hostile and ActiveTargetCast() or nil
     if inCombat and cast then
-        local id, title, key, reason = InterruptRecommendation()
+        local id, title, key, reason = InterruptRecommendation(cast)
         if id then return id, title, key, (cast.name or "Enemy cast") .. " - " .. reason, "interrupt" end
     end
 

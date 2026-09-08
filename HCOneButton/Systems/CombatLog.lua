@@ -662,7 +662,7 @@ function CombatLogHandler()
 
     local targetGUID = SafeUnitGUID("target")
     if targetGUID and sourceGUID == targetGUID and subevent == "SPELL_CAST_START" then
-        activeTargetCast = {guid=sourceGUID, spellId=spellId, name=spellName or SpellName(spellId,"Cast"), expires=now + SpellCastSeconds(spellId) + 0.35}
+        activeTargetCast = {guid=sourceGUID, spellId=spellId, name=spellName or SpellName(spellId,"Cast"), startedAt=now, expires=now + SpellCastSeconds(spellId)}
     elseif activeTargetCast and sourceGUID == activeTargetCast.guid then
         if subevent == "SPELL_CAST_SUCCESS" or subevent == "SPELL_CAST_FAILED" or subevent == "UNIT_DIED" then activeTargetCast = nil end
     elseif activeTargetCast and destGUID == activeTargetCast.guid and (subevent == "UNIT_DIED" or subevent == "SPELL_INTERRUPT") then

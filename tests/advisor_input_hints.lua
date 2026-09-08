@@ -230,4 +230,20 @@ env.PlaySound = soundAPI
 now = 110
 clearRestart(); showRestart()
 expect(#sounds,7,"sound resumes on a later valid notice after API failure")
+local preparation="MH coating missing"
+env.PLAYER_CLASS="ROGUE"
+env.HCOB_DB.showAdvisor,env.HCOB_DB.visible=true,true
+env.HCOneButton.Classes={ROGUE={GetPreparationNotice=function() return preparation end}}
+env.SetDisplay(1752,"SPELL","CAST MANUALLY","Original reason","action")
+expect(env.advisor.preparationHint.text,"CHECK GEAR","optional equipment badge")
+expect(env.advisorReason.text,"Original reason","preparation never replaces action explanation")
+expect(highlight,1752,"preparation cannot replace the suggested spell")
+expect(env.advisor.preparationHint.width,100,"badge fits unused banner space")
+preparation=nil
+env.SetDisplay(nil,"STEALTH - POSITION","CHECK OPENER","Check positioning","idle")
+expect(env.advisor.preparationHint.text,"","no stale equipment warning")
+expect(env.advisorKey.text,"CHECK OPENER","Stealth requirement wait does not request BASE spam")
+preparation="MH coating missing"; env.HCOB_DB.showAdvisor=false
+env.SetDisplay(nil,"IDLE","CHECK OPENER","","idle")
+expect(env.advisor.preparationHint.text,"","hidden Advisor clears equipment badge")
 print("Advisor one-press/wait hints regression: " .. checks .. " checks PASS")
