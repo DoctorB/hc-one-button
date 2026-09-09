@@ -114,6 +114,13 @@ expect(persistentDB.actionSlotKeys, nil, "invalid binding map repaired")
 expect(persistentDB.customValue, "preserve me", "unknown setting preserved")
 expect(persistentDB.actionSlotAutoBind, true, "fresh binding default installed")
 expect(persistentDB.prePullSafety, true, "fresh pre-pull safety default installed")
+expect(persistentDB.roguePickPocket, false, "Pick Pocket is opt-in on existing saved tables")
+persistentDB.roguePickPocket = true
+environment.HCOneButton.Internal.InitializeSavedVariables()
+expect(persistentDB.roguePickPocket, true, "saved Pick Pocket opt-in survives initialization")
+persistentDB.roguePickPocket = "true"
+environment.HCOneButton.Internal.InitializeSavedVariables()
+expect(persistentDB.roguePickPocket, false, "malformed Pick Pocket option repairs to OFF")
 expect(persistentDB.showConsumables, true, "fresh Survival strip default installed")
 expect(persistentDB.warriorHeroicSpam, false, "unsafe legacy heroic spam disabled")
 expect(persistentCharacterDB.logProfileId, "p-existing-profile", "anonymous character profile preserved")

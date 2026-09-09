@@ -72,6 +72,7 @@ end
 local function showRestart(kind)
     env.SetDisplay(nil,"ATTACK STOPPED","PRESS BASE ONCE","Restart once",kind or "action")
 end
+expect(env.advisorKey.text,"SELECT TARGET","initial Rogue display never asks for spam")
 showRestart()
 expect(#sounds,1,"first restart sounds immediately, even at session time zero")
 expect(sounds[1].kit,env.SOUNDKIT.READY_CHECK,"dedicated restart sound")
@@ -246,4 +247,31 @@ expect(env.advisorKey.text,"CHECK OPENER","Stealth requirement wait does not req
 preparation="MH coating missing"; env.HCOB_DB.showAdvisor=false
 env.SetDisplay(nil,"IDLE","CHECK OPENER","","idle")
 expect(env.advisor.preparationHint.text,"","hidden Advisor clears equipment badge")
+env.HCOB_DB.showAdvisor=true
+binding="BUTTON4"
+env.SetDisplay(nil,"NO ACTIVE TARGET","SELECT TARGET","No input needed","idle")
+expect(env.advisorKey.text,"SELECT TARGET","absent target has no spam instruction")
+expect(highlight,nil,"absent target has no highlight")
+expect(notice.shown,false,"select target never asks to restart attacks")
+env.SetDisplay(nil,"PULL READY","PRESS BASE","","idle")
+expect(env.advisorKey.text,"PRESS BUTTON4 ONCE","Rogue pull is one press")
+expect(notice.shown,false,"pull is not a false stopped-attack warning")
+env.SetDisplay(1752,"Sinister Strike","BASE","","action")
+expect(env.advisorKey.text,"PRESS BUTTON4","builder fallback requests manual input, not spam")
+env.SetDisplay(nil,"BASE OK","KEEP SPAMMING","","idle")
+expect(env.advisorKey.text:find("SPAM"),nil,"legacy fallback cannot display Rogue spam")
+env.UnitExists=function() return true end
+env.UnitHealthPct=function() return 100,true end
+env.UnitPowerType=function() return 3 end
+env.SafeUnitPower=function() return 100 end
+env.hpText,env.resourceText,env.enemyText=widget(),widget(),widget()
+env.swingBG=widget()
+env.UpdateStatusBars,env.UpdateBaseVisual,env.UpdateDPSMeter=function() end,function() end,function() end
+env.UpdateDisplayMinimal("Smart HUD disabled")
+expect(env.advisorTitle.text,"ADVISOR OFF","disabled Advisor is identified")
+expect(env.advisorKey.text,"MANUAL CONTROL","disabled Rogue Advisor cannot infer input readiness")
+expect(notice.shown,false,"disabled Advisor has no restart alarm")
+env.PLAYER_CLASS="WARRIOR"
+env.SetDisplay(nil,"BASE OK","KEEP SPAMMING","","idle")
+expect(env.advisorKey.text,"SPAM BUTTON4","other class BASE contract unchanged")
 print("Advisor one-press/wait hints regression: " .. checks .. " checks PASS")

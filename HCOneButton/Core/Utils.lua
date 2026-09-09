@@ -54,6 +54,7 @@ function InitializeSavedVariables()
     Default("actionScale", 1.0)
     Default("actionSlotAutoBind", true)
     Default("prePullSafety", true)
+    Default("roguePickPocket", false)
     Default("showConsumables", true)
 
     for _, key in ipairs({"actionSlotKeys", "actionSlotAppliedKeys"}) do

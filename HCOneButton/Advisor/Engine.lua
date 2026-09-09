@@ -466,6 +466,9 @@ function Recommend()
             readiness and readiness.summary or "Recovery checks passed", "idle"
     end
 
+    if PLAYER_CLASS == "ROGUE" then
+        return nil, "NO ACTIVE TARGET", "SELECT TARGET", "Select a live hostile target; no attack input is needed yet", "idle"
+    end
     return nil, "BASE OK", "KEEP SPAMMING", "No urgent manual spell", "idle"
 end
 

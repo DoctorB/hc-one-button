@@ -433,7 +433,14 @@ end
 function Class:BuildActionPanelMacro(id)
     if id == S.GOUGE then return "/stopattack\n" .. BuildSpellMacro(id, "harm") end
     if id == S.AMBUSH or id == S.GARROTE or id == S.CHEAP_SHOT then
-        return BuildSpellMacro(id, "stealth,harm")
+        local opener = BuildSpellMacro(id, "stealth,harm")
+        -- Optional, player-operated secure macro. Never sequence-gate an opener
+        -- on a creature having pockets, or change the user's global loot options.
+        if opener ~= "/stopmacro" and HCOB_DB and HCOB_DB.roguePickPocket == true and IsKnown(921) then
+            local pick = CastLine(921, "nocombat,stealth,harm,nodead")
+            if pick and #pick + 1 + #opener <= (MACRO_LIMIT or 255) then return pick .. "\n" .. opener end
+        end
+        return opener
     end
 end
 

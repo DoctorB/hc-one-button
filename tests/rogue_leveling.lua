@@ -514,4 +514,34 @@ mhEnchant=true
 expect(has(Rogue:GetPreparationNotice(),"MH coating missing"),true,"preparation scan is cached within one second")
 now=now+1
 expect(Rogue:GetPreparationNotice(),nil,"enchant change appears on bounded refresh")
+-- Optional opener macros are player input only, never a blocking castsequence.
+reset()
+for _, id in ipairs({S.AMBUSH,S.GARROTE,S.CHEAP_SHOT,921}) do learn(id) end
+names[921] = "Vol a la tire"
+for _, id in ipairs({S.AMBUSH,S.GARROTE,S.CHEAP_SHOT}) do
+    E.HCOB_DB.roguePickPocket = nil
+    local original = Rogue:BuildActionPanelMacro(id)
+    expect(has(original,names[921]),false,"Pick Pocket defaults off")
+    E.HCOB_DB.roguePickPocket = true
+    local macro = Rogue:BuildActionPanelMacro(id)
+    expect(macro,"/cast [nocombat,stealth,harm,nodead] " .. names[921] .. "\n" .. original,"localized optional Pick Pocket before opener")
+    expect(#macro <= 255,true,"combined macro respects secure limit")
+    expect(has(macro,"/castsequence"),false,"no pockets cannot block a sequence")
+    expect(has(macro,"/startattack"),false,"no premature auto-attack")
+    expect(has(macro,"SetCVar"),false,"no global autoloot changes")
+    expect(has(macro,"/stopcasting"),false,"no unnecessary cast interruption")
+    E.HCOB_DB.roguePickPocket = false
+    expect(Rogue:BuildActionPanelMacro(id),original,"disabling restores the original opener")
+    E.HCOB_DB.roguePickPocket = "true"
+    expect(Rogue:BuildActionPanelMacro(id),original,"malformed preference cannot opt in")
+end
+E.HCOB_DB.roguePickPocket = true
+known[921]=nil; E.RebuildKnownSpellNames()
+expect(has(Rogue:BuildActionPanelMacro(S.AMBUSH),names[921]),false,"unlearned Pick Pocket is not included")
+learn(921); known[S.AMBUSH]=nil; E.RebuildKnownSpellNames()
+expect(Rogue:BuildActionPanelMacro(S.AMBUSH),"/stopmacro","unlearned opener cannot pick pockets alone")
+learn(S.AMBUSH)
+names[921]=string.rep("x",250)
+expect(has(Rogue:BuildActionPanelMacro(S.AMBUSH),names[921]),false,"oversized optional line never truncates the opener")
+expect(has(Rogue:BuildMainMacro(),"/cast [nocombat,stealth,harm,nodead]"),false,"BASE is not a Pick Pocket macro")
 print("Rogue leveling/talents/control regression: " .. checks .. " checks PASS")

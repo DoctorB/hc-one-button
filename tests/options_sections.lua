@@ -102,6 +102,31 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
     local rend=find(widgets,"Smart pre-pull Rend")
     local sunder=find(widgets,"Situational Sunder")
     local heroic=find(widgets,"Heroic Strike rage threshold")
+    local pick=find(widgets,"Pick Pocket with openers")
+    if class == "ROGUE" then
+        assert(panel.rogueSection and pick and pick.parent == panel.rogueSection,"Rogue option is not grouped")
+        assert(not pick.checked,"new Rogue option must default OFF")
+        local x,y,w,h=rect(pick)
+        local sx,sy,sw,sh=rect(panel.rogueSection)
+        assert(x>=sx and y>=sy and x+w<=sx+sw and y+h<=sy+sh,"Rogue checkbox escapes section")
+        for _, item in ipairs(widgets) do
+            if item.parent == panel.rogueSection and item.kind == "FontString" and item.text:find("Manual secure",1,true) then
+                local dx,dy,dw,dh=rect(item)
+                assert(dx>=sx and dy>=y+h+6 and dx+dw<=sx+sw and dy+dh<=sy+sh-10,"Rogue description escapes section or overlaps checkbox")
+            end
+        end
+        pick:SetChecked(true); pick.scripts.OnClick(pick)
+        assert(env.HCOB_DB.roguePickPocket == true and env.builds == 1,"Rogue setting not saved/rebuilt")
+        local restored, restoredWidgets=runtime("ROGUE",env.HCOB_DB)
+        assert(find(restoredWidgets,"Pick Pocket with openers").checked,"Rogue setting lost on reload")
+        restored.InCombatLockdown=function() return true end
+        local macros=assert(loadfile("HCOneButton/Core/Macros.lua")); setfenv(macros,restored); macros()
+        local checkbox=find(restoredWidgets,"Pick Pocket with openers")
+        checkbox:SetChecked(false); checkbox.scripts.OnClick(checkbox)
+        assert(restored.HCOB_DB.roguePickPocket == false and restored.pendingRebuild == true,"combat edit did not defer secure rebuild")
+    else
+        assert(not pick and not panel.rogueSection,"Rogue options leaked to another class")
+    end
     local center,report,bindings=find(widgets,"Center HUD"),find(widgets,"Report a problem..."),find(widgets,"Configure slot bindings...")
     if class == "WARRIOR" then
         local section=assert(panel.warriorSection,"Warrior section missing")
@@ -130,7 +155,12 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
         assert(env.HCOB_DB.warriorAutoRend == false and env.HCOB_DB.warriorSunderBase == false
             and env.HCOB_DB.warriorHeroicRage == 48,class..": opening Options changed hidden Warrior values")
         local _,y=rect(center)
-        assert(y<400,class..": hidden Warrior section left a large layout gap")
+        if class == "ROGUE" then
+            local _,sy,_,sh=rect(panel.rogueSection)
+            assert(y>=sy+sh+10,"utility buttons overlap Rogue section")
+        else
+            assert(y<400,class..": hidden Warrior section left a large layout gap")
+        end
     end
     local logger,meter,tuning,details=find(widgets,"Combat logger"),find(widgets,"DPS / aggro meter"),
         find(widgets,"Local Adaptive Tuning"),find(widgets,"View learned adjustments...")
@@ -157,4 +187,10 @@ local _,reloadWidgets=runtime("WARRIOR",warriorDB)
 assert(find(reloadWidgets,"Smart pre-pull Rend").checked and find(reloadWidgets,"Situational Sunder").checked
     and find(reloadWidgets,"Heroic Strike rage threshold").value == 52,"Warrior values did not survive reload")
 
+local resetEnv,resetWidgets=runtime("ROGUE",{roguePickPocket=true})
+local reset=find(resetWidgets,"Reset defaults")
+reset.scripts.OnClick(reset)
+assert(resetEnv.HCOB_DB.roguePickPocket == false and not find(resetWidgets,"Pick Pocket with openers").checked,
+    "Reset defaults must persist and display Pick Pocket OFF")
+assert(resetEnv.builds == 1,"Reset defaults must remove Pick Pocket from existing secure macros")
 print("Options class sections/layout/persistence regression: PASS")

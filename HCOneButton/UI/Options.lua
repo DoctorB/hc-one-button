@@ -210,6 +210,35 @@ function CreateOptionsPanel()
         add(CreateCheckBox(warrior, "Situational Sunder", "Sunder remains in the Advisor against durable targets; it is not spammed at low levels.", function() return HCOB_DB.warriorSunderBase ~= false end, function(v) HCOB_DB.warriorSunderBase = v; BuildMacros(); UpdateDisplay() end, 10, -57))
         add(CreateSlider(warrior, "Heroic Strike rage threshold", 20, 70, 1, function() return HCOB_DB.warriorHeroicRage or 35 end, function(v) HCOB_DB.warriorHeroicRage = v; UpdateDisplay() end, 37, -110, "20", "70", "%d rage"))
         panel.warriorSection = warrior
+    elseif PLAYER_CLASS == "ROGUE" then
+        local rogue = CreateFrame("Frame", nil, panel)
+        rogue:SetPoint("TOPLEFT", 24, -378)
+        rogue:SetSize(294, 142)
+        local background = rogue:CreateTexture(nil, "BACKGROUND")
+        background:SetAllPoints()
+        background:SetColorTexture(0.055, 0.050, 0.020, 0.90)
+        local accent = rogue:CreateTexture(nil, "BORDER")
+        accent:SetPoint("TOPLEFT", 0, 0)
+        accent:SetPoint("BOTTOMLEFT", 0, 0)
+        accent:SetWidth(3)
+        accent:SetColorTexture(1, 0.9, 0.3, 0.9)
+        local heading = rogue:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        heading:SetPoint("TOPLEFT", 12, -12)
+        heading:SetText("Rogue - Stealth openers")
+        add(CreateCheckBox(rogue, "Pick Pocket with openers", "Optional and OFF by default. Try learned Pick Pocket before Ambush, Garrote or Cheap Shot, outside combat and in Stealth. Each macro requires your click/key press. Auto Loot and its modifier key affect collection; loot is not guaranteed before the opener. A resisted attempt can compromise Stealth. Global loot settings are never changed. Secure macro updates wait until combat ends.", function()
+            return HCOB_DB.roguePickPocket == true
+        end, function(v)
+            HCOB_DB.roguePickPocket = v
+            BuildMacros()
+            UpdateDisplay()
+        end, 10, -30))
+        local description = rogue:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        description:SetPoint("TOPLEFT", 14, -65)
+        description:SetWidth(265)
+        description:SetHeight(62)
+        description:SetJustifyH("LEFT")
+        description:SetText("Manual secure openers only.\nCheck Auto Loot and its modifier key.\nLoot timing and resisted attempts can affect the opening.")
+        panel.rogueSection = rogue
     end
 
     local learningTitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -250,7 +279,7 @@ function CreateOptionsPanel()
 
     local centerBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     centerBtn:SetSize(125, 25)
-    centerBtn:SetPoint("TOPLEFT", 24, PLAYER_CLASS == "WARRIOR" and -534 or -388)
+    centerBtn:SetPoint("TOPLEFT", 24, (panel.warriorSection or panel.rogueSection) and -534 or -388)
     centerBtn:SetText("Center HUD")
     centerBtn:SetScript("OnClick", Center)
 
@@ -289,12 +318,14 @@ function CreateOptionsPanel()
         HCOB_DB.actionSlotAutoBind = true
         HCOB_DB.actionSlotKeys = nil
         HCOB_DB.prePullSafety = true
+        HCOB_DB.roguePickPocket = false
         HCOB_DB.showConsumables = true
         if HCOB.Systems and HCOB.Systems.AdaptiveTuner and HCOB.Systems.AdaptiveTuner.SetEnabled then HCOB.Systems.AdaptiveTuner.SetEnabled(true) end
         runtimeSmartDisabled = false
         runtimeCombatLogDisabled = false
         runtimeErrors = {}
         RefreshButtonState()
+        BuildMacros()
         if HCOB.UI.ActionPanel then HCOB.UI.ActionPanel.ApplySlotBindings(); HCOB.UI.ActionPanel.RefreshBindingOptions() end
         if HCOB.UI.SurvivalStrip then HCOB.UI.SurvivalStrip.Configure(); HCOB.UI.SurvivalStrip.SyncVisibility() end
         if HCOB.Systems and HCOB.Systems.ProfessionCoach and HCOB.Systems.ProfessionCoach.SetEnabled then HCOB.Systems.ProfessionCoach.SetEnabled(true) end

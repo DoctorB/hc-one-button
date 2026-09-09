@@ -214,7 +214,7 @@ function PrintPlan()
     local localizedClass = UnitClass("player")
     local specIndex, specName = TalentSpec()
     print("|cff00ff98HCOB:|r " .. (localizedClass or PLAYER_CLASS) .. " L" .. PlayerLevel() .. " - " .. tostring(specName) .. " (tree " .. specIndex .. ")")
-    print("|cffffcc00BASE SPAM macro:|r")
+    print(PLAYER_CLASS == "ROGUE" and "|cffffcc00BASE macro (player input):|r" or "|cffffcc00BASE SPAM macro:|r")
     print(btn:GetAttribute("macrotext1") or "")
     if currentMods and currentMods.desc then
         local d=currentMods.desc
