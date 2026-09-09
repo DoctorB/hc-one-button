@@ -16,7 +16,7 @@ T.MAX_CANDIDATE_BUCKETS = 64
 
 local POLICY_KEYS = {
     "criticalHP", "dangerHP", "enemyWindow", "hcDangerAdvisor", "prePullSafety", "smartDisplay",
-    "warriorAutoRend", "warriorHeroicRage", "warriorSunderBase",
+    "warriorAutoRend", "warriorHeroicRage", "warriorSunderBase", "roguePickPocket",
 }
 
 local function Finite(value, fallback)
@@ -196,6 +196,8 @@ local function ContextSnapshot()
     local specIndex, specName, specPoints = 0, "Unknown", 0
     if TalentSpec then specIndex, specName, specPoints = TalentSpec() end
     local snapshot = ResourceSnapshot()
+    local targetLevel = Finite(Call(SafeUnitLevel, "target", nil), nil)
+    if targetLevel and targetLevel <= 0 then targetLevel = nil end
     return {
         class=PLAYER_CLASS, level=PlayerLevel and PlayerLevel() or 0,
         specIndex=specIndex, spec=Clean(specName, 32), specPoints=specPoints,
@@ -206,7 +208,7 @@ local function ContextSnapshot()
         playerHealthMax=SafeUnitHealthMax and SafeUnitHealthMax("player", 0) or 0,
         activePowerType=snapshot.powerToken, activePowerMax=snapshot.powerMax, manaMax=snapshot.manaMax,
         petPresent=BoolCall(UnitExists, "pet"), petDead=BoolCall(UnitIsDead, "pet"),
-        targetLevel=SafeUnitLevel and SafeUnitLevel("target", nil) or nil,
+        targetLevel=targetLevel,
         targetClassification=SafeUnitClassification and SafeUnitClassification("target", nil) or nil,
         targetHealthMax=SafeUnitHealthMax and SafeUnitHealthMax("target", nil) or nil,
     }
@@ -767,6 +769,8 @@ function T.FinalizeFight(fight)
     CloseDecision(fight, GetTime())
     tuning._choiceWindow = nil -- erase ephemeral target identity before any finalization can fail
     tuning._recentDecisions, tuning._pendingActions, tuning._confirmations = nil, nil, nil
+    local participation = HCOB.Systems and HCOB.Systems.TuningParticipation
+    local qualityReasons = participation and participation.Finalize(fight) or {}
     for _, bucket in pairs(tuning.resources or {}) do
         local samples = math.max(1, bucket.samples or 0)
         bucket.average = (bucket.sum or 0) / samples
@@ -822,12 +826,17 @@ function T.FinalizeFight(fight)
     if fight.died then reasons[#reasons + 1] = "death" end
     if comparable < 1 and not hasChoices then reasons[#reasons + 1] = "no_correlated_actions" end
     if comparable > 0 and (tuning.adherencePct or 0) < 35 and not hasChoices then reasons[#reasons + 1] = "low_adherence" end
+    for _, reason in ipairs(qualityReasons) do reasons[#reasons+1] = reason end
     tuning.eligibility = {
         mode=context.mode, safety=(duration >= 2 and not context.pvp and fight.endReason == "combat_end"),
         dps=(duration >= 4 and not context.pvp and not fight.died and fight.endReason == "combat_end" and not context.changedDuringFight),
         adaptive=(duration >= 4 and not context.pvp and not fight.died and fight.endReason == "combat_end" and not context.changedDuringFight and (hasChoices or (comparable >= 1 and (tuning.adherencePct or 0) >= 35))),
         reasons=reasons,
     }
+    if #qualityReasons > 0 then
+        tuning.eligibility.dps = false
+        tuning.eligibility.adaptive = false
+    end
     local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
     if tuner and tuner.LearnFight then
         local ok, err = pcall(tuner.LearnFight, fight)

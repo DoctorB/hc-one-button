@@ -55,6 +55,7 @@ UI/DiagnosticPixel.lua
 
 Systems/Bindings.lua
 Systems/TuningTelemetry.lua
+Systems/TuningParticipation.lua
 Systems/AdaptiveTuner.lua
 Systems/CombatLog.lua
 Systems/Feedback.lua

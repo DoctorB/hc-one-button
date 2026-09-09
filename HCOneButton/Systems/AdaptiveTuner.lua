@@ -175,7 +175,8 @@ local function DifficultyKey(context)
     local classification = tostring(context.targetClassification or "normal")
     if classification == "elite" or classification == "rareelite" or classification == "worldboss" then return "elite" end
     local playerLevel = Finite(context.level, 1) or 1
-    local targetLevel = Finite(context.targetLevel, playerLevel) or playerLevel
+    local targetLevel = Finite(context.targetLevel, nil)
+    if not targetLevel or targetLevel <= 0 then return "unknown" end
     local delta = targetLevel - playerLevel
     if delta <= -2 then return "easy" end
     if delta >= 2 then return "hard" end

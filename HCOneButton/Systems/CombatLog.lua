@@ -268,12 +268,14 @@ function StartCombatTelemetry()
         advisorTrace={}, advisorTraceDropped=0,
     }
     if InitFightTuningTelemetry then InitFightTuningTelemetry(currentFight) end
+    if HCOB.Systems and HCOB.Systems.TuningParticipation then HCOB.Systems.TuningParticipation.Begin(currentFight) end
     local tg = SafeUnitGUID("target")
     if tg and UnitCanAttack("player", "target") then AddEnemyToFight(tg, targetName) end
 end
 
 function SampleCombatTelemetry()
     if not currentFight or runtimeTelemetryDisabled then return end
+    if HCOB.Systems and HCOB.Systems.TuningParticipation then HCOB.Systems.TuningParticipation.Sample(currentFight) end
     local hp = SafeUnitHealth("player", 0) or 0
     local hpMax = SafeUnitHealthMax("player", SafeNumber(currentFight.hpMax, 0)) or 0
     currentFight.hpEnd = hp
@@ -432,6 +434,23 @@ function ProcessCombatTelemetry(args)
         currentFight.tuning.context.pvp = true
         currentFight.tuning.context.mode = "pvp"
         currentFight.tuning.adaptiveContextKey = nil
+    end
+
+    local participation = HCOB.Systems and HCOB.Systems.TuningParticipation
+    if participation then
+        if damageExchange or controlExchange then
+            if owner and destIsOther and (damageExchange or CombatLogFlagIsHostile(destFlags)) then
+                participation.Observe(currentFight, destGUID)
+            elseif destIsOurs and sourceIsOther and (damageExchange or CombatLogFlagIsHostile(sourceFlags)) then
+                participation.Observe(currentFight, sourceGUID)
+            end
+        elseif subevent == "SPELL_CAST_START" and owner and destIsOther
+           and destGUID == SafeUnitGUID("target") and UnitCanAttack("player", "target") then
+            participation.Observe(currentFight, destGUID)
+        elseif (subevent == "SPELL_HEAL" or subevent == "SPELL_PERIODIC_HEAL") and owner then
+            local amount, overheal = SafeNumber(args[15], 0) or 0, SafeNumber(args[16], 0) or 0
+            if amount > overheal then participation.Observe(currentFight) end
+        end
     end
 
     -- v1.6: no HOSTILE/NEUTRAL filter. A GUID becomes a "fight enemy"
