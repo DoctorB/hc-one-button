@@ -6,7 +6,7 @@ local now, target, level, classification, targetIsPlayer = 0,"enemy",17,"normal"
 env.HCOneButton={Internal=env,Systems={},UI={},Advisor={Engine={}}}
 env.HCOB_DB={combatLogging=true}
 env.HCOB_CharacterDB={adaptive={version=2,enabled=true,contexts={}}}
-env.PLAYER_CLASS,env.VERSION,env.playerGUID="ROGUE","1.29.6","player"
+env.PLAYER_CLASS,env.VERSION,env.playerGUID="ROGUE","1.29.7","player"
 env.S={}
 env.GetTime=function() return now end
 env.GetServerTime=function() return 1000+now end

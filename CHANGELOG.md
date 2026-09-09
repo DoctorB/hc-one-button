@@ -2,7 +2,29 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.6`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.7`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.7 — 2026-09-09
+
+### Added — optional Rogue Pick Pocket openers
+
+- A Rogue-only **Pick Pocket with openers** option adds learned Pick Pocket before Ambush, Garrote and Cheap Shot in their existing secure slots. OFF by default, account-wide and persisted; Reset defaults disables it and rebuilds the macros. Combat-time changes defer protected updates.
+- Require out-of-combat Stealth and a live hostile target for the optional attempt. Preserve localized rank-free casting, the opener, the secure macro length limit and every existing slot/binding. BASE is unchanged; no new diagnostic color is allocated.
+- Explain Auto Loot/modifier requirements and the limits: collection before the opener is not guaranteed, and resistance can compromise Stealth. No cast sequence gates the opener on successful pickpocketing; no global loot setting is modified. All protected actions remain player-operated; external readers are documented only as passive diagnostics.
+
+### Fixed — consistent Rogue HUD and reliable tuning samples
+
+- Remove residual Rogue BASE-spam hints from idle, fallback and initial display, plus the printed macro heading. Keep one-press pull/restart guidance; disabled Smart HUD explicitly shows manual control without claiming an attack restart is needed.
+- For new fights on all nine classes, recover difficulty from an observed opponent instead of interpreting unknown target level `0` as easy. Missing/unreadable opponent metadata excludes the fight from comparative DPS/adaptive learning.
+- Exclude late participation when the first meaningful event occurs after both 4 seconds and 25% of the fight, covering group tags after activities such as Skinning. Count pet participation, incoming/outgoing misses and damage, hostile control/cast starts and effective healing; do not mistake resource/control waits after engagement for late entry.
+- Persist explicit quality/exclusion reasons while retaining raw damage, duration, fight history and safety eligibility. Do not rewrite historical fights or reset learned contexts. Clear the temporary observed-opponent identity before later finalization work.
+- Keep the Rogue Options section, explanatory text, utility buttons and footer separate; reset settings also refresh existing secure macros.
+
+### Compatibility and validation
+
+- 49/49 addon Lua files parse, 32/32 Lua harnesses pass, 50/50 TOC references resolve and 19/19 offline release-tool tests pass. Includes 182 Rogue checks, 97 Advisor checks and 113 new all-class participation checks. Root/package documentation matches.
+- Two review/refinement passes completed; **in-game validation of 1.29.7 remains pending**. The maintainer requested version bump and publication as an ordinary Release with this limitation disclosed. Addon version bumped to `1.29.7`; Interface `11509`, learner revision `4`, adaptive schema `2`, telemetry contract `1`, fixed slots and passive Pixel V3 encoding remain unchanged.
+- Review and live checklist: `docs/ROGUE_FOLLOWUP_REVIEW.md`. Curated CurseForge notes: `docs/releases/1.29.7.md` (repository only). Publication uses the existing authorized GitHub Release → CurseForge workflow.
 
 ## 1.29.6 — 2026-09-08
 

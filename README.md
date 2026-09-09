@@ -2,9 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.6`
+- **Current version:** `1.29.7`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
+
+Version `1.29.7` includes the Rogue HUD/Pick Pocket and all-class tuning-quality changes below. In-game smoke testing of these changes is still pending; publication as an ordinary Release was explicitly requested with that limitation disclosed.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -35,11 +37,11 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.6` adds **dagger-aware Rogue openings, clearer preparation advice and more reliable interrupt timing**. Ambush joins the supported Stealth openers when a main-hand dagger is equipped; relevant invested talents and actual energy costs inform the opening. A quiet `CHECK GEAR` notice highlights lagging weapon skills or missing weapon coatings before a pull. Shared target-cast tracking uses live client information when available and retains a bounded Classic Era combat-event fallback.
+Version `1.29.7` adds **optional Pick Pocket openers, consistent Rogue input hints and more reliable learning samples for all nine classes**. Enable Pick Pocket from the Rogue-only Options section to attempt it before Ambush, Garrote or Cheap Shot. Residual BASE-spam prompts are replaced with appropriate one-press or passive guidance. New tuning samples no longer confuse unknown enemies or late group participation with ordinary low-DPS fights.
 
 A real Gouge control window pauses the next recommendation. If attacks remain stopped and no ability is available, a prominent amber **PRESS BUTTON4** notice (your actual BASE binding) asks for one press, accompanied by a distinct sound when **Alert sounds** is enabled. You do not need to interpret the diagnostic pixel. Stealth openings remain a separate path: BASE does not deliberately break Stealth.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, the grouped tuning inspector and DPS/aggro HUD are unchanged. Rogue slots `1–17` retain their assignments; Ambush is appended at slot `18`, with unchanged Pixel V3 encoding. Protected actions require player input; the diagnostic pixel is read-only guidance for passive inspection. Automated checks pass; **in-game validation of `1.29.6` remains pending**. The maintainer explicitly chose an ordinary Release. The existing GitHub → CurseForge pipeline publishes only an explicitly published GitHub release.
+**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Pick Pocket is OFF by default and persists account-wide when enabled. Learner revision `4`, adaptive schema `2`, the grouped tuning inspector, DPS/aggro HUD, existing slots and Pixel V3 encoding remain unchanged. All protected actions require player input; the diagnostic pixel is for passive inspection only. Automated checks pass; **in-game validation of `1.29.7` remains pending**. The maintainer explicitly requested ordinary Release publication through the existing GitHub → CurseForge pipeline.
 
 ## Local Adaptive Tuning
 
@@ -191,7 +193,11 @@ The Rogue baseline targets ordinary leveling fights from the first learned abili
 
 **Stealth openings:** a learned, affordable, ready Ambush is a burst option only with a confirmed main-hand dagger; a dagger in the off hand is not sufficient. The HUD explicitly says `AMBUSH - BEHIND`: move behind the target yourself. Improved Ambush and Opportunity add bounded opener preference; actual client costs take precedence, with Dirty Deeds reflected in Garrote/Cheap Shot fallback costs. Cheap Shot retains required opening-control priority against difficult targets when available. Garrote remains a bleed alternative, with a reminder that its damage takes time and prevents a planned Gouge recovery pause. Known out-of-range spells are excluded. Without a usable opener, `CHECK OPENER` asks you to check energy, equipment and position rather than press BASE.
 
-Ambush, Garrote and Cheap Shot use Stealth-only secure casts without a preceding auto-attack command. There is no reliable behind-target inference: positioning, weapon changes and the actual cast remain manual. Highest-learned-rank localized name casting is preserved. Rogue slots `1–17` and their bindings are unchanged; new slot `18` is Ambush (default `CTRL+SHIFT+8`). Backstab is not added.
+Ambush, Garrote and Cheap Shot use Stealth-only secure casts without a preceding auto-attack command. There is no reliable behind-target inference: positioning, weapon changes and the actual cast remain manual. Highest-learned-rank localized name casting is preserved. Rogue slots `1–17` and their bindings are unchanged; slot `18` is Ambush (default `CTRL+SHIFT+8`). Backstab is not added.
+
+**Optional Pick Pocket:** enable **Options → Rogue - Stealth openers → Pick Pocket with openers** to prepend learned Pick Pocket to these three secure opener slots. It defaults **OFF**, persists account-wide in `HCOB_DB.roguePickPocket`, and resets to OFF with **Reset defaults**. Its conditions require out-of-combat Stealth and a live hostile target; BASE and other actions are unchanged. Each opener still requires your click/key press. Localized rank-free spell names are used; an unlearned or oversized optional line is omitted, preserving the opener and the secure macro limit. No cast sequence waits for successful pickpocketing, and no global loot setting is changed. Check Auto Loot and its modifier key: the macro attempts Pick Pocket but cannot guarantee collection before the opener. A resisted attempt can compromise Stealth. This is optional convenience, not a guaranteed safe pull or guaranteed extra loot. Secure macro changes made during combat are deferred until combat ends.
+
+**Consistent Rogue input hints:** idle/no-target guidance says `SELECT TARGET`; normal pulls ask for a single BASE press. Remaining Rogue fallback hints no longer say to spam BASE. With Smart HUD disabled or in safe mode, `ADVISOR OFF / MANUAL CONTROL` does not infer that attacks need restarting. The existing binding-aware attack-stopped alarm and energy/control waits remain unchanged.
 
 **Interrupts:** Kick checks known range and explicit interrupt immunity. When supplied by the client, target cast/channel timestamps reflect delays and updates; confirmed stops, failures and target changes clear obsolete casts. Recommendations are suppressed in the final `0.15s`. Classic Era targets without readable cast APIs retain a bounded combat-event fallback. Unknown immunity is not treated as confirmed immunity, and immunity to Kick does not automatically exclude a class-owned Gouge/control fallback; this is not a guarantee that control will land.
 
@@ -207,7 +213,7 @@ Sinister Strike and learned Hemorrhage use fixed slots `1` and `2`, including wh
 
 **Example — ordinary pull, starting outside Stealth:** select a hostile target, move into melee range and press BASE once to start auto-attacks. Follow the supported SS/Hemorrhage and finisher suggestions; wait when the HUD asks for energy. If Gouge creates a control window, let it finish. Resume through the next offensive action, or press BASE once if the large restart notice appears. Movement and targeting remain manual. If Stealth has already been applied, BASE will not break it: use an appropriate opener instead of assuming the same one-press pull path.
 
-The new `1.29.6` behavior has automated regression coverage, but its in-game smoke test is still pending. The prior `1.29.5` smoke test does not validate these additions. No measured DPS/TTK improvement is claimed.
+The new `1.29.7` behavior has automated regression coverage, but its in-game smoke test is still pending. The prior `1.29.5` smoke test does not validate these additions. No measured DPS/TTK improvement is claimed.
 
 While `UnitCastingInfo` or `UnitChannelInfo` reports an active player action, the Advisor displays `LET IT FINISH`, clears the Action Panel highlight and emits black/no-action through Diagnostic Pixel. Rotation evaluation resumes only after the real cast/channel ends or is interrupted, so haste, pushback and non-instant offensive spells do not produce an early next suggestion.
 
@@ -257,7 +263,7 @@ For Warrior, preventive `UNFAVORABLE FIGHT` and controlled two-target escape gui
 
 ### Coherent standalone windows
 
-Options separates general appearance/behavior, combat data and learning, and Fixed Action Panel bindings. Only Warrior characters see the dedicated `Warrior - Combat policy` section, which groups `Smart pre-pull Rend`, `Situational Sunder` and the `Heroic Strike rage threshold` slider. Other classes do not display this section or reserve its space. Moving these controls does not change their behavior, defaults or saved settings; utility buttons and explanatory footer remain separate.
+Options separates general appearance/behavior, combat data and learning, and Fixed Action Panel bindings. Only Warrior characters see `Warrior - Combat policy`, grouping `Smart pre-pull Rend`, `Situational Sunder` and the `Heroic Strike rage threshold` slider. Rogue characters see a separate Rogue-only `Rogue - Stealth openers` section for Pick Pocket. Other classes show neither section nor reserve its space. Utility buttons sit below the visible class section and remain separate from the explanatory footer; hidden class settings are preserved.
 
 HCOneButton uses a small internal window manager for its standalone configuration/report dialogs. Options, the Adaptive Tuning inspector, Fixed Action Panel binding configuration and the feedback/report window never stack on top of one another. A child window opened from Options replaces it temporarily and returns to Options when closed through its Back button, standard frame X or Escape. If combat starts, configuration children close without trying to reopen Options during lockdown.
 
@@ -802,6 +808,7 @@ HCOneButton/
 │   ├── Bindings.lua
 │   ├── Consumables.lua
 │   ├── TuningTelemetry.lua
+│   ├── TuningParticipation.lua
 │   ├── AdaptiveTuner.lua
 │   ├── CombatLog.lua
 │   ├── Feedback.lua
@@ -1044,6 +1051,8 @@ Retention uses the configured limit independently for the active character and a
 
 Fight schema `13` embeds adaptive telemetry contract `1`. The contract is shared by Warrior, Paladin, Hunter, Rogue, Priest, Mage, Warlock, Druid and Shaman: it stores anonymous build/policy signatures and combat context, selected and alternative candidates, input/action correlation, reaction/adherence, resource buckets and explicit eligibility filters. Learner revision `4` retains bounded `choiceEvidence` and displayed-choice `impact` fields, with stable role attribution and separate bounded pending executions. Raw target/cast identities and pending/recent snapshots are erased before finalization. Confirmed co-eligible player alternatives can qualify independently of the old adherence-percentage gate; all fight safety/context exclusions remain.
 
+**New-fight sample quality:** every class records bounded `tuning.sampleQuality` participation evidence. Unknown/nonpositive target levels are not treated as easy enemies. Level, classification and maximum health are recovered only from an opponent actually observed in combat (including the player's pet), via the current target, its target or the pet's target. An unrelated selection cannot supply difficulty. Unresolved opponents are excluded from comparative DPS/adaptive learning. A first meaningful participation event later than both `4 seconds` and `25%` of the fight is also excluded as `late_participation`; outgoing/incoming damage or misses, hostile control/cast starts and effective healing count, while utility casts and pure overheal do not. This checks initial participation, not every idle interval; energy/control waits after engagement are not treated as late entry. Exclusion reasons are saved. Raw fight history, damage, duration and safety eligibility remain available; past fights and learned contexts are not retroactively rewritten or reset. Temporary opponent identity is removed during finalization.
+
 ### Diagnostics and fail-safe
 
 | Command | Description |
@@ -1156,7 +1165,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.6` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.7` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1164,18 +1173,18 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-The `1.29.6` source baseline currently passes:
+The `1.29.7` source baseline currently passes:
 
-- **48/48 Lua chunks** pass syntax parsing in the current validation environment;
-- **31/31 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **49/49 TOC references** resolved (`48 Lua + Bindings.xml`);
+- **49/49 Lua chunks** pass syntax parsing in the current validation environment;
+- **32/32 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **50/50 TOC references** resolved (`49 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
 - malformed adaptive action collections fail closed in the inspector, status command and offensive-bias lookup without crashing;
-- Options layout tests instantiate all nine classes and verify Warrior-only grouping, setting persistence/reload, slider-label spacing and CTA/footer separation; inspector tests verify the visible baseline legend and its reserved space;
+- Options layout tests instantiate all nine classes and verify Warrior/Rogue-only grouping, setting persistence/reload/reset, deferred secure updates, slider-label spacing and CTA/footer separation; inspector tests verify the visible baseline legend and its reserved space;
 - fresh-install binding-path verification: auto-bind defaults to enabled and is applied during `PLAYER_LOGIN`;
 - all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants;
 - Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, localized learned-spell range overrides incomplete rank-1 metadata, explicit ranged BASE contracts remain protected, and friendly/melee actions are excluded from ranged warnings;
@@ -1193,7 +1202,8 @@ The `1.29.6` source baseline currently passes:
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
 - 81 target-cast checks cover live casts/channels, Classic shifted API signatures, delay/expiry, stop versus stale API data, old same-spell stop events, target changes, bounded combat-event fallback and shared interrupt/control contracts across all nine classes;
-- 151 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, safe Stealth-only macros, low skill/coating advice, API failures, caching and existing leveling decisions; 85 Advisor checks cover the gear badge, preserved action text, passive opener hints and restart display/audio;
+- 182 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 97 Advisor checks cover the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
+- 113 participation checks cover all nine classes, observed-opponent recovery, unknown/API-failed levels, elite classification, pet/healing/control participation, late-tag boundaries, runtime-identity cleanup and the full logger lifecycle. Excluded fights remain in history and older records are untouched;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - Warrior escape-Rage coverage verifies low-Rage Hamstring priority, excess-Rage spending, proc/core/queued-strike ordering, controlled two-target spending and strict panic preemption at low HP or 3+ enemies;
 - Warrior multi-pull coverage verifies defensive-debuff refresh boundaries, healthy x2 return to the core DPS scorer, low-reserve escape preservation and stance/equipment-aware Retaliation and interrupt selection;
@@ -1203,9 +1213,11 @@ The `1.29.6` source baseline currently passes:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). In-game validation of `1.29.6` is pending; the maintainer explicitly authorized an ordinary Release with this limitation stated. Two review/refinement passes and the retained live checklist are recorded in `docs/ROGUE_1296_REVIEW.md`; historical reviews remain in `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). In-game validation of `1.29.7` is pending; the maintainer explicitly requested ordinary Release publication with this limitation stated. Two review/refinement passes and the retained live checklist are recorded in `docs/ROGUE_FOLLOWUP_REVIEW.md`; earlier reviews remain in `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
 
 ---
+
+Curated public notes are in `docs/releases/1.29.7.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 
