@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.7`
+- **Current version:** `1.29.8`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.7` includes the Rogue HUD/Pick Pocket and all-class tuning-quality changes below. In-game smoke testing of these changes is still pending; publication as an ordinary Release was explicitly requested with that limitation disclosed.
+Version `1.29.8` adds optional Bag Quick Delete for standard and ElvUI bags, available to every class. In-game smoke testing remains pending; publication was requested and this limitation is disclosed.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -19,6 +19,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ## README contents
 
 - [What HCOneButton does](#what-hconebutton-does)
+- [Bag Quick Delete](#bag-quick-delete)
 - [DPS and aggro meter](#dps-and-aggro-meter)
 - [Local Adaptive Tuning](#local-adaptive-tuning)
 - [Pre-pull Safety Advisor and Recovery Gate](#pre-pull-safety-advisor-and-recovery-gate)
@@ -37,11 +38,26 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.7` adds **optional Pick Pocket openers, consistent Rogue input hints and more reliable learning samples for all nine classes**. Enable Pick Pocket from the Rogue-only Options section to attempt it before Ambush, Garrote or Cheap Shot. Residual BASE-spam prompts are replaced with appropriate one-press or passive guidance. New tuning samples no longer confuse unknown enemies or late group participation with ordinary low-DPS fights.
+Version `1.29.8` adds **Bag Quick Delete**: enable the optional setting, then hold **Ctrl + Alt** and right-click a bag item outside combat. Gray stacks are removed immediately; white and higher-quality stacks require confirmation. Standard WoW bags and ElvUI bags are integration targets, with **no ElvUI dependency**. The option is OFF by default.
 
-A real Gouge control window pauses the next recommendation. If attacks remain stopped and no ability is available, a prominent amber **PRESS BUTTON4** notice (your actual BASE binding) asks for one press, accompanied by a distinct sound when **Alert sounds** is enabled. You do not need to interpret the diagnostic pixel. Stealth openings remain a separate path: BASE does not deliberately break Stealth.
+**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, existing class rotations, Rogue Pick Pocket, DPS/aggro HUD, action slots and Pixel V3 encoding are unchanged. Protected combat actions still require player input; the diagnostic pixel remains passive. Automated checks pass; **in-game validation of `1.29.8` is pending**.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Pick Pocket is OFF by default and persists account-wide when enabled. Learner revision `4`, adaptive schema `2`, the grouped tuning inspector, DPS/aggro HUD, existing slots and Pixel V3 encoding remain unchanged. All protected actions require player input; the diagnostic pixel is for passive inspection only. Automated checks pass; **in-game validation of `1.29.7` remains pending**. The maintainer explicitly requested ordinary Release publication through the existing GitHub → CurseForge pipeline.
+## Bag Quick Delete
+
+Enable **Quick delete bag items** under **Appearance and behavior** in `/hcob options`. The account-wide `HCOB_DB.bagQuickDelete` preference is **OFF by default**, persists across reload/logout and returns to OFF with **Reset defaults**. It appears for all nine classes.
+
+Outside combat, hold **Ctrl + Alt**, without Shift, and hover a supported bag item. A red **DEL** overlay identifies the armed shortcut. Right-click once:
+
+- **Gray / poor:** destroy the selected **entire stack** immediately, without an extra addon confirmation.
+- **White / common and higher:** confirm the displayed item and quantity before pickup/deletion. Cancel or Escape leaves it untouched. Mandatory native client dialogs and restrictions are not bypassed.
+
+Normal right-click retains use/equip behavior. Left/middle and extra mouse buttons pass through unchanged. Standard WoW bags and optional ElvUI bags are supported integration targets; other bag replacements are not guaranteed compatible, and unrecognized widgets are not intercepted. No separate bag window, external program or automatic cleanup is required.
+
+Only the backpack and four equipped bags are eligible, not bank/equipped slots. Items identified as quest items, Hearthstone, locked items and containers still holding loot are protected. Missing metadata, an occupied cursor or active spell targeting blocks the shortcut. Combat, death, logout, option OFF and inventory changes cancel pending addon confirmations. Bag, slot, hyperlink, identity and count are rechecked; a stale confirmation cannot follow an item or delete its replacement.
+
+**Destruction is not selling, and the addon cannot undo it.** A stack of eight gray items is removed in full. Useful non-quest materials are not automatically protected. No inventory event or timer deletes anything, and there is no bulk deletion or automatic retry. If the client blocks the action after pickup, return the item from the cursor to your bag; HCOB does not clear it automatically. Unavailable mouse integration disables this convenience for the session, leaving original click handlers intact.
+
+The implementation has simulated standard/ElvUI regression coverage, but **live validation on both bag interfaces is pending**. See `docs/BAG_QUICK_DELETE_REVIEW.md` in the repository for the review record and disposable-item smoke checklist.
 
 ## Local Adaptive Tuning
 
@@ -213,7 +229,7 @@ Sinister Strike and learned Hemorrhage use fixed slots `1` and `2`, including wh
 
 **Example — ordinary pull, starting outside Stealth:** select a hostile target, move into melee range and press BASE once to start auto-attacks. Follow the supported SS/Hemorrhage and finisher suggestions; wait when the HUD asks for energy. If Gouge creates a control window, let it finish. Resume through the next offensive action, or press BASE once if the large restart notice appears. Movement and targeting remain manual. If Stealth has already been applied, BASE will not break it: use an appropriate opener instead of assuming the same one-press pull path.
 
-The new `1.29.7` behavior has automated regression coverage, but its in-game smoke test is still pending. The prior `1.29.5` smoke test does not validate these additions. No measured DPS/TTK improvement is claimed.
+The Rogue `1.29.7` behavior has automated regression coverage, but its in-game smoke test is still pending. The prior `1.29.5` smoke test does not validate these additions. No measured DPS/TTK improvement is claimed.
 
 While `UnitCastingInfo` or `UnitChannelInfo` reports an active player action, the Advisor displays `LET IT FINISH`, clears the Action Panel highlight and emits black/no-action through Diagnostic Pixel. Rotation evaluation resumes only after the real cast/channel ends or is interrupted, so haste, pushback and non-instant offensive spells do not produce an early next suggestion.
 
@@ -801,12 +817,14 @@ HCOneButton/
 │   ├── ActionPanel.lua
 │   ├── SurvivalStrip.lua
 │   ├── Options.lua
+│   ├── BagQuickDelete.lua
 │   ├── AdaptiveTuning.lua
 │   ├── Feedback.lua
 │   └── DiagnosticPixel.lua
 ├── Systems/
 │   ├── Bindings.lua
 │   ├── Consumables.lua
+│   ├── BagQuickDelete.lua
 │   ├── TuningTelemetry.lua
 │   ├── TuningParticipation.lua
 │   ├── AdaptiveTuner.lua
@@ -1165,7 +1183,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.7` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.8` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1173,13 +1191,14 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-The `1.29.7` source baseline currently passes:
+The `1.29.8` source baseline currently passes:
 
-- **49/49 Lua chunks** pass syntax parsing in the current validation environment;
-- **32/32 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **50/50 TOC references** resolved (`49 Lua + Bindings.xml`);
+- **51/51 Lua chunks** pass syntax parsing in the current validation environment;
+- **33/33 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **52/52 TOC references** resolved (`51 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
+- 163 Bag Quick Delete checks use simulated inventories to cover standard/ElvUI click routing, complete-stack confirmation, stale identity/count rejection, protected items, missing data/APIs, cursor ownership, scale and lifecycle safety; no live inventory is modified;
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
@@ -1213,11 +1232,11 @@ The `1.29.7` source baseline currently passes:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). In-game validation of `1.29.7` is pending; the maintainer explicitly requested ordinary Release publication with this limitation stated. Two review/refinement passes and the retained live checklist are recorded in `docs/ROGUE_FOLLOWUP_REVIEW.md`; earlier reviews remain in `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). In-game validation of `1.29.8` is pending; the maintainer explicitly requested ordinary Release publication with this limitation stated. Two review/refinement passes and the retained live checklist are recorded in `docs/BAG_QUICK_DELETE_REVIEW.md`; the prior follow-up review is in `docs/ROGUE_FOLLOWUP_REVIEW.md`, and earlier reviews remain in `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
 
 ---
 
-Curated public notes are in `docs/releases/1.29.7.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.8.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 

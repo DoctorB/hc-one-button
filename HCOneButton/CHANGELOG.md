@@ -2,7 +2,24 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.7`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.8`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.8 — 2026-09-10
+
+### Added — optional Bag Quick Delete
+
+- Add **Quick delete bag items** in Options for all nine classes: account-wide, persisted and OFF by default. Outside combat, Ctrl+Alt (without Shift) arms a red DEL overlay; right-click requests deletion of the selected entire stack. Reset defaults disables the feature and cancels pending addon confirmation.
+- Gray stacks delete from one deliberate click; white and higher qualities require confirmation naming the item and quantity. Native client restrictions/dialogs are preserved. This destroys rather than sells items, and the addon cannot undo it.
+- Integrate standard WoW bags and optional ElvUI bags without an ElvUI dependency. Original click handlers are not replaced; normal right-click and other mouse buttons retain their existing behavior. Only the backpack/four equipped bags are eligible; banks, equipment and unrecognized bag-addon widgets are excluded.
+- Protect identified quest/quest-bound items, Hearthstone, locked/loot-containing items and incomplete metadata. Reject occupied cursor/spell targeting, combat and death. Recheck item identity, full link, count and bag/slot before deletion; inventory changes invalidate pending confirmation.
+- Cancel on Escape, Cancel, option OFF, combat, death and logout. No bulk action, timer/event-driven deletion, automatic retry or foreign-cursor clearing. Missing mouse integration fails closed for the session. The screen-coordinate overlay follows bag/UI scale without attaching to protected bag frames.
+
+### Compatibility and validation
+
+- Version `1.29.8`, Interface `11509`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. No reset: preserve settings, position, combat history and learned data. Rotations, action slots/bindings and passive Diagnostic Pixel V3 are unchanged.
+- Two review/refinement passes completed; 51/51 Lua chunks parse, 33/33 harnesses pass, 52/52 TOC references resolve and 19/19 offline release-tool tests pass. 163 dedicated checks use simulated inventories; no real items were deleted. Root/package documentation matches; the package contains 56 files.
+- **In-game validation remains pending**, including native deletion/mouse behavior with standard bags and the installed ElvUI version. Publication was requested, with this limitation disclosed in the notes. Do not reuse an earlier release's smoke test.
+- Review/live checklist: `docs/BAG_QUICK_DELETE_REVIEW.md`. Curated CurseForge notes: `docs/releases/1.29.8.md`. Publish with the existing authorized GitHub Release → CurseForge workflow; no workflow or secret changes.
 
 ## 1.29.7 — 2026-09-09
 
