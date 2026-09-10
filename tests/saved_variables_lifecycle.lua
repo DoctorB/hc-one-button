@@ -115,6 +115,13 @@ expect(persistentDB.customValue, "preserve me", "unknown setting preserved")
 expect(persistentDB.actionSlotAutoBind, true, "fresh binding default installed")
 expect(persistentDB.prePullSafety, true, "fresh pre-pull safety default installed")
 expect(persistentDB.roguePickPocket, false, "Pick Pocket is opt-in on existing saved tables")
+expect(persistentDB.bagQuickDelete, false, "bag deletion is opt-in on existing saved tables")
+persistentDB.bagQuickDelete = true
+environment.HCOneButton.Internal.InitializeSavedVariables()
+expect(persistentDB.bagQuickDelete, true, "saved bag deletion opt-in survives initialization")
+persistentDB.bagQuickDelete = "true"
+environment.HCOneButton.Internal.InitializeSavedVariables()
+expect(persistentDB.bagQuickDelete, false, "malformed bag deletion setting repairs to OFF")
 persistentDB.roguePickPocket = true
 environment.HCOneButton.Internal.InitializeSavedVariables()
 expect(persistentDB.roguePickPocket, true, "saved Pick Pocket opt-in survives initialization")

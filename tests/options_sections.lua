@@ -98,6 +98,14 @@ local warriorDB
 for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WARLOCK","DRUID","SHAMAN"}) do
     local env,widgets=runtime(class)
     local panel=env.optionsPanel
+    local quick=find(widgets,"Quick delete bag items")
+    assert(quick and not quick.checked,"all classes must have opt-in bag QoL")
+    quick:SetChecked(true); quick.scripts.OnClick(quick)
+    assert(env.HCOB_DB.bagQuickDelete == true,"bag QoL setting was not persisted")
+    local _, restoredBagWidgets=runtime(class,env.HCOB_DB)
+    assert(find(restoredBagWidgets,"Quick delete bag items").checked,"bag QoL preference lost on reload")
+    local _,quickY,_,quickH=rect(quick)
+    assert(quickY+quickH<=368,"bag QoL overlaps class section")
     assert(panel.width == 700 and panel.height == 760,"Options window grew unexpectedly")
     local rend=find(widgets,"Smart pre-pull Rend")
     local sunder=find(widgets,"Situational Sunder")
@@ -187,10 +195,12 @@ local _,reloadWidgets=runtime("WARRIOR",warriorDB)
 assert(find(reloadWidgets,"Smart pre-pull Rend").checked and find(reloadWidgets,"Situational Sunder").checked
     and find(reloadWidgets,"Heroic Strike rage threshold").value == 52,"Warrior values did not survive reload")
 
-local resetEnv,resetWidgets=runtime("ROGUE",{roguePickPocket=true})
+local resetEnv,resetWidgets=runtime("ROGUE",{roguePickPocket=true,bagQuickDelete=true})
 local reset=find(resetWidgets,"Reset defaults")
 reset.scripts.OnClick(reset)
 assert(resetEnv.HCOB_DB.roguePickPocket == false and not find(resetWidgets,"Pick Pocket with openers").checked,
     "Reset defaults must persist and display Pick Pocket OFF")
 assert(resetEnv.builds == 1,"Reset defaults must remove Pick Pocket from existing secure macros")
+assert(resetEnv.HCOB_DB.bagQuickDelete == false and not find(resetWidgets,"Quick delete bag items").checked,
+    "Reset defaults must disable bag deletion")
 print("Options class sections/layout/persistence regression: PASS")

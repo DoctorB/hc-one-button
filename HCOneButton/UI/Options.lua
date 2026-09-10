@@ -160,12 +160,12 @@ function CreateOptionsPanel()
     local controls = {}
     local function add(control) table.insert(controls, control); return control end
 
-    add(CreateCheckBox(panel, "Show HUD", "Show or hide the complete HC One Button combat HUD.", function() return HCOB_DB.visible end, function(v) HCOB_DB.visible = v; RefreshButtonState() end, 24, -118))
-    add(CreateCheckBox(panel, "Lock position", "Disable button dragging.", function() return HCOB_DB.locked end, function(v) HCOB_DB.locked = v end, 24, -145))
-    add(CreateCheckBox(panel, "Alert sounds", "Play sounds for danger, interrupts and the Rogue's manual attack restart notice. Restart sounds play once per notice, at least 5 seconds apart.", function() return HCOB_DB.soundAlerts end, function(v) HCOB_DB.soundAlerts = v end, 24, -172))
-    add(CreateCheckBox(panel, "Show swing timer", "Show the next auto-attack swing bar.", function() return HCOB_DB.showSwing end, function(v) HCOB_DB.showSwing = v; UpdateDisplay() end, 24, -199))
-    add(CreateCheckBox(panel, "Smart HUD", "Analyze buffs, target, cooldowns and danger. If an API errors, Smart HUD is disabled for the session without stopping the secure button.", function() return HCOB_DB.smartDisplay ~= false end, function(v) HCOB_DB.smartDisplay = v; if v then runtimeSmartDisabled = false end; UpdateDisplay() end, 24, -226))
-    add(CreateCheckBox(panel, "Show Advisor", "Show the right-side panel with the situational spell to cast manually.", function() return HCOB_DB.showAdvisor ~= false end, function(v) HCOB_DB.showAdvisor = v; RefreshButtonState(); UpdateDisplay() end, 24, -253))
+    add(CreateCheckBox(panel, "Show HUD", "Show or hide the complete HC One Button combat HUD.", function() return HCOB_DB.visible end, function(v) HCOB_DB.visible = v; RefreshButtonState() end, 24, -108))
+    add(CreateCheckBox(panel, "Lock position", "Disable button dragging.", function() return HCOB_DB.locked end, function(v) HCOB_DB.locked = v end, 24, -134))
+    add(CreateCheckBox(panel, "Alert sounds", "Play sounds for danger, interrupts and the Rogue's manual attack restart notice. Restart sounds play once per notice, at least 5 seconds apart.", function() return HCOB_DB.soundAlerts end, function(v) HCOB_DB.soundAlerts = v end, 24, -160))
+    add(CreateCheckBox(panel, "Show swing timer", "Show the next auto-attack swing bar.", function() return HCOB_DB.showSwing end, function(v) HCOB_DB.showSwing = v; UpdateDisplay() end, 24, -186))
+    add(CreateCheckBox(panel, "Smart HUD", "Analyze buffs, target, cooldowns and danger. If an API errors, Smart HUD is disabled for the session without stopping the secure button.", function() return HCOB_DB.smartDisplay ~= false end, function(v) HCOB_DB.smartDisplay = v; if v then runtimeSmartDisabled = false end; UpdateDisplay() end, 24, -212))
+    add(CreateCheckBox(panel, "Show Advisor", "Show the right-side panel with the situational spell to cast manually.", function() return HCOB_DB.showAdvisor ~= false end, function(v) HCOB_DB.showAdvisor = v; RefreshButtonState(); UpdateDisplay() end, 24, -238))
     add(CreateCheckBox(panel, "Profession Coach", "Enable the event-driven profession leveling coach. When disabled, its panel stays hidden and profession refresh/scans are suspended.", function()
         local prof = HCOB.Systems and HCOB.Systems.ProfessionCoach
         if prof and prof.IsEnabled then return prof.IsEnabled() end
@@ -173,20 +173,26 @@ function CreateOptionsPanel()
     end, function(v)
         local prof = HCOB.Systems and HCOB.Systems.ProfessionCoach
         if prof and prof.SetEnabled then prof.SetEnabled(v) else HCOB_DB.profCoach = v end
-    end, 24, -280))
+    end, 24, -264))
     add(CreateCheckBox(panel, "Pre-pull safety gate", "Check HP/resources/pet recovery and healing stock on tough targets. Also enables optional Rogue CHECK GEAR advice in the BASE tooltip; weapon/poison advice never blocks PULL READY.", function()
         return HCOB_DB.prePullSafety ~= false
     end, function(v)
         HCOB_DB.prePullSafety = v
         UpdateDisplay()
-    end, 24, -307))
+    end, 24, -290))
     add(CreateCheckBox(panel, "Survival consumables strip", "Show secure click buttons for the best healing potion, Healthstone, mana potion and bandage in your bags.", function()
         return HCOB_DB.showConsumables ~= false
     end, function(v)
         HCOB_DB.showConsumables = v
         if HCOB.UI.SurvivalStrip then HCOB.UI.SurvivalStrip.SyncVisibility() end
         UpdateDisplay()
-    end, 24, -334))
+    end, 24, -316))
+    add(CreateCheckBox(panel, "Quick delete bag items", "OFF by default. Outside combat: hold Ctrl+Alt (without Shift), then right-click an item in standard or ElvUI bags. Deletes the ENTIRE gray stack immediately; white and higher qualities require confirmation. Quest items, Hearthstone, locked/loot-containing items and unreadable data are protected. Native client restrictions still apply. ElvUI is optional.", function()
+        return HCOB_DB.bagQuickDelete == true
+    end, function(v)
+        HCOB_DB.bagQuickDelete = v
+        if HCOB.UI.BagQuickDelete then HCOB.UI.BagQuickDelete.Sync() end
+    end, 24, -342))
     add(CreateCheckBox(panel, "HC danger advisor", "Multi-pull and fight trend: enter CAUTION/DANGER before relying on HP threshold alone.", function() return HCOB_DB.hcDangerAdvisor ~= false end, function(v) HCOB_DB.hcDangerAdvisor = v; UpdateDisplay() end, 350, -82))
     if PLAYER_CLASS == "WARRIOR" then
         -- All class-specific controls live together, including the Rage slider.
@@ -319,6 +325,8 @@ function CreateOptionsPanel()
         HCOB_DB.actionSlotKeys = nil
         HCOB_DB.prePullSafety = true
         HCOB_DB.roguePickPocket = false
+        HCOB_DB.bagQuickDelete = false
+        if HCOB.UI.BagQuickDelete then HCOB.UI.BagQuickDelete.Sync() end
         HCOB_DB.showConsumables = true
         if HCOB.Systems and HCOB.Systems.AdaptiveTuner and HCOB.Systems.AdaptiveTuner.SetEnabled then HCOB.Systems.AdaptiveTuner.SetEnabled(true) end
         runtimeSmartDisabled = false

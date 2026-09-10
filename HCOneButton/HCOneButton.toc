@@ -18,6 +18,7 @@ Core/Auras.lua
 Core/Macros.lua
 
 Systems/Consumables.lua
+Systems/BagQuickDelete.lua
 
 Advisor/Dynamics.lua
 Advisor/Threat.lua
@@ -49,6 +50,7 @@ UI/WindowManager.lua
 UI/ActionPanel.lua
 UI/SurvivalStrip.lua
 UI/Options.lua
+UI/BagQuickDelete.lua
 UI/AdaptiveTuning.lua
 UI/Feedback.lua
 UI/DiagnosticPixel.lua

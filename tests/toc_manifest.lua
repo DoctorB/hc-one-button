@@ -36,6 +36,8 @@ assert(entries[2] == "Data/Spells.lua", "Data/Spells.lua must load immediately a
 assert(positions["Core/State.lua"] < positions["Core/Utils.lua"], "State must load before Utils")
 assert(positions["Core/Range.lua"] < positions["Advisor/Engine.lua"], "range primitives must load before Advisor Engine")
 assert(positions["Systems/Consumables.lua"] < positions["Advisor/Readiness.lua"], "consumable inventory must load before readiness")
+assert(positions["Systems/BagQuickDelete.lua"] < positions["UI/BagQuickDelete.lua"], "bag safety logic must load before mouse integration")
+assert(positions["UI/BagQuickDelete.lua"] < positions["Core/Events.lua"], "bag UI must be available before login/options callbacks")
 assert(positions["Advisor/Readiness.lua"] < positions["Advisor/Engine.lua"], "readiness must load before Advisor Engine")
 assert(positions["Advisor/Engine.lua"] < positions["Classes/Warrior.lua"], "Advisor Engine must load before class modules")
 assert(positions["Classes/Druid.lua"] < positions["UI/CoreHUD.lua"], "all class modules must load before UI")
