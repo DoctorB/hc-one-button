@@ -180,7 +180,7 @@ function CreateOptionsPanel()
         HCOB_DB.prePullSafety = v
         UpdateDisplay()
     end, 24, -290))
-    add(CreateCheckBox(panel, "Survival consumables strip", "Show secure click buttons for the best healing potion, Healthstone, mana potion and bandage in your bags.", function()
+    add(CreateCheckBox(panel, "Survival consumables strip", "Show secure manual-click buttons for healing potion, Healthstone, mana potion, bandage, plain food and water. Food/water use is out-of-combat only; active recovery is shown without wasting another item.", function()
         return HCOB_DB.showConsumables ~= false
     end, function(v)
         HCOB_DB.showConsumables = v

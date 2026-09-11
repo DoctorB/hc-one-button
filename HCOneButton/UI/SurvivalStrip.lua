@@ -7,6 +7,7 @@ setfenv(1, E)
 
 local Strip = HCOB.UI.SurvivalStrip
 local Consumables = HCOB.Systems.Consumables
+local Recovery = HCOB.Systems.Recovery
 
 Strip.buttons = Strip.buttons or {}
 Strip.roleToButton = Strip.roleToButton or {}
@@ -34,6 +35,20 @@ function Strip.ApplyScale(scale)
     return true
 end
 
+-- Recovery clicks are deliberately left-button release only. The native secure
+-- macro still enforces nocombat even if attributes were frozen while ready.
+function Strip.PrepareRecoveryClick(button, isClick)
+    if InCombatLockdown and InCombatLockdown() then return end
+    local item = {id=button.assignedItemID,role=button.role}
+    local allowed = Recovery.CanUse(button.role,item)
+    local now = GetTime()
+    if isClick and button.lastRecoveryClick and now - button.lastRecoveryClick < 0.8 then allowed = false end
+    button:SetAttribute("type1","macro")
+    button:SetAttribute("item1",nil)
+    button:SetAttribute("macrotext1",allowed and ("/stopmacro [combat][mounted][flying][channeling]\n/use item:" .. item.id) or "/stopmacro")
+    if isClick and allowed then button.lastRecoveryClick = now end
+end
+
 function Strip.Configure()
     if InCombatLockdown and InCombatLockdown() then
         Strip.pendingConfigure = true
@@ -44,8 +59,8 @@ function Strip.Configure()
     for _, role in ipairs(Consumables.roleOrder) do
         local button = Strip.roleToButton[role]
         local item = Consumables.GetRole(role)
-        if button and item then
-            if item.available then
+        if button then
+            if item and item.available then
                 button:SetAttribute("type1", "item")
                 button:SetAttribute("item1", "item:" .. tostring(item.id))
                 button:SetAttribute("macrotext1", nil)
@@ -56,9 +71,10 @@ function Strip.Configure()
                 button:SetAttribute("item1", nil)
                 button.assignedItemID = nil
             end
-            button.displayItemID = item.id
-            button.itemName = item.name
-            button.icon:SetTexture(item.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            button.displayItemID = item and item.id
+            button.itemName = item and item.name
+            button.icon:SetTexture(item and item.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            if Recovery and Recovery.IsRole(role) then Strip.PrepareRecoveryClick(button,false) end
         end
     end
     Strip.pendingConfigure = false
@@ -83,6 +99,7 @@ function Strip.Highlight(role)
 end
 
 function Strip.UpdateStates()
+    local rest = Recovery and Recovery.State()
     local healingStock = false
     local healingCooldownReady = false
     local recommendedUsable = false
@@ -96,6 +113,13 @@ function Strip.UpdateStates()
             local ok, value = pcall(IsUsableItem, itemID)
             if ok and value ~= nil then usable = value == true or value == 1 end
         end
+        local recoveryLabel
+        if Recovery and Recovery.IsRole(button.role) then
+            local reason
+            usable, reason = Recovery.CanUse(button.role,{id=itemID,role=button.role},rest)
+            local labels = {EATING="EAT",DRINKING="DRNK",FULL="FULL",COMBAT="WAIT",["N/A"]="--"}
+            recoveryLabel = not usable and labels[reason] or nil
+        end
         if button.role == "healthstone" or button.role == "healingPotion" or button.role == "bandage" then
             healingStock = healingStock or count > 0
             healingCooldownReady = healingCooldownReady or (count > 0 and enabled and remaining <= 0.05)
@@ -103,7 +127,7 @@ function Strip.UpdateStates()
         if button.recommended and usable then recommendedUsable = true end
 
         button.countText:SetText(count > 0 and tostring(count) or "0")
-        button.cdText:SetText(CooldownText(remaining))
+        button.cdText:SetText(recoveryLabel or CooldownText(remaining))
         if button.cooldown then
             if enabled and startTime > 0 and duration > 0 and remaining > 0.05 then
                 button.cooldown:SetCooldown(startTime, duration)
@@ -140,6 +164,9 @@ function Strip.UpdateStates()
         if Strip.pendingConfigure then
             Strip.status:SetText("UPDATE AFTER COMBAT")
             Strip.status:SetTextColor(1, 0.70, 0.20)
+        elseif rest and rest.hold then
+            Strip.status:SetText(rest.text)
+            Strip.status:SetTextColor(0.40, 0.85, 1)
         elseif Strip.recommendedRole and recommendedUsable then
             Strip.status:SetText("USE HIGHLIGHT")
             Strip.status:SetTextColor(1, 0.78, 0.18)
@@ -179,13 +206,20 @@ local function ShowTooltip(button)
     GameTooltip:AddLine("Quantity: " .. tostring(count), count > 0 and 0.45 or 1, count > 0 and 1 or 0.30, count > 0 and 0.45 or 0.25)
     if button.assignedItemID then
         local _, _, _, remaining = Consumables.GetRoleCooldown(button.role, button.assignedItemID)
-        if remaining > 0.05 then
+        if Recovery and Recovery.IsRole(button.role) then
+            local _, reason = Recovery.CanUse(button.role,{id=button.assignedItemID,role=button.role})
+            GameTooltip:AddLine(reason, 0.55, 0.85, 1, true)
+            GameTooltip:AddLine("Manual left-click; never used in combat. Active recovery and full resources prevent waste. Plain food/water only; buff food and raw materials are not selected.", 0.72, 0.86, 1, true)
+        elseif remaining > 0.05 then
             GameTooltip:AddLine("Cooldown: " .. CooldownText(remaining), 1, 0.72, 0.25)
         else
             GameTooltip:AddLine("Click to use", 0.45, 1, 0.45)
         end
     else
-        GameTooltip:AddLine("None in bags - restock before a risky pull", 1, 0.35, 0.25, true)
+        local reason = button.role == "drink" and Recovery and not Recovery.UsesMana() and "This class does not use mana"
+            or (Recovery and Recovery.IsRole(button.role) and "No supported, level-appropriate plain food/water in bags (or item data is still loading)")
+            or "None in bags - restock before a risky pull"
+        GameTooltip:AddLine(reason, 1, 0.35, 0.25, true)
     end
     if Strip.pendingConfigure then
         GameTooltip:AddLine("Bag changed in combat; secure assignment updates afterward.", 1, 0.72, 0.25, true)
@@ -221,11 +255,19 @@ function Strip.CreateFrames()
     for index, role in ipairs(Consumables.roleOrder) do
         local button = CreateFrame("Button", "HCOneButtonSurvival" .. index, UIParent, "SecureActionButtonTemplate")
         button:SetSize(34, 34)
-        button:SetPoint("TOPLEFT", Strip.frame, "TOPLEFT", 92 + (index - 1) * 68, -7)
+        local spacing = math.min(68, (width - 92 - 34 - 10) / math.max(1,#Consumables.roleOrder-1))
+        button:SetPoint("TOPLEFT", Strip.frame, "TOPLEFT", 92 + (index - 1) * spacing, -7)
         button:SetFrameStrata("HIGH")
         button:RegisterForClicks("AnyDown", "AnyUp")
         button:SetAttribute("useOnKeyDown", hcobUseKeyDown)
         button.role = role
+        if Recovery and Recovery.IsRole(role) then
+            button:RegisterForClicks("LeftButtonUp")
+            button:SetAttribute("useOnKeyDown",false)
+            button:SetScript("PreClick",function(self,mouse,down)
+                if mouse == "LeftButton" and not down then Strip.PrepareRecoveryClick(self,true) end
+            end)
+        end
 
         button.bg = button:CreateTexture(nil, "BACKGROUND")
         button.bg:SetAllPoints()
@@ -277,11 +319,11 @@ end
 Strip.CreateFrames()
 
 local eventFrame = CreateFrame("Frame")
-for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_LEVEL_UP", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "UNIT_AURA", "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "ACTIONBAR_UPDATE_COOLDOWN"}) do
+for _, event in ipairs({"PLAYER_LOGIN", "PLAYER_LEVEL_UP", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "UNIT_AURA", "UNIT_HEALTH", "UNIT_POWER_UPDATE", "UNIT_DISPLAYPOWER", "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "PLAYER_MOUNT_DISPLAY_CHANGED", "UPDATE_SHAPESHIFT_FORM", "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "ACTIONBAR_UPDATE_COOLDOWN"}) do
     pcall(eventFrame.RegisterEvent, eventFrame, event)
 end
 eventFrame:SetScript("OnEvent", function(_, event, unit)
-    if event == "UNIT_AURA" and unit ~= "player" then return end
+    if event:find("^UNIT_") and unit ~= "player" then return end
     if event == "PLAYER_REGEN_DISABLED" then
         Consumables.RefreshCountsOnly()
         Strip.UpdateStates()
@@ -293,9 +335,9 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
             Consumables.RefreshCountsOnly()
         end
         Strip.UpdateStates()
-    elseif event == "BAG_UPDATE_COOLDOWN" then
-        Strip.UpdateStates()
-    else
+    elseif event == "PLAYER_LOGIN" or event == "PLAYER_LEVEL_UP" or event == "BAG_UPDATE_DELAYED" or event == "GET_ITEM_INFO_RECEIVED" then
         Strip.Configure()
+    else
+        Strip.UpdateStates()
     end
 end)

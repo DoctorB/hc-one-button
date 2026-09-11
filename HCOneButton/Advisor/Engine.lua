@@ -357,6 +357,15 @@ function Recommend()
             (hold.name or "Current action") .. " is in progress; wait before resuming the rotation", "caution"
     end
     local enemies = CountActiveEnemies()
+    local recovery = HCOB.Systems and HCOB.Systems.Recovery
+    if not inCombat and recovery then
+        local rest = recovery.State()
+        if rest.hold then
+            HCOB.Advisor.Engine.lastPrePullReadiness = nil
+            return nil, rest.text or "RECOVERY ACTIVE", "LET IT FINISH",
+                "Recovering health/mana; move when you want to resume. Starting the next pull remains your choice.", "caution"
+        end
+    end
     local playerLevel = PlayerLevel()
     local targetLevel = hostile and SafeUnitLevel("target", playerLevel) or playerLevel
     local classification = hostile and SafeUnitClassification("target", "normal") or "normal"

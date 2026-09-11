@@ -62,7 +62,7 @@ C.catalog = {
 }
 
 local function ItemCount(itemID)
-    if not GetItemCount then return 0 end
+    if not itemID or not GetItemCount then return 0 end
     local ok, count = pcall(GetItemCount, itemID, false, false)
     return ok and math.max(0, tonumber(count) or 0) or 0
 end
@@ -118,6 +118,8 @@ function C.RequestItemData()
 end
 
 function C.FindBest(role)
+    local recovery = HCOB.Systems.Recovery
+    if recovery and recovery.IsRole(role) then return recovery.FindBest(role) end
     local level = PlayerItemLevel()
     for _, entry in ipairs(C.catalog[role] or {}) do
         local count = ItemCount(entry.id)
@@ -130,6 +132,8 @@ function C.FindBest(role)
 end
 
 function C.FindExpected(role)
+    local recovery = HCOB.Systems.Recovery
+    if recovery and recovery.IsRole(role) then return recovery.Expected(role) end
     local level = PlayerItemLevel()
     local list = C.catalog[role] or {}
     for _, entry in ipairs(list) do
@@ -241,6 +245,8 @@ end
 
 function C.IsImmediatelyUsable(item)
     if not item or not item.available or (tonumber(item.count) or 0) <= 0 then return false end
+    local recovery = HCOB.Systems.Recovery
+    if recovery and recovery.IsRole(item.role) then return recovery.CanUse(item.role,item) end
     local _, _, enabled, remaining = C.GetRoleCooldown(item.role, item.id)
     if not enabled or remaining > 0.05 then return false end
     if IsUsableItem then
@@ -293,6 +299,13 @@ end
 
 function C.RecommendForState(hp, inCombat)
     hp = tonumber(hp) or 100
+    local recovery = HCOB.Systems.Recovery
+    if not inCombat and recovery then
+        local state = recovery.State()
+        local role = recovery.Recommend(state)
+        if role then return role end
+        if state.food or state.drink or state.blocked then return nil end
+    end
     local threshold = inCombat and ((HCOB_DB and tonumber(HCOB_DB.dangerHP)) or 35) or 85
     if hp <= threshold then
         return C.SelectHealingRole(inCombat)

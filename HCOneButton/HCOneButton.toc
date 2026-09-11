@@ -18,6 +18,7 @@ Core/Auras.lua
 Core/Macros.lua
 
 Systems/Consumables.lua
+Systems/Recovery.lua
 Systems/BagQuickDelete.lua
 
 Advisor/Dynamics.lua
