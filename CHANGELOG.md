@@ -2,7 +2,24 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.8`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.9`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.9 — 2026-09-11
+
+### Added — between-pull food and water recovery
+
+- Append FOOD and DRINK to the existing Survival strip without increasing its frame size or adding a panel. Reuse the persisted strip visibility/scale/position and retain all four existing secure button names.
+- Select the highest usable supported plain-food/water tier in carried bags; prefer conjured at equal tier. Cached item requirements allow earlier cooked equivalents. Exclude buff food, raw cooking materials, alcohol and unsupported special refreshments from selection; no external service or tooltip-language parsing.
+- Manual left-button release only, with secure combat/mount/flying/channel guards, live out-of-combat checks and a bounded double-click guard. Do not restart an active same-role recovery or consume for a full resource. Druid form changes remain manual; Warrior/Rogue DRINK is N/A.
+- Show quantities, availability and active EAT/DRNK feedback. During confirmed useful Food/Drink auras, the Advisor displays LET IT FINISH and no spell; release the hold on interruption/full resources. Water can be started while eating if mana is missing, and vice versa.
+- Prefer food before out-of-combat bandages/potions at HP <=85%; suggest water below 60% mana. Preserve combat emergencies, exclude food/water from emergency healing stock, freeze protected assignments in combat and clear missing item actions.
+- Avoid inventory re-selection on aura, health/power, movement and cooldown-only visual updates. No automatic item use, purchase, conjuring, dismount, movement, binding change or external-reader input.
+
+### Compatibility and validation
+
+- Version `1.29.9`, Interface `11509`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. No reset: preserve settings, position, combat history and learned data. Combat rotations, action slots/bindings and passive Diagnostic Pixel V3 encoding are unchanged.
+- Two local review/refinement passes; 52/52 Lua chunks, 34/34 Lua harnesses, 53/53 TOC references, 192 focused recovery checks and 19/19 offline release-tool tests pass. The package contains 57 files, with matching versions and root/package documentation.
+- Review/checklist: `docs/RECOVERY_REVIEW.md`. Curated CurseForge notes: `docs/releases/1.29.9.md`. Publish with the existing authorized GitHub Release → CurseForge workflow; no workflow or secret changes.
 
 ## 1.29.8 — 2026-09-10
 

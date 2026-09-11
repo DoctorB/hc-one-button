@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.8`
+- **Current version:** `1.29.9`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.8` adds optional Bag Quick Delete for standard and ElvUI bags, available to every class. In-game smoke testing remains pending; publication was requested and this limitation is disclosed.
+Version `1.29.9` adds between-pull recovery: FOOD and DRINK buttons select suitable supplies from your bags, while the Advisor gives recovery feedback. Every item use remains a manual click.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -19,6 +19,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ## README contents
 
 - [What HCOneButton does](#what-hconebutton-does)
+- [Between-pull recovery](#between-pull-recovery)
 - [Bag Quick Delete](#bag-quick-delete)
 - [DPS and aggro meter](#dps-and-aggro-meter)
 - [Local Adaptive Tuning](#local-adaptive-tuning)
@@ -38,9 +39,21 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.8` adds **Bag Quick Delete**: enable the optional setting, then hold **Ctrl + Alt** and right-click a bag item outside combat. Gray stacks are removed immediately; white and higher-quality stacks require confirmation. Standard WoW bags and ElvUI bags are integration targets, with **no ElvUI dependency**. The option is OFF by default.
+Version `1.29.9` adds **between-pull recovery** to the Survival strip: FOOD and DRINK select the strongest usable supported supplies, prefer conjured equivalents at equal tier, and show quantities and availability. Click manually to recover; the Advisor waits during useful eating/drinking and resumes when you finish or interrupt recovery.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, existing class rotations, Rogue Pick Pocket, DPS/aggro HUD, action slots and Pixel V3 encoding are unchanged. Protected combat actions still require player input; the diagnostic pixel remains passive. Automated checks pass; **in-game validation of `1.29.8` is pending**.
+**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, combat rotations, Rogue Pick Pocket, Bag Quick Delete, DPS/aggro HUD, action slots and Pixel V3 encoding are unchanged. Protected actions still require player input; the diagnostic pixel remains passive.
+
+## Between-pull recovery
+
+FOOD and DRINK extend the existing Survival consumables strip without adding another panel. Use the existing **Survival consumables strip** option to show/hide all six buttons; the original four button names, HUD anchor/scale and saved settings are retained.
+
+Selection chooses the highest usable tier of supported plain Classic food or water from your bags, preferring conjured items at equal tier. Common unbuffed cooked food is included, using the live item requirement rather than assuming it unlocks at the vendor tier's level. Buff food, raw cooking materials, alcohol, battleground-only and unrecognized special refreshments are excluded from automatic selection; they remain usable manually from your bags. Missing item metadata waits for the cache instead of guessing.
+
+**Left-click FOOD or DRINK once outside combat.** Quantity, cooldown/usability and EAT / DRNK labels reflect the selected item. Food can be followed by water with a second manual click when both resources need recovery. The same active aura, full corresponding resource and rapid repeated clicks suppress another use. Movement, mounting, death, casting/channeling and Druid forms also prevent recovery clicks; there is no automatic dismount or form change. DRINK is N/A for Warriors and Rogues.
+
+Food is highlighted at HP <=85% before out-of-combat bandages/potions; water can be highlighted below 60% mana. Actual Food/Drink auras produce **EATING / DRINKING / EAT + DRINK — LET IT FINISH** in the Advisor while recovery is useful. Existing HP/resource bars show progress. The hold clears when you interrupt recovery or the corresponding resources are full, even if the aura has not expired. Well Fed is not mistaken for eating. No click alone is treated as proof of recovery, and no spell/action is added to the passive diagnostic pixel.
+
+Food/water are never used in combat and do not count as emergency healing stock. Combat freezes secure assignments and updates counts; bag changes take effect afterward. All item use remains player-operated, independent of ElvUI. The review record and regression checklist are in `docs/RECOVERY_REVIEW.md` in the repository.
 
 ## Bag Quick Delete
 
@@ -57,7 +70,7 @@ Only the backpack and four equipped bags are eligible, not bank/equipped slots. 
 
 **Destruction is not selling, and the addon cannot undo it.** A stack of eight gray items is removed in full. Useful non-quest materials are not automatically protected. No inventory event or timer deletes anything, and there is no bulk deletion or automatic retry. If the client blocks the action after pickup, return the item from the cursor to your bag; HCOB does not clear it automatically. Unavailable mouse integration disables this convenience for the session, leaving original click handlers intact.
 
-The implementation has simulated standard/ElvUI regression coverage, but **live validation on both bag interfaces is pending**. See `docs/BAG_QUICK_DELETE_REVIEW.md` in the repository for the review record and disposable-item smoke checklist.
+The implementation has simulated standard/ElvUI regression coverage. See `docs/BAG_QUICK_DELETE_REVIEW.md` in the repository for the review record and disposable-item regression checklist.
 
 ## Local Adaptive Tuning
 
@@ -110,7 +123,7 @@ When Execute is learned and the target is between `21%` and `30%` HP, queued Rag
 
 The `1.28.4` combat-only aura policy remains part of the baseline. It covers Battle Shout, Blessing of Might and Paladin seals, Inner Fire/Fortitude/Power Word: Shield/Renew, Mage armor/Arcane Intellect/Ice Barrier/Mana Shield, Demon Armor/Demon Skin, Mark of the Wild, Lightning Shield and weapon imbues, Hunter aspects/Mend Pet, and Slice and Dice. A shared stabilization layer absorbs short Classic aura-API races and the stale near-expiry frame that can follow a successful refresh, preventing duplicate requests without hiding a genuinely removed aura.
 
-The **Survival consumables strip** provides four secure click buttons for the best usable healing potion, Healthstone, mana potion and bandage currently in the bags. It shows quantities, cooldown sweeps/text, availability and restock state. The Advisor highlights the appropriate healing tool during low-health recovery and combat danger, or a mana potion at critically low mana.
+The **Survival consumables strip** provides six secure click buttons for the best usable healing potion, Healthstone, mana potion, bandage, supported plain food and water currently in the bags. It shows quantities, cooldown sweeps/text, availability and restock state. Food/water support recovery between pulls; the original emergency-tool priorities remain available for combat danger.
 
 Protected item assignments are selected only outside combat and remain frozen throughout combat lockdown. Bag counts, cooldowns and highlights may continue updating visually, but a newly acquired/lower-tier item is not assigned until combat ends. The strip never consumes an item automatically and adds no key binding; every use requires the player's click.
 
@@ -229,7 +242,7 @@ Sinister Strike and learned Hemorrhage use fixed slots `1` and `2`, including wh
 
 **Example — ordinary pull, starting outside Stealth:** select a hostile target, move into melee range and press BASE once to start auto-attacks. Follow the supported SS/Hemorrhage and finisher suggestions; wait when the HUD asks for energy. If Gouge creates a control window, let it finish. Resume through the next offensive action, or press BASE once if the large restart notice appears. Movement and targeting remain manual. If Stealth has already been applied, BASE will not break it: use an appropriate opener instead of assuming the same one-press pull path.
 
-The Rogue `1.29.7` behavior has automated regression coverage, but its in-game smoke test is still pending. The prior `1.29.5` smoke test does not validate these additions. No measured DPS/TTK improvement is claimed.
+The Rogue behavior has automated regression coverage for leveling decisions, talents, openers and control. No measured DPS/TTK improvement is claimed.
 
 While `UnitCastingInfo` or `UnitChannelInfo` reports an active player action, the Advisor displays `LET IT FINISH`, clears the Action Panel highlight and emits black/no-action through Diagnostic Pixel. Rotation evaluation resumes only after the real cast/channel ends or is interrupted, so haste, pushback and non-instant offensive spells do not produce an early next suggestion.
 
@@ -250,7 +263,7 @@ The gate never blocks input. It changes only the visual recommendation, and can 
 
 ### Survival consumables strip
 
-The strip contains four fixed mouse-click actions:
+The strip contains six manual mouse-click actions, including [between-pull recovery](#between-pull-recovery):
 
 | Slot | Selection policy |
 |---|---|
@@ -258,8 +271,10 @@ The strip contains four fixed mouse-click actions:
 | `STONE` | Strongest available Healthstone, including improved-rank item variants |
 | `MANA` | Strongest mana potion in the bags that the current level can use |
 | `BANDAGE` | Strongest available bandage |
+| `FOOD` | Strongest usable supported plain-food tier; conjured preferred at equal tier |
+| `DRINK` | Strongest usable water tier; conjured preferred at equal tier; N/A for non-mana classes |
 
-Each slot shows its current quantity, cooldown and usability. Empty slots retain a level-appropriate reference icon and show `0`, making missing stock visible before a dangerous pull. The strip prefers a bandage for out-of-combat HP recovery, preserves Healthstone/healing potion priority in combat, and avoids recommending a bandage as an emergency combat action. The `Recently Bandaged` lock drives the bandage's unavailable state and full 60-second visual countdown as well as participating in readiness checks.
+Each slot shows its current quantity, cooldown and usability. Empty slots show `0`: the original four retain level-appropriate reference icons, while FOOD/DRINK use generic recovery icons. Usable food takes priority for out-of-combat HP recovery at 85% or below, with the original bandage/healing-item fallback when food is unavailable and recovery is not already active. Healthstone/healing potion priority in combat is unchanged; neither food/water nor bandages are recommended as emergency combat actions. The `Recently Bandaged` lock drives the bandage's unavailable state and full 60-second visual countdown as well as participating in readiness checks.
 
 The buttons use WoW's protected item-action system. Their selected item ID is refreshed on login, bag/item-data changes, level changes and after combat. If bags change during combat, the old protected assignment remains authoritative until `PLAYER_REGEN_ENABLED`; visual counts and cooldowns can still update safely. HCOneButton never clicks, consumes or binds these items automatically.
 
@@ -824,6 +839,7 @@ HCOneButton/
 ├── Systems/
 │   ├── Bindings.lua
 │   ├── Consumables.lua
+│   ├── Recovery.lua
 │   ├── BagQuickDelete.lua
 │   ├── TuningTelemetry.lua
 │   ├── TuningParticipation.lua
@@ -1183,7 +1199,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.8` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.9` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1191,14 +1207,15 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-The `1.29.8` source baseline currently passes:
+Version `1.29.9` passes the following automated checks:
 
-- **51/51 Lua chunks** pass syntax parsing in the current validation environment;
-- **33/33 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **52/52 TOC references** resolved (`51 Lua + Bindings.xml`);
+- **52/52 Lua chunks** pass syntax parsing in the current validation environment;
+- **34/34 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **53/53 TOC references** resolved (`52 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
 - 163 Bag Quick Delete checks use simulated inventories to cover standard/ElvUI click routing, complete-stack confirmation, stale identity/count rejection, protected items, missing data/APIs, cursor ownership, scale and lifecycle safety; no live inventory is modified;
+- 192 focused recovery checks cover all nine classes, tier/level/conjured selection, secure single-edge use, active/full-resource/no-stock guards, localized auras, simultaneous eating/drinking, emergency precedence, frozen assignments and six-button layout;
 - no duplicate TOC entry;
 - SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
@@ -1232,11 +1249,11 @@ The `1.29.8` source baseline currently passes:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). In-game validation of `1.29.8` is pending; the maintainer explicitly requested ordinary Release publication with this limitation stated. Two review/refinement passes and the retained live checklist are recorded in `docs/BAG_QUICK_DELETE_REVIEW.md`; the prior follow-up review is in `docs/ROGUE_FOLLOWUP_REVIEW.md`, and earlier reviews remain in `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cannot fully reproduce WoW event ordering, secure-frame, binding, audio and UI behavior or prove a DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). Two recovery review/refinement passes and the regression checklist are recorded in `docs/RECOVERY_REVIEW.md`; earlier review records remain in `docs/BAG_QUICK_DELETE_REVIEW.md`, `docs/ROGUE_FOLLOWUP_REVIEW.md`, `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cover simulated APIs and do not establish a measured DPS improvement.
 
 ---
 
-Curated public notes are in `docs/releases/1.29.8.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.9.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 
