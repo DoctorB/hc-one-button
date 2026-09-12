@@ -159,7 +159,9 @@ function UpdateBaseVisual()
     local class = ActiveClassModuleForMacros()
     local id, desc = BaseActionInfo()
     icon:SetTexture(SpellIcon(id))
-    label:SetText(class and class.GetBaseLabel and class:GetBaseLabel() or "BASE SPAM")
+    local wandBase = id == S.SHOOT and IsWandUser and IsWandUser()
+    local wanding = IsWandAutoRepeatActive and IsWandAutoRepeatActive()
+    label:SetText(wandBase and "WAND" or (wanding and "BASE" or (class and class.GetBaseLabel and class:GetBaseLabel() or "BASE SPAM")))
     hint:SetText(desc or "Base action")
     reasonText:SetText("Situational -> Advisor")
     glow:Hide()
@@ -173,7 +175,11 @@ function UpdateBaseVisual()
             and HCOB.Advisor.Engine.IsClassRangedBaseAction(id)
         state = HCOB.Advisor.Engine.RangedActionState(id, forceRanged)
     end
-    if state == "ready" then
+    if wanding and (state == "ready" or state == "unavailable") then state = "active" end
+    if state == "active" then
+        reasonText:SetText("Wand active -> let it run")
+        border:SetVertexColor(0.20, 0.75, 0.95, 1.0)
+    elseif state == "ready" then
         reasonText:SetText("Target in range -> action ready")
         border:SetVertexColor(0.20, 0.95, 0.35, 1.0)
         glow:SetVertexColor(0.20, 1.0, 0.35)
@@ -214,7 +220,9 @@ function PrintPlan()
     local localizedClass = UnitClass("player")
     local specIndex, specName = TalentSpec()
     print("|cff00ff98HCOB:|r " .. (localizedClass or PLAYER_CLASS) .. " L" .. PlayerLevel() .. " - " .. tostring(specName) .. " (tree " .. specIndex .. ")")
-    print(PLAYER_CLASS == "ROGUE" and "|cffffcc00BASE macro (player input):|r" or "|cffffcc00BASE SPAM macro:|r")
+    local baseId = BaseActionInfo()
+    local wandBase = baseId == S.SHOOT and IsWandUser and IsWandUser()
+    print((PLAYER_CLASS == "ROGUE" or wandBase) and "|cffffcc00BASE macro (player input):|r" or "|cffffcc00BASE SPAM macro:|r")
     print(btn:GetAttribute("macrotext1") or "")
     if currentMods and currentMods.desc then
         local d=currentMods.desc

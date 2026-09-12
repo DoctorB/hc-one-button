@@ -274,4 +274,37 @@ expect(notice.shown,false,"disabled Advisor has no restart alarm")
 env.PLAYER_CLASS="WARRIOR"
 env.SetDisplay(nil,"BASE OK","KEEP SPAMMING","","idle")
 expect(env.advisorKey.text,"SPAM BUTTON4","other class BASE contract unchanged")
+-- Wand starts are single inputs; active/wait states are not BASE spam.
+env.S={SHOOT=5019}
+env.IsWandUser=function() return env.PLAYER_CLASS == "PRIEST" or env.PLAYER_CLASS == "MAGE" or env.PLAYER_CLASS == "WARLOCK" end
+env.HasWandEquipped=function() return true end
+local panel=env.HCOneButton.UI.ActionPanel
+local oldHas=panel.Has
+panel.Has=function(id) return id == 5019 or oldHas(id) end
+panel.idToSlot[5019]=3
+for _, class in ipairs({"PRIEST","MAGE","WARLOCK"}) do
+    env.PLAYER_CLASS=class
+    env.SetDisplay(5019,"WAND","CAST MANUALLY","Start once","action")
+    expect(env.advisorKey.text,"CLICK WAND ONCE",class.." clickable wand start is one press")
+    expect(highlight,5019,class.." Shoot is highlighted only for a start")
+    env.SetDisplay(nil,"WAND ACTIVE","LET IT RUN","Already active","idle")
+    expect(env.advisorKey.text,"LET IT RUN",class.." active wand has no repeated input")
+    expect(env.advisorMode.text,"AUTO ACTIVE",class.." active badge")
+    expect(highlight,nil,class.." active wand has no executable highlight")
+    expect(env.diagPixelTex.color[1],0,class.." active state has no action output")
+    expect(notice.shown,false,class.." active wand has no restart overlay")
+    env.SetDisplay(nil,"WAND NOT READY","WAIT / RECOVER","Wait","idle")
+    expect(env.advisorKey.text,"WAIT / RECOVER",class.." cooldown wait never becomes spam")
+    env.SetDisplay(nil,"RANGE UNKNOWN","ADJUST DISTANCE","Unknown","idle")
+    expect(env.advisorKey.text,"ADJUST DISTANCE",class.." range wait never becomes spam")
+    env.HCOB_DB.secureActions=false
+    env.SetDisplay(5019,"WAND","PRESS BASE","Start once","idle")
+    expect(env.advisorKey.text,"PRESS BUTTON4 ONCE",class.." BASE wand is one press")
+    expect(notice.shown,false,class.." start is not a false stopped-attack alarm")
+    env.SetDisplay(5019,"WAND","SHIFT","Start once","action")
+    expect(env.advisorKey.text,"SHIFT + BUTTON4 ONCE",class.." modifier wand is one press")
+    env.HCOB_DB.secureActions=true
+    env.UpdateDisplayMinimal("Smart HUD disabled")
+    expect(env.advisorKey.text,"MANUAL CONTROL",class.." disabled smart HUD never requests wand spam")
+end
 print("Advisor one-press/wait hints regression: " .. checks .. " checks PASS")

@@ -131,6 +131,41 @@ function CooldownReady(id)
     return CooldownRemaining(id) <= 0.05
 end
 
+-- Wand auto-repeat is not a player cast/channel. Observe it without invoking
+-- protected actions or changing secure attributes during combat.
+local wandAutoRepeatEvent = false
+
+function IsWandUser()
+    return PLAYER_CLASS == "PRIEST" or PLAYER_CLASS == "MAGE" or PLAYER_CLASS == "WARLOCK"
+end
+
+function HandleWandEvent(event, slot)
+    if not IsWandUser() then return end
+    if event == "START_AUTOREPEAT_SPELL" then
+        wandAutoRepeatEvent = HasWandEquipped() and true or false
+    elseif event == "STOP_AUTOREPEAT_SPELL" or event == "PLAYER_DEAD"
+        or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_LOGIN"
+        or (event == "PLAYER_EQUIPMENT_CHANGED" and slot == 18) then
+        wandAutoRepeatEvent = false
+    end
+end
+
+function IsWandAutoRepeatActive()
+    if not IsWandUser() or not HasWandEquipped() then return false end
+    if IsAutoRepeatSpell then
+        local name = SpellName(S.SHOOT)
+        local ok, active = pcall(IsAutoRepeatSpell, name or S.SHOOT)
+        if not ok or active == nil then ok, active = pcall(IsAutoRepeatSpell, S.SHOOT) end
+        -- A readable false clears stale event state too. Events are only a
+        -- fallback for clients that cannot answer this query.
+        if ok and active ~= nil and CanAccessValue(active) then
+            wandAutoRepeatEvent = SafeBoolean(active, false)
+            return wandAutoRepeatEvent
+        end
+    end
+    return wandAutoRepeatEvent
+end
+
 -- Heroic Strike and Cleave are not ordinary instant casts: they are queued
 -- and replace the next main-hand auto attack. Keep their client queue state
 -- and swing timing in one shared place so class policy, display stabilization

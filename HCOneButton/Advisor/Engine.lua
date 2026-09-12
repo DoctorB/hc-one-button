@@ -81,6 +81,19 @@ function HCOB.Advisor.Engine.SelectCandidate(list)
 end
 
 function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
+    local shoot = S and S.SHOOT
+    local wanding = IsWandAutoRepeatActive and IsWandAutoRepeatActive()
+    -- Preserve the efficiency candidate for scoring/tuning, but continuing an
+    -- already-running wand is not another action to press. This is NOT a
+    -- global hold: a heal, interrupt or offensive spell still passes through.
+    if shoot and spellId == shoot and wanding then
+        spellId, title, keyHint, reason, kind = nil, "WAND ACTIVE", "LET IT RUN",
+            "Shoot is already running; no repeated input is needed. Follow the next spell when it becomes ready.", "idle"
+    elseif shoot and spellId == shoot and IsWandUser and IsWandUser()
+        and (not IsUsable(spellId) or not CooldownReady(spellId)) then
+        spellId, title, keyHint, reason, kind = nil, "WAND NOT READY", "WAIT / RECOVER",
+            "Wait for Shoot to become usable before starting the wand.", "idle"
+    end
     local now = GetTime()
     local priority = HCOB.Advisor.Engine.kindPriority[kind or "idle"] or 0
     local state = HCOB.Advisor.Engine.displayState
@@ -112,6 +125,9 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
     -- Once live class state withdraws a one-press restart hint, do not retain
     -- it for swap confirmation and invite an unnecessary second BASE press.
     if state.key == "PRESS BASE ONCE" then oldStillPlausible = false end
+    if shoot and state.spellId == shoot and (wanding or title == "WAND NOT READY") then oldStillPlausible = false end
+    -- Stop/death/range changes must not retain a stale auto-active message.
+    if state.title == "WAND ACTIVE" and (not wanding or title ~= "WAND ACTIVE") then oldStillPlausible = false end
     if state.spellId and oldStillPlausible and IsQueuedMeleeSwingSpell
        and IsQueuedMeleeSwingSpell(state.spellId) then
         -- Once an on-next-swing spell is armed, drop its pixel immediately.
@@ -475,7 +491,7 @@ function Recommend()
             readiness and readiness.summary or "Recovery checks passed", "idle"
     end
 
-    if PLAYER_CLASS == "ROGUE" then
+    if PLAYER_CLASS == "ROGUE" or (IsWandUser and IsWandUser() and HasWandEquipped()) then
         return nil, "NO ACTIVE TARGET", "SELECT TARGET", "Select a live hostile target; no attack input is needed yet", "idle"
     end
     return nil, "BASE OK", "KEEP SPAMMING", "No urgent manual spell", "idle"

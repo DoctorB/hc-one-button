@@ -93,6 +93,7 @@ end
 -- because the current target cannot receive them.
 function HCOB.Advisor.Engine.IsRangedHostileSpell(id)
     if not id then return false end
+    if id == S.SHOOT and IsWandUser and IsWandUser() then return true end
     local name = SpellName(id)
     local harmful = false
     if C_Spell and C_Spell.IsSpellHarmful then
@@ -134,6 +135,7 @@ function HCOB.Advisor.Engine.RangedActionState(id, forceRanged)
     local inRange = HCOB.Advisor.Engine.SpellRange(id, "target")
     if inRange == false then return "out" end
     if inRange == nil then return "unknown" end
+    if id == S.SHOOT and IsWandAutoRepeatActive and IsWandAutoRepeatActive() then return "active" end
     if not IsKnown(id) or not IsUsable(id) or not CooldownReady(id) then return "unavailable" end
     return "ready"
 end
@@ -165,12 +167,18 @@ function HCOB.Advisor.Engine.RangedBaseRecommendation(inCombat, hostile)
     if not hostile then return nil end
     local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
     if not class or not class.GetBaseActionInfo then return nil end
-    local id = class:GetBaseActionInfo(TalentSpec())
-    if not id or not HCOB.Advisor.Engine.IsClassRangedBaseAction(id) then return nil end
+    -- Mage can also be wanding even though its BASE is a nuke. Only use this
+    -- fallback after higher-priority class actions and buffs were evaluated.
+    local wanding = IsWandAutoRepeatActive and IsWandAutoRepeatActive()
+    local id = wanding and S.SHOOT or class:GetBaseActionInfo(TalentSpec())
+    if not id or (not wanding and not HCOB.Advisor.Engine.IsClassRangedBaseAction(id)) then return nil end
 
     local state = HCOB.Advisor.Engine.RangedActionState(id, true)
     local name = SpellName(id, "BASE")
-    if state == "ready" then
+    if state == "active" then
+        return nil, "WAND ACTIVE", "LET IT RUN",
+            "Shoot is already running; no repeated input is needed. Follow the next spell when it becomes ready.", "idle"
+    elseif state == "ready" then
         local readiness = HCOB.Advisor.Engine.lastPrePullReadiness
         local readyText = readiness and readiness.ready and (" | " .. tostring(readiness.summary or "recovery checks passed")) or ""
         return id, inCombat and "BASE READY" or "PULL READY", "PRESS BASE",

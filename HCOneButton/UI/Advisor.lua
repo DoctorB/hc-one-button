@@ -59,7 +59,7 @@ advisorKey:SetPoint("TOPLEFT", advisorTitle, "BOTTOMLEFT", 0, -1)
 advisorKey:SetWidth(202)
 advisorKey:SetHeight(15)
 advisorKey:SetJustifyH("LEFT")
-advisorKey:SetText(PLAYER_CLASS == "ROGUE" and "SELECT TARGET" or "SPAM BASE")
+advisorKey:SetText((PLAYER_CLASS == "ROGUE" or (IsWandUser and IsWandUser() and HasWandEquipped())) and "SELECT TARGET" or "SPAM BASE")
 
 advisorReason = advisor:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
 advisorReason:SetPoint("TOPLEFT", advisorKey, "BOTTOMLEFT", 0, -1)
@@ -225,10 +225,11 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     local manual = (actionHint == "CAST MANUALLY")
     local clickable = HCOB_DB.secureActions ~= false and HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.Has(spellId)
     local holdAction = (actionHint == "LET IT RUN")
-    local baseOnce = (actionHint == "PRESS BASE ONCE")
+    local wandSpell = spellId and S and spellId == S.SHOOT and IsWandUser and IsWandUser()
+    local baseOnce = (actionHint == "PRESS BASE ONCE") or (wandSpell and actionHint == "PRESS BASE")
     UpdateRestartNotice(baseOnce and not spellId and HCOB_DB.visible ~= false
         and kind ~= "danger" and kind ~= "interrupt", restartInput, kind)
-    local passiveHint = not spellId and (actionHint == "WAIT FOR ENERGY" or actionHint == "CHECK TARGET" or actionHint == "CHECK OPENER" or actionHint == "SELECT TARGET" or actionHint == "MANUAL CONTROL")
+    local passiveHint = not spellId and (actionHint == "WAIT FOR ENERGY" or actionHint == "WAIT / RECOVER" or actionHint == "ADJUST DISTANCE" or actionHint == "CHECK TARGET" or actionHint == "CHECK OPENER" or actionHint == "SELECT TARGET" or actionHint == "MANUAL CONTROL")
     local baseAction = (baseOnce or actionHint == "PRESS BASE" or actionHint == "KEEP SPAMMING" or actionHint == "BASE SPAM OK")
     local modifier = (actionHint == "SHIFT" or actionHint == "CTRL" or actionHint == "ALT" or actionHint == "CTRL+SHIFT" or actionHint == "ALT+SHIFT" or actionHint == "ALT+CTRL" or actionHint == "CTRL+ALT+SHIFT")
 
@@ -339,6 +340,11 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         if advisorIcon.SetDesaturated then advisorIcon:SetDesaturated(true) end
     end
 
+    if wandSpell and kind ~= "danger" and kind ~= "caution" and kind ~= "interrupt" then
+        advisorKey:SetText(clickable and "CLICK WAND ONCE" or (modifier and (actionHint .. " + " .. baseKey .. " ONCE")
+            or (baseAction and baseOnceHint or "PRESS SHOOT ONCE")))
+    end
+
     if kind == "danger" then
         advisorGlow:SetVertexColor(1,0.1,0.1); advisorGlow:Show()
         advisorReason:SetTextColor(1, 0.8, 0.8)
@@ -434,7 +440,8 @@ function UpdateDisplayMinimal(reason)
     enemyText:SetText("")
     UpdateStatusBars(hpReadable and hp or 0)
     UpdateBaseVisual()
-    SetDisplay(nil, "ADVISOR OFF", PLAYER_CLASS == "ROGUE" and "MANUAL CONTROL" or "BASE SPAM OK", reason or "Smart HUD disabled", "idle")
+    local manualControl = PLAYER_CLASS == "ROGUE" or (IsWandUser and IsWandUser() and HasWandEquipped())
+    SetDisplay(nil, "ADVISOR OFF", manualControl and "MANUAL CONTROL" or "BASE SPAM OK", reason or "Smart HUD disabled", "idle")
     if HCOB.UI.SurvivalStrip then
         HCOB.UI.SurvivalStrip.Highlight(nil)
         HCOB.UI.SurvivalStrip.UpdateStates()

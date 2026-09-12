@@ -355,7 +355,12 @@ btn:SetScript("OnEnter", function(self)
     local specIndex, specName = TalentSpec()
     GameTooltip:AddLine("HC One Button v" .. VERSION)
     GameTooltip:AddLine(localizedClass .. " L" .. PlayerLevel() .. " - " .. tostring(specName) .. " (tree " .. specIndex .. ")", 1, 1, 1)
-    GameTooltip:AddLine(PLAYER_CLASS == "ROGUE"
+    local wandBase = BaseActionInfo() == S.SHOOT and IsWandUser and IsWandUser()
+    GameTooltip:AddLine(wandBase
+        and "WAND: start Shoot once, then let it run. Follow the Advisor for other spells."
+        or (IsWandAutoRepeatActive and IsWandAutoRepeatActive())
+        and "Wand active: let Shoot run. Follow the Advisor for other spells."
+        or PLAYER_CLASS == "ROGUE"
         and "BASE: start attacking once. Advisor: situational spell to cast manually."
         or "SPAM: safe base action. Advisor: situational spell to cast manually.", 0.3, 1, 0.3, true)
     local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]

@@ -15,7 +15,7 @@ local events = {
     "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_UPDATE", "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "SKILL_LINES_CHANGED",
     "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS",
     "COMBAT_LOG_EVENT_UNFILTERED", "UNIT_PET", "PET_BAR_UPDATE", "UNIT_HAPPINESS",
-    "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL",
+    "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL", "PLAYER_DEAD", "PLAYER_ENTERING_WORLD",
     "CURRENT_SPELL_CAST_CHANGED",
     "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED",
     "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
@@ -73,7 +73,7 @@ local function EventNeedsAdvisorRefresh(event, unit)
     if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_TARGET_CHANGED" then return true end
     if event == "SPELL_UPDATE_COOLDOWN" or event == "SPELL_UPDATE_USABLE" or event == "PLAYER_COMBO_POINTS" or event == "UPDATE_SHAPESHIFT_FORM" or event == "UPDATE_SHAPESHIFT_FORMS" then return true end
     if event == "UNIT_PET" or event == "PET_BAR_UPDATE" or event == "UNIT_HAPPINESS" then return true end
-    if event == "START_AUTOREPEAT_SPELL" or event == "STOP_AUTOREPEAT_SPELL" then return true end
+    if event == "START_AUTOREPEAT_SPELL" or event == "STOP_AUTOREPEAT_SPELL" or event == "PLAYER_DEAD" or event == "PLAYER_ENTERING_WORLD" then return true end
     if event == "CURRENT_SPELL_CAST_CHANGED" then return true end
     if event == "SKILL_LINES_CHANGED" then return true end
     if event == "PLAYER_LEVEL_UP" or event == "SPELLS_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_TALENT_UPDATE" then return true end
@@ -118,6 +118,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 
     local function HandleEvent()
         if HandleTargetCastEvent then HandleTargetCastEvent(event, eventArg1, eventArg2, eventArg3) end
+        if HandleWandEvent then HandleWandEvent(event, eventArg1) end
         if event == "PLAYER_LOGIN" then
             -- ADDON_LOADED is the normal initialization point. Keep this
             -- fallback for test harnesses or unusual load paths that omit it,
