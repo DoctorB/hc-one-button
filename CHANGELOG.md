@@ -2,7 +2,27 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.9`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.10`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.10 — 2026-09-12
+
+### Fixed — wand auto-repeat guidance
+
+- Recognize already-active Shoot for Priest, Mage and Warlock instead of repeatedly requesting it. Display **WAND ACTIVE / LET IT RUN**, with no new action to press, through the wand cooldown cycle.
+- Preserve the efficiency candidate and class priority scores: continuing the wand does not force unnecessary mana spending. Higher-priority spells remain eligible; real casts, channels, heals and bandages keep their existing completion guards.
+- Remove stale Shoot immediately after auto-repeat starts, and replace active feedback when another action or stop/range state supersedes it. Apply the active-wand fallback to Mage and Destruction Warlock too, without changing their native BASE macros.
+- Preserve actual range warnings; unavailable Shoot starts explicitly wait rather than requesting repeated input. Use localized native auto-repeat queries with event fallback and reset stale fallback on login, world transition, death and ranged-slot changes.
+
+### Improved — consistent wand HUD feedback
+
+- Ask for one click/press when starting Shoot. Align BASE labels, tooltip, glow and Advisor feedback; do not invite wand spam with no target or disabled Smart HUD.
+- Keep native secure spell macros, highest-learned-rank behavior and the existing intentional rank exceptions unchanged. No unconditional cast cancellation, automatic spell execution, new option, binding or window.
+
+### Compatibility and validation
+
+- Version `1.29.10`, Interface `11509`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. No reset: preserve settings, position, combat history and learned data. Existing action slots and class priority thresholds are unchanged.
+- Two review/refinement passes; 52/52 Lua chunks, 35/35 Lua harnesses, 250 dedicated wand checks, 136 Advisor UI checks, 53/53 TOC references and 19/19 offline release-tool tests pass. The package contains 57 files with matching versions and root/package documentation.
+- Review: `docs/WAND_REVIEW.md`. Curated CurseForge notes: `docs/releases/1.29.10.md`. Publication uses the existing authorized GitHub Release → CurseForge workflow; no workflow or secret changes.
 
 ## 1.29.9 — 2026-09-11
 

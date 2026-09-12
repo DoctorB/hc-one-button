@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.9`
+- **Current version:** `1.29.10`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.9` adds between-pull recovery: FOOD and DRINK buttons select suitable supplies from your bags, while the Advisor gives recovery feedback. Every item use remains a manual click.
+Version `1.29.10` improves wand guidance for Priest, Mage and Warlock: start Shoot once, see when it is already active, and follow the next useful spell without repeated wand requests.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -19,6 +19,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ## README contents
 
 - [What HCOneButton does](#what-hconebutton-does)
+- [Wand combat flow](#wand-combat-flow)
 - [Between-pull recovery](#between-pull-recovery)
 - [Bag Quick Delete](#bag-quick-delete)
 - [DPS and aggro meter](#dps-and-aggro-meter)
@@ -39,9 +40,19 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.9` adds **between-pull recovery** to the Survival strip: FOOD and DRINK select the strongest usable supported supplies, prefer conjured equivalents at equal tier, and show quantities and availability. Click manually to recover; the Advisor waits during useful eating/drinking and resumes when you finish or interrupt recovery.
+Version `1.29.10` fixes repeated **Shoot** requests while a Priest, Mage or Warlock wand is already firing. The Advisor shows **WAND ACTIVE / LET IT RUN** instead of repeatedly asking to start Shoot or alternating BASE readiness messages. Higher-priority spells remain eligible, while real casts, channels and healing retain their existing completion guards.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, combat rotations, Rogue Pick Pocket, Bag Quick Delete, DPS/aggro HUD, action slots and Pixel V3 encoding are unchanged. Protected actions still require player input; the diagnostic pixel remains passive.
+**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, class priority thresholds, Rogue Pick Pocket, Bag Quick Delete, recovery controls, DPS/aggro HUD, action slots and bindings are unchanged. Protected actions still require player input.
+
+## Wand combat flow
+
+For **Priest, Mage and Warlock**, a Shoot recommendation asks for a **single click/press** to start the wand. Once the client reports auto-repeat active, the Advisor displays **WAND ACTIVE / LET IT RUN** with no repeated Shoot highlight. BASE feedback agrees, including when a Mage or Destruction Warlock has a normal spell assigned to BASE.
+
+Wanding is not a cast/channel hold: healing, control, procs and offensive spells can still take priority. Follow their normal secure button/key when recommended. During a real cast, channel or bandage, the existing **LET IT FINISH** protection remains. The addon does not automatically interrupt Shoot or another cast, and native cooldowns and spell requirements still apply.
+
+Range warnings remain authoritative. An unavailable wand start displays **WAND NOT READY / WAIT / RECOVER**; stopped auto-repeat allows a new start when appropriate. Missing targets and disabled Smart HUD no longer invite wand spam. No new setting, binding or window is required; Hunter Auto Shot and other classes keep their existing behavior.
+
+**Example:** a Priest finishes applying a useful DoT and starts Shoot once. The Advisor shows LET IT RUN while wanding is preferred. If Shield or a heal becomes the next priority, that spell replaces the active-wand message; a real healing cast then shows LET IT FINISH.
 
 ## Between-pull recovery
 
@@ -1199,7 +1210,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.9` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.10` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1207,12 +1218,13 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.9` passes the following automated checks:
+Version `1.29.10` passes the following automated checks:
 
 - **52/52 Lua chunks** pass syntax parsing in the current validation environment;
-- **34/34 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **35/35 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **53/53 TOC references** resolved (`52 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
+- **250 wand checks** cover Priest/Mage/Warlock auto-repeat detection, real event dispatch, localized queries, missing/error API fallback, cooldown cycles, start/stop and range transitions, preserved efficiency scoring, healing/proc/cast/channel precedence and consistent BASE feedback;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
 - 163 Bag Quick Delete checks use simulated inventories to cover standard/ElvUI click routing, complete-stack confirmation, stale identity/count rejection, protected items, missing data/APIs, cursor ownership, scale and lifecycle safety; no live inventory is modified;
 - 192 focused recovery checks cover all nine classes, tier/level/conjured selection, secure single-edge use, active/full-resource/no-stock guards, localized auras, simultaneous eating/drinking, emergency precedence, frozen assignments and six-button layout;
@@ -1238,7 +1250,7 @@ Version `1.29.9` passes the following automated checks:
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
 - 81 target-cast checks cover live casts/channels, Classic shifted API signatures, delay/expiry, stop versus stale API data, old same-spell stop events, target changes, bounded combat-event fallback and shared interrupt/control contracts across all nine classes;
-- 182 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 97 Advisor checks cover the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
+- 182 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 136 Advisor checks cover wand start/active/wait/disabled-HUD feedback, the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
 - 113 participation checks cover all nine classes, observed-opponent recovery, unknown/API-failed levels, elite classification, pet/healing/control participation, late-tag boundaries, runtime-identity cleanup and the full logger lifecycle. Excluded fights remain in history and older records are untouched;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - Warrior escape-Rage coverage verifies low-Rage Hamstring priority, excess-Rage spending, proc/core/queued-strike ordering, controlled two-target spending and strict panic preemption at low HP or 3+ enemies;
@@ -1249,11 +1261,11 @@ Version `1.29.9` passes the following automated checks:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). Two recovery review/refinement passes and the regression checklist are recorded in `docs/RECOVERY_REVIEW.md`; earlier review records remain in `docs/BAG_QUICK_DELETE_REVIEW.md`, `docs/ROGUE_FOLLOWUP_REVIEW.md`, `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cover simulated APIs and do not establish a measured DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). Two wand review/refinement passes and the regression checklist are recorded in `docs/WAND_REVIEW.md`; earlier review records remain in `docs/RECOVERY_REVIEW.md`, `docs/BAG_QUICK_DELETE_REVIEW.md`, `docs/ROGUE_FOLLOWUP_REVIEW.md`, `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cover simulated APIs and do not establish a measured DPS improvement.
 
 ---
 
-Curated public notes are in `docs/releases/1.29.9.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.10.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 
