@@ -58,18 +58,18 @@ prove the account has upload rights or that CurseForge is currently reachable.
 1. Complete the in-game checks, update the TOC/runtime/fallback version and
    root/package documentation together, then commit and push the intended code.
 2. In GitHub **Releases → Draft a new release**, select that commit with a tag
-   exactly matching `v` plus the TOC version, e.g. `v1.29.10` for version `1.29.10`.
+   exactly matching `v` plus the TOC version, e.g. `v1.29.11` for version `1.29.11`.
    Use a new version/tag for new releases; do not move or recycle published tags.
 3. Paste the user-facing Markdown release notes into the release body. This is
    the exact text uploaded to the CurseForge file's changelog. A blank body
    blocks the upload. The title is not used as a substitute for the changelog.
    The CurseForge display name is always `HCOneButton v<version>`, for example
-   `HCOneButton v1.29.10`, regardless of the GitHub Release title or ZIP filename.
+   `HCOneButton v1.29.11`, regardless of the GitHub Release title or ZIP filename.
    No `ClassicEra`, date or `.zip` suffix is added to the display name.
 4. Choose the release type:
    - ordinary GitHub release → CurseForge **Release**;
    - GitHub prerelease → CurseForge **Beta**;
-   - a tag such as `v1.29.10-alpha.1`, marked as a GitHub prerelease → **Alpha**.
+   - a tag such as `v1.29.11-alpha.1`, marked as a GitHub prerelease → **Alpha**.
    Alpha/beta suffixes must also be present in the TOC/runtime version. A tag
    ending in `-beta.1` must be marked as a prerelease; inconsistent flags fail.
 5. Click **Publish release**. This is the action that authorizes the upload.
@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.10, the version-controlled public notes are in
-[`releases/1.29.10.md`](releases/1.29.10.md). Paste that document into
+For 1.29.11, the version-controlled public notes are in
+[`releases/1.29.11.md`](releases/1.29.11.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -139,7 +139,24 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.10 publication validation
+### 1.29.11 publication validation
+
+The maintainer confirmed a successful in-game test of the Priest policy on
+2026-09-13 and authorized release publication. That gameplay code is unchanged
+after confirmation; release preparation updates metadata/documentation only.
+
+Two review/refinement passes and automated validation are complete: 52 Lua
+chunks, 36 Lua harnesses, 114 Priest checks, 250 wand checks, 136 Advisor UI
+checks, 53 TOC references and 19 offline release-tool tests. See
+[PRIEST_LEVELING_REVIEW.md](PRIEST_LEVELING_REVIEW.md) for the policy and validation.
+
+Publish the ordinary Release with tag `v1.29.11`, title **HCOneButton v1.29.11**,
+and the full [`releases/1.29.11.md`](releases/1.29.11.md) document as its body.
+The existing workflow builds 57 files and uploads the ZIP and exact Markdown;
+no workflow or secret changes are required. Verify the upload receipt and
+CurseForge moderation separately; never retry an uncertain upload.
+
+### Archived 1.29.10 publication validation
 
 Two review/refinement passes and automated validation are complete: 52 Lua
 chunks, 35 Lua harnesses, 53 TOC references and 19 offline release-tool tests.

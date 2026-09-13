@@ -2,7 +2,24 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.10`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.11`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.11 — 2026-09-13
+
+### Improved — more aggressive Priest leveling
+
+- Keep useful Pain setup, Mind Blast and learned Mind Flay/Smite ahead of ordinary wand fallback. Stop excluding Smite after the first Shadow talent point; honor learned Mind Flay in mixed builds and usable Holy Fire without inferring spell access from the dominant talent tab.
+- Remove the early 55% target HP / 52% mana wand takeover and Spirit Tap's automatic preference for wanding. Prioritize conservation at mana <=25% or near-death targets (HP <=20%, known TTK <=4 seconds or no estimate); retain a lower-score no-mana fallback otherwise.
+- Budget damage from localized learned-rank mana costs with a post-cast 15% reserve, raised to 25% under pressure and at least the cheapest readable usable Shield/heal cost. Missing native cost/max-mana data uses bounded percentage gates; failed reads never imply a free spell.
+- Preserve necessary healing, control, actual cast/channel holds and active-wand feedback. Allow funded offensive casts at close range with Shield; retain safe unshielded cast/channel restrictions and skip casts that cannot land in time.
+- Do not reapply active Pain or Holy Fire DoTs. Require useful remaining lifetime and prevent the no-wand BASE fallback from re-offering a spell rejected for mana or casting safety. Keep native secure macros, existing rank selection, fixed slots and saved learning data.
+
+### Compatibility and validation
+
+- Version `1.29.11`, Interface `11509`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. Preserve settings, HUD positions, history, learned data and all fixed slots/bindings. Other class policies and secure macros are unchanged.
+- The maintainer confirmed a successful in-game Priest smoke test on 2026-09-13 and authorized publication. The gameplay policy is unchanged after that test; only release metadata and documentation were updated.
+- Two review/refinement passes; 52/52 Lua chunks, 36/36 Lua harnesses, 114 Priest checks, 250 wand checks, 136 Advisor UI checks, 53/53 TOC references and 19/19 offline release-tool tests pass. The package contains 57 files with matching versions and root/package documentation.
+- Review: `docs/PRIEST_LEVELING_REVIEW.md`. Curated CurseForge notes: `docs/releases/1.29.11.md`. Publish through the existing authorized GitHub Release → CurseForge workflow. More casting can increase drinking downtime; no measured DPS gain is claimed.
 
 ## 1.29.10 — 2026-09-12
 

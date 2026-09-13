@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.10`
+- **Current version:** `1.29.11`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.10` improves wand guidance for Priest, Mage and Warlock: start Shoot once, see when it is already active, and follow the next useful spell without repeated wand requests.
+Version `1.29.11` brings more aggressive Priest leveling: prioritize useful DoTs, Mind Blast and learned fillers before ordinary wand fallback, while preserving recovery mana and emergency handling.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -28,6 +28,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 - [Survival consumables strip](#survival-consumables-strip)
 - [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts)
 - [Rogue leveling flow](#rogue-leveling-flow)
+- [Priest leveling flow](#priest-leveling-flow)
 - [Hunter pet management](#hunter-pet-management)
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
@@ -40,9 +41,9 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.10` fixes repeated **Shoot** requests while a Priest, Mage or Warlock wand is already firing. The Advisor shows **WAND ACTIVE / LET IT RUN** instead of repeatedly asking to start Shoot or alternating BASE readiness messages. Higher-priority spells remain eligible, while real casts, channels and healing retain their existing completion guards.
+Version `1.29.11` gives the Priest a more offensive leveling policy. **Mind Blast and learned Smite/Mind Flay** keep priority while casting is useful and funded; the wand no longer takes over just because mana or target HP crossed the halfway mark. Smite remains available after the first Shadow talent point. Native learned-rank costs and cast times help preserve recovery mana and avoid spells that cannot land in time.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, class priority thresholds, Rogue Pick Pocket, Bag Quick Delete, recovery controls, DPS/aggro HUD, action slots and bindings are unchanged. Protected actions still require player input.
+**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, other class policies, Rogue Pick Pocket, Bag Quick Delete, recovery controls, DPS/aggro HUD, action slots and bindings are unchanged. Protected actions still require player input. The maintainer confirmed the Priest update in game on 2026-09-13.
 
 ## Wand combat flow
 
@@ -53,6 +54,20 @@ Wanding is not a cast/channel hold: healing, control, procs and offensive spells
 Range warnings remain authoritative. An unavailable wand start displays **WAND NOT READY / WAIT / RECOVER**; stopped auto-repeat allows a new start when appropriate. Missing targets and disabled Smart HUD no longer invite wand spam. No new setting, binding or window is required; Hunter Auto Shot and other classes keep their existing behavior.
 
 **Example:** a Priest finishes applying a useful DoT and starts Shoot once. The Advisor shows LET IT RUN while wanding is preferred. If Shield or a heal becomes the next priority, that spell replaces the active-wand message; a real healing cast then shows LET IT FINISH.
+
+## Priest leveling flow
+
+The following offensive policy is included in `1.29.11`.
+
+The Priest now favors **useful Shadow Word: Pain setup → Mind Blast → learned Mind Flay or Smite filler**, with Holy Fire when it is learned, usable and has enough remaining target lifetime. Smite remains available after the first Shadow talent point and before Mind Flay is learned; a learned Mind Flay remains eligible in mixed builds. Native usability, learned-rank cost/cast-time data and actual cooldowns determine availability rather than assuming that the winning talent tab grants a spell.
+
+Wand no longer takes over simply at 55% target HP, 52% mana or on Spirit Tap. It has higher priority at **25% mana or below**, or when the target is at **20% HP or below** and its estimated remaining life is at most four seconds (or unavailable). Otherwise, it is the fallback after funded offensive casts. Existing active-wand feedback and single-start behavior remain.
+
+When the client exposes the learned spell's mana cost and maximum mana, damage spending retains **15% of maximum mana after the cast**, increased to **25%** at HP <=72% or Survival Reserve <52. If readable, the least expensive currently usable Shield/heal cost also raises that reserve; Weakened Soul excludes Shield from that comparison. Missing cost data uses percentage gates instead of assuming free casts: 35% before Mind Blast, 30% for Pain/Smite/Mind Flay and 45% for Holy Fire, with a minimum 35% under pressure.
+
+Real emergencies, necessary heals and control keep their existing safety handling. Shield allows closer-range offensive casting; unshielded close channels and unsafe hard casts remain excluded. Pain needs at least nine seconds of estimated target lifetime when known; Holy Fire needs its cast time plus six seconds and is not reapplied over its active DoT. Hard casts must have time to land. Without a usable wand or eligible spell, the Advisor waits rather than bypassing its own mana reserve through the BASE fallback.
+
+**Tradeoff:** more offensive casting spends more mana and may require more drinking between pulls. This is a more aggressive priority policy, not a claim of a measured DPS/TTK gain. Existing settings, learned data, ranks, action slots and secure macros are preserved; no extra option is added.
 
 ## Between-pull recovery
 
@@ -1210,7 +1225,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.10` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.11` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1218,13 +1233,14 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.10` passes the following automated checks:
+Version `1.29.11` passes the following automated checks:
 
 - **52/52 Lua chunks** pass syntax parsing in the current validation environment;
-- **35/35 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **36/36 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **53/53 TOC references** resolved (`52 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
 - **250 wand checks** cover Priest/Mage/Warlock auto-repeat detection, real event dispatch, localized queries, missing/error API fallback, cooldown cycles, start/stop and range transitions, preserved efficiency scoring, healing/proc/cast/channel precedence and consistent BASE feedback;
+- **114 Priest leveling checks** cover all three talent-tree classifications, early/mixed learned spells, rank/talent-adjusted mana costs and cast times, reserve boundaries, DoT lifetime, close casting, recovery priority, no-wand fallback and extreme adaptive biases; see `docs/PRIEST_LEVELING_REVIEW.md` for the policy review;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
 - 163 Bag Quick Delete checks use simulated inventories to cover standard/ElvUI click routing, complete-stack confirmation, stale identity/count rejection, protected items, missing data/APIs, cursor ownership, scale and lifecycle safety; no live inventory is modified;
 - 192 focused recovery checks cover all nine classes, tier/level/conjured selection, secure single-edge use, active/full-resource/no-stock guards, localized auras, simultaneous eating/drinking, emergency precedence, frozen assignments and six-button layout;
@@ -1261,11 +1277,11 @@ Version `1.29.10` passes the following automated checks:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). Two wand review/refinement passes and the regression checklist are recorded in `docs/WAND_REVIEW.md`; earlier review records remain in `docs/RECOVERY_REVIEW.md`, `docs/BAG_QUICK_DELETE_REVIEW.md`, `docs/ROGUE_FOLLOWUP_REVIEW.md`, `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cover simulated APIs and do not establish a measured DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). Two Priest review/refinement passes, the user-confirmed in-game smoke test and the regression checklist are recorded in `docs/PRIEST_LEVELING_REVIEW.md`; earlier review records remain in `docs/WAND_REVIEW.md`, `docs/RECOVERY_REVIEW.md`, `docs/BAG_QUICK_DELETE_REVIEW.md`, `docs/ROGUE_FOLLOWUP_REVIEW.md`, `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cover simulated APIs and do not establish a measured DPS improvement.
 
 ---
 
-Curated public notes are in `docs/releases/1.29.10.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.11.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 
