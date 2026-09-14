@@ -7,7 +7,7 @@ description. The changelog belongs to the uploaded file, not the project page.
 
 ## Authorized publishers
 
-Only the GitHub logins **DoctorB** and **DoctorCalibano** are allowed to start
+Only the GitHub logins **DoctorB** and **DrCalibano** are allowed to start
 this workflow, including manual validation. The job is skipped for other users
 and bots before any runner or upload secret is provided. Both the original
 initiator (`github.actor`) and the current initiator (`github.triggering_actor`,
@@ -19,14 +19,14 @@ capitalization is ignored, but prefixes/lookalikes are not accepted. The Release
 draft's author is not used for authorization. Successful receipts record both
 initiators; the no-upload-on-reruns rule still applies even to authorized users.
 
-This does not grant GitHub permissions: DoctorCalibano must already have the
+This does not grant GitHub permissions: DrCalibano must already have the
 repository access needed to publish a release or run Actions.
 
 **Security boundary:** a checked-in allowlist cannot stop someone who can change
 the workflow or use the repository secret from another workflow. Keep repository
 Write/Admin access and CurseForge upload rights restricted to these two people.
 If additional writers are needed, use a protected GitHub environment with its
-secret, release-ref restrictions and approval by DoctorB/DoctorCalibano, together
+secret, release-ref restrictions and approval by DoctorB/DrCalibano, together
 with protected workflow changes and no unauthorized bypass rights. Do not leave
 a duplicate repository-level token available. This requires GitHub settings;
 adding this file does not configure those protections. A server-side approval
@@ -152,9 +152,11 @@ Final review and automated validation: 56 Lua chunks, 38 Lua harnesses,
 
 Publish tag `v1.29.12`, title **HCOneButton v1.29.12**, with the exact
 [`releases/1.29.12.md`](releases/1.29.12.md) body as an ordinary Release.
-The unchanged workflow builds 61 files and uploads the ZIP and Markdown to
+The workflow builds 61 files and uploads the ZIP and Markdown to
 project 1666468. Verify the upload receipt and CurseForge moderation separately;
-never retry an uncertain upload. No workflow, secret or permission change.
+never retry an uncertain upload. The publisher allowlist corrects the mistaken
+login DoctorCalibano to DrCalibano in both the workflow and Python guard, keeping
+exactly two authorized accounts. No secret or repository permission is changed.
 
 ### Archived 1.29.11 publication validation
 

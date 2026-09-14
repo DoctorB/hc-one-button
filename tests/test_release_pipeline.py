@@ -116,8 +116,9 @@ class ReleaseTests(unittest.TestCase):
                 release.release_context(event, "release", self.version)
 
     def test_only_two_exact_github_logins_can_authorize(self):
-        for actor in ("DoctorB", "DoctorCalibano", "doctorb", "DOCTORCALIBANO"):
-            for triggering in ("DoctorB", "DoctorCalibano"):
+        self.assertEqual(release.AUTHORIZED_ACTORS, frozenset({"doctorb", "drcalibano"}))
+        for actor in ("DoctorB", "DrCalibano", "doctorb", "DRCALIBANO"):
+            for triggering in ("DoctorB", "DrCalibano"):
                 event = copy.deepcopy(self.event)
                 event["sender"]["login"] = actor
                 # Draft author is not the person who authorizes publication.
@@ -128,7 +129,8 @@ class ReleaseTests(unittest.TestCase):
 
     def test_unauthorized_actor_or_rerunner_cannot_access_upload(self):
         self.prepare()
-        invalid = ("AnotherUser", "github-actions[bot]", "DoctorB-extra", "DoctorCalibano2", "", " DoctorB")
+        invalid = ("AnotherUser", "github-actions[bot]", "DoctorB-extra", "DrCalibano2",
+                   "DoctorCalibano", "doctorcalibano", "", " DoctorB", " DrCalibano")
         with patch.object(release, "request_json") as request:
             for variable in ("GITHUB_ACTOR", "GITHUB_TRIGGERING_ACTOR"):
                 for value in invalid:
@@ -142,7 +144,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_missing_bot_or_inconsistent_sender_is_rejected(self):
         for sender in (None, {}, {"login": "AnotherUser", "type": "User"},
-                       {"login": "DoctorB", "type": "Bot"}, {"login": "DoctorCalibano", "type": "User"}):
+                       {"login": "DoctorB", "type": "Bot"}, {"login": "DrCalibano", "type": "User"}):
             event = {**self.event, "sender": sender}
             with self.subTest(sender=sender), self.assertRaises(ValueError):
                 release.release_context(event, "release", self.version)
@@ -292,7 +294,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("persist-credentials: false", workflow)
         job_guard = workflow.split("jobs:", 1)[1].split("runs-on:", 1)[0]
         for field in ("github.actor", "github.triggering_actor"):
-            self.assertIn(f"({field} == 'DoctorB' || {field} == 'DoctorCalibano')", job_guard)
+            self.assertIn(f"({field} == 'DoctorB' || {field} == 'DrCalibano')", job_guard)
+        self.assertNotIn("DoctorCalibano", job_guard)
         self.assertIn("github.repository == 'DoctorB/hc-one-button' &&", job_guard)
         self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", ref)
                             for ref in re.findall(r"uses: [^@\s]+@([^\s]+)", workflow)))

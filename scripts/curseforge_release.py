@@ -16,7 +16,7 @@ import uuid
 import zipfile
 
 REPOSITORY = "DoctorB/hc-one-button"
-AUTHORIZED_ACTORS = frozenset({"doctorb", "doctorcalibano"})
+AUTHORIZED_ACTORS = frozenset({"doctorb", "drcalibano"})
 PROJECT_ID = 1666468
 CLASSIC_VERSION_TYPE = 67408
 API_ROOT = "https://www.curseforge.com/api"
@@ -36,7 +36,7 @@ def authorize_actor(event):
     actor = os.environ.get("GITHUB_ACTOR", "")
     triggering_actor = os.environ.get("GITHUB_TRIGGERING_ACTOR", "")
     require(actor.casefold() in AUTHORIZED_ACTORS and triggering_actor.casefold() in AUTHORIZED_ACTORS,
-            "Only DoctorB and DoctorCalibano may run this release workflow")
+            "Only DoctorB and DrCalibano may run this release workflow")
     sender = event.get("sender")
     require(isinstance(sender, dict) and sender.get("type") == "User"
             and isinstance(sender.get("login"), str) and sender["login"].casefold() == actor.casefold(),

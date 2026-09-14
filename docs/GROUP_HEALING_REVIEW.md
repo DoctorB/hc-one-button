@@ -28,4 +28,11 @@ The maintainer confirmed successful in-game panel use, including left/right/midd
 
 ## Publication
 
+The maintainer explicitly approved correcting the publisher login from
+`DoctorCalibano` to `DrCalibano` in both authorization checks, and retargeting
+the already-pushed `v1.29.12` tag before publishing. Tests accept only DoctorB
+and DrCalibano and reject the previous misspelling, lookalikes, bots and
+inconsistent event senders. This release-tooling correction does not modify
+the packaged addon or its curated release notes.
+
 Use tag `v1.29.12`, title `HCOneButton v1.29.12`, stable Release, and the exact body from `docs/releases/1.29.12.md`. Publish through the existing GitHub Release → CurseForge workflow for project 1666468. Check the workflow upload receipt separately from CurseForge approval; do not retry an uncertain upload.
