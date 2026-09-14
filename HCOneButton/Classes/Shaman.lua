@@ -6,6 +6,10 @@ local Class = HCOB.Classes.SHAMAN or {}
 HCOB.Classes.SHAMAN = Class
 Class.classToken = "SHAMAN"
 Class.fallbackSpec = 2
+
+function Class:GetGroupHealingSpells()
+    return {quick={S.LESSER_HEALING_WAVE,S.HEALING_WAVE},direct={S.HEALING_WAVE}}
+end
 local weaponImbuePendingUntil = 0
 
 local function MainhandEnchanted()

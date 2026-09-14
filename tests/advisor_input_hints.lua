@@ -38,6 +38,8 @@ function methods:Hide()
     if wasShown and self.scripts.OnHide then self.scripts.OnHide(self) end
 end
 function methods:SetText(value) self.text = value end
+function methods:SetTextColor(...) self.textColor = {...} end
+function methods:SetVertexColor(...) self.vertexColor = {...} end
 function methods:SetColorTexture(...) self.color = {...} end
 function methods:CreateTexture() return widget() end
 function methods:CreateFontString() return widget() end
@@ -307,4 +309,55 @@ for _, class in ipairs({"PRIEST","MAGE","WARLOCK"}) do
     env.UpdateDisplayMinimal("Smart HUD disabled")
     expect(env.advisorKey.text,"MANUAL CONTROL",class.." disabled smart HUD never requests wand spam")
 end
+-- The real renderer must not confuse a dedicated group heal with its self slot.
+env.PLAYER_CLASS="PRIEST"
+env.SpellName=function(id) return id==2061 and "Flash Heal" or "Spell" end
+local iconID
+env.SpellIcon=function(id) iconID=id; return "icon" end
+env.HCOneButton.Advisor.GroupHealing={current={name="Marco",unit="party1",id=2061,key="F6",hp=35}}
+panel.idToSlot[2061]=4
+local overCorrect=false
+env.UnitIsUnit=function(a,b) expect(a,"mouseover","mouseover comparison"); expect(b,"party1","suggested ally comparison"); return overCorrect end
+env.SetDisplay(2061,"GROUP HEAL","GROUP MOUSEOVER","generic reason","groupheal")
+expect(iconID,2061,"group spell icon visible")
+expect(env.advisorTitle.text,"Marco 35%","group member and HP visible")
+expect(env.advisorReason.text,"Flash Heal","specific heal visible")
+expect(env.advisorMode.text,"GROUP HEAL","distinct group badge")
+expect(env.advisorGlow.shown,true,"group glow shown without requiring combat logging")
+expect(env.advisorGlow.vertexColor[1],.15,"group glow replaces any previous warning color")
+expect(env.advisorReason.textColor[2],1,"group reason uses its own healing color")
+expect(env.advisorKey.text,"MOUSEOVER + F6","group bind displayed instead of self action")
+expect(highlight,nil,"self-heal Action Panel slot not highlighted")
+expect(env.diagPixelTex.color[1],0,"group route emits no self-heal slot")
+expect(notice.shown,false,"no BASE restart cue while group healing")
+overCorrect=true
+env.SetDisplay(nil,"GROUP HEAL","GROUP MOUSEOVER","generic reason","groupheal")
+expect(env.advisorKey.text,"PRESS F6","correct mouseover is acknowledged")
+env.HCOneButton.Advisor.GroupHealing.current.panel=true
+env.HCOneButton.Advisor.GroupHealing.current.key="Left click"
+env.SetDisplay(2061,"GROUP HEAL","GROUP CLICK","generic reason","groupheal")
+expect(env.advisorKey.text,"Left click ON PARTY BAR","click heal has a panel-specific instruction")
+expect(env.diagPixelTex.color[1],0,"click-heal recommendation has no self-action output")
+expect(highlight,nil,"click-heal does not highlight a self-heal slot")
+env.HCOneButton.Advisor.GroupHealing.current=nil
+env.SetDisplay(nil,"CAST ACTIVE","LET IT FINISH","Heal is casting","caution")
+expect(env.advisorTitle.text,"CAST ACTIVE","live cast replaces the group notice")
+expect(env.diagPixelTex.color[1],0,"casting keeps action output empty")
+env.SetDisplay(5019,"WAND","PRESS BASE","normal flow","action")
+expect(env.diagPixelTex.color[1],36/255,"normal output resumes after group healing")
+-- Rendering state must not leak into combat-sample counters through a global.
+env.HCOB_DB.smartDisplay=true
+env.CountActiveEnemies=function() return 1 end
+env.ResourceDisplay=function() return "50%M" end
+env.UpdateSwingBar=function() end
+env.PlayAlert=function() end
+env.HCOneButton.Advisor.Engine.ApplyTargetCastability=function(...) return ... end
+env.HCOneButton.Advisor.Engine.Stabilize=function(...) return ... end
+env.HCOneButton.Advisor.Engine.SurvivalReserve=function() return 50 end
+env.Recommend=function() return nil,"DANGER","WAIT","danger reason","danger" end
+env.currentFight={}
+env.group=true -- unrelated globals must not be treated as a live group suggestion
+env.UpdateDisplayCore(true)
+expect(env.currentFight.advisorDangerSamples,1,"danger sample is independent of unrelated global group")
+expect(env.advisorGlow.vertexColor[1],1,"telemetry cannot overwrite danger presentation with group colors")
 print("Advisor one-press/wait hints regression: " .. checks .. " checks PASS")

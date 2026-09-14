@@ -30,8 +30,14 @@ local function PixelNow()
     return GetTime and GetTime() or 0
 end
 
+local function ManualUsePending()
+    local strip = HCOB.UI.SurvivalStrip
+    return strip and strip.ManualUsePending and strip.ManualUsePending()
+end
+
 local function RenderDiagnosticPixel(spellId)
     if not diagPixelTex then return end
+    if ManualUsePending() then spellId = nil end
     if not spellId then
         diagPixelTex:SetColorTexture(0, 0, 0, 1)
         return
@@ -46,6 +52,9 @@ local function RenderDiagnosticPixel(spellId)
 end
 
 function UpdateDiagnosticPixel(spellId)
+    -- Discard, rather than queue, recommendations computed during a manual
+    -- handoff. Resume only from a fresh Advisor decision, never an ACK timer.
+    if ManualUsePending() then spellId = nil end
     desiredSpellID = spellId
     if PixelNow() < suppressionUntil then
         RenderDiagnosticPixel(nil)

@@ -13,6 +13,41 @@ Strip.buttons = Strip.buttons or {}
 Strip.roleToButton = Strip.roleToButton or {}
 Strip.pendingConfigure = false
 
+-- Manual input takes precedence over advisory output. This is a short handoff,
+-- not evidence that an item succeeded: normal cast/channel/recovery detection
+-- owns the longer hold. No timer may replay the pre-click recommendation.
+local manualUseUntil = 0
+function Strip.ManualUsePending()
+    return GetTime() < manualUseUntil
+end
+
+function Strip.BeginManualUse()
+    local grace = 0.40
+    if GetNetStats then
+        local ok, _, _, _, worldMS = pcall(GetNetStats)
+        worldMS = ok and tonumber(worldMS) or nil
+        if worldMS and worldMS == worldMS and worldMS >= 0 and worldMS < math.huge then
+            grace = math.min(1.50, math.max(grace, worldMS / 1000 * 2 + 0.10))
+        end
+    end
+    manualUseUntil = GetTime() + grace
+    local engine = HCOB.Advisor and HCOB.Advisor.Engine
+    if engine and engine.ResetStabilization then engine.ResetStabilization() end
+    if UpdateDiagnosticPixel then UpdateDiagnosticPixel(nil) end
+    if SetDisplay then
+        SetDisplay(nil, "MANUAL PRIORITY", "LET IT FINISH",
+            "Manual consumable input; waiting for the action to settle", "caution")
+    end
+end
+
+local function ConsumableMacro(itemID, selfTarget, stopAttack)
+    -- Potions must not disable melee auto-attack. Bandaging/resting does need
+    -- it stopped, and the next BASE press remains a deliberate player action.
+    return "/cancelqueuedspell\n/stopcasting\n" .. (stopAttack and "/stopattack\n" or "")
+        .. "/use " .. (selfTarget and "[@player] " or "")
+        .. "item:" .. tostring(itemID)
+end
+
 local function CooldownText(remaining)
     remaining = tonumber(remaining) or 0
     if remaining <= 0.05 then return "" end
@@ -38,15 +73,33 @@ end
 -- Recovery clicks are deliberately left-button release only. The native secure
 -- macro still enforces nocombat even if attributes were frozen while ready.
 function Strip.PrepareRecoveryClick(button, isClick)
-    if InCombatLockdown and InCombatLockdown() then return end
+    if InCombatLockdown and InCombatLockdown() then return false end
     local item = {id=button.assignedItemID,role=button.role}
-    local allowed = Recovery.CanUse(button.role,item)
+    local state = Recovery.State()
+    -- Only an explicit click may interrupt a cast to start resting. The
+    -- combat/movement/form, full-resource and active-food guards still apply.
+    if isClick and state.blocked == "LET IT FINISH" then state.blocked = nil end
+    local allowed = Recovery.CanUse(button.role,item,state)
     local now = GetTime()
     if isClick and button.lastRecoveryClick and now - button.lastRecoveryClick < 0.8 then allowed = false end
     button:SetAttribute("type1","macro")
     button:SetAttribute("item1",nil)
-    button:SetAttribute("macrotext1",allowed and ("/stopmacro [combat][mounted][flying][channeling]\n/use item:" .. item.id) or "/stopmacro")
+    button:SetAttribute("macrotext1",allowed and ("/stopmacro [combat][mounted][flying]\n" .. ConsumableMacro(item.id,false,true)) or "/stopmacro")
     if isClick and allowed then button.lastRecoveryClick = now end
+    return allowed
+end
+
+function Strip.PrepareManualClick(button, mouse, down)
+    if mouse ~= "LeftButton" or down then return end
+    if Recovery and Recovery.IsRole(button.role) then
+        if not Strip.PrepareRecoveryClick(button,true) then return end
+    elseif not button.assignedItemID then
+        return
+    end
+    -- Advisory state only: protected execution remains the native secure macro,
+    -- preconfigured outside combat. Even an unavailable item must not leave a
+    -- stale recommendation visible after its manual stopcasting attempt.
+    Strip.BeginManualUse()
 end
 
 function Strip.Configure()
@@ -61,9 +114,9 @@ function Strip.Configure()
         local item = Consumables.GetRole(role)
         if button then
             if item and item.available then
-                button:SetAttribute("type1", "item")
-                button:SetAttribute("item1", "item:" .. tostring(item.id))
-                button:SetAttribute("macrotext1", nil)
+                button:SetAttribute("type1", "macro")
+                button:SetAttribute("item1", nil)
+                button:SetAttribute("macrotext1", ConsumableMacro(item.id,true,role == "bandage"))
                 button.assignedItemID = item.id
             else
                 button:SetAttribute("type1", "macro")
@@ -258,16 +311,12 @@ function Strip.CreateFrames()
         local spacing = math.min(68, (width - 92 - 34 - 10) / math.max(1,#Consumables.roleOrder-1))
         button:SetPoint("TOPLEFT", Strip.frame, "TOPLEFT", 92 + (index - 1) * spacing, -7)
         button:SetFrameStrata("HIGH")
-        button:RegisterForClicks("AnyDown", "AnyUp")
-        button:SetAttribute("useOnKeyDown", hcobUseKeyDown)
+        -- One secure action per physical click, independent of key-down CVars.
+        -- In particular, the release must not cancel a bandage begun on down.
+        button:RegisterForClicks("LeftButtonUp")
+        button:SetAttribute("useOnKeyDown", false)
         button.role = role
-        if Recovery and Recovery.IsRole(role) then
-            button:RegisterForClicks("LeftButtonUp")
-            button:SetAttribute("useOnKeyDown",false)
-            button:SetScript("PreClick",function(self,mouse,down)
-                if mouse == "LeftButton" and not down then Strip.PrepareRecoveryClick(self,true) end
-            end)
-        end
+        button:SetScript("PreClick",Strip.PrepareManualClick)
 
         button.bg = button:CreateTexture(nil, "BACKGROUND")
         button.bg:SetAllPoints()

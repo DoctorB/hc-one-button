@@ -353,3 +353,8 @@ function Class:IsRangedBaseAction(id)
     return id == baseId
 end
 
+function Class:GetGroupHealingSpells()
+    return {quick={S.FLASH_HEAL,S.GREATER_HEAL,S.HEAL,S.LESSER_HEAL},
+        direct={S.GREATER_HEAL,S.HEAL,S.LESSER_HEAL},hot={S.RENEW},shield={S.POWER_WORD_SHIELD}}
+end
+

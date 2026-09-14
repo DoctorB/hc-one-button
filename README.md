@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.11`
+- **Current version:** `1.29.12`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.11` brings more aggressive Priest leveling: prioritize useful DoTs, Mind Blast and learned fillers before ordinary wand fallback, while preserving recovery mana and emergency handling.
+Version `1.29.12` adds party click-healing for Priest, Paladin, Shaman and Druid: a movable health panel, configurable mouse buttons, automatic highest learned ranks and optional group-healing advice.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -29,6 +29,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 - [Supported classes and deterministic action layouts](#supported-classes-and-deterministic-action-layouts)
 - [Rogue leveling flow](#rogue-leveling-flow)
 - [Priest leveling flow](#priest-leveling-flow)
+- [Group healing](#group-healing)
 - [Hunter pet management](#hunter-pet-management)
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
@@ -41,9 +42,9 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.11` gives the Priest a more offensive leveling policy. **Mind Blast and learned Smite/Mind Flay** keep priority while casting is useful and funded; the wand no longer takes over just because mana or target HP crossed the halfway mark. Smite remains available after the first Shadow talent point. Native learned-rank costs and cast times help preserve recovery mana and avoid spells that cannot land in time.
+Version `1.29.12` brings **party click-healing** to Priest, Paladin, Shaman and Druid. Place a compact health panel independently of the main HUD, assign heals to mouse buttons and modifiers, and click the teammate you want to help without changing your hostile target. The panel also shows your own bar while solo. Learned ranks update automatically; optional group advice highlights the teammate and available action.
 
-**Upgrade without resetting:** settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, other class policies, Rogue Pick Pocket, Bag Quick Delete, recovery controls, DPS/aggro HUD, action slots and bindings are unchanged. Protected actions still require player input. The maintainer confirmed the Priest update in game on 2026-09-13.
+**Upgrade without resetting:** existing settings, HUD position, combat history, tuning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, existing Action Panel slots and permanent bindings are retained. Group advice defaults ON for supported healers; panel settings and click assignments are saved per character. Protected actions still require player input. The maintainer confirmed the healing panel in game, including left/right/middle clicks, on 2026-09-14.
 
 ## Wand combat flow
 
@@ -68,6 +69,39 @@ When the client exposes the learned spell's mana cost and maximum mana, damage s
 Real emergencies, necessary heals and control keep their existing safety handling. Shield allows closer-range offensive casting; unshielded close channels and unsafe hard casts remain excluded. Pain needs at least nine seconds of estimated target lifetime when known; Holy Fire needs its cast time plus six seconds and is not reapplied over its active DoT. Hard casts must have time to land. Without a usable wand or eligible spell, the Advisor waits rather than bypassing its own mana reserve through the BASE fallback.
 
 **Tradeoff:** more offensive casting spends more mana and may require more drinking between pulls. This is a more aggressive priority policy, not a claim of a measured DPS/TTK gain. Existing settings, learned data, ranks, action slots and secure macros are preserved; no extra option is added.
+
+## Group healing
+
+Priest, Paladin, Shaman and Druid can receive **GROUP HEAL** advice for injured party or raid members. Heal manually through the independent **party click-healing panel**, or use dedicated mouseover keyboard bindings. Existing self-heal actions stay separate.
+
+**Party panel:** open `/hcob options` → **Group healing - Party support** → **Party panel and click bindings...**. With **Show party panel** enabled, it is visible even while solo: your own real name and health bar remain available after closing Options, and configured clicks heal you at the highest learned rank. Up to four teammate bars appear automatically when you join a party, with live health and the suggested heal/click on the relevant bar. **Preview / move** temporarily displays the empty party slots outside combat for layout checks; those empty slots cannot cast. The party grid hides in raids, where dedicated mouseover keys remain available.
+
+Choose **Normal**, **Shift**, **Ctrl** or **Alt**, then assign each mouse button to a supported healing role, displayed with its currently learned spell. For example, choose **Renew - Heal over time** for left-click and **Power Word: Shield - Shield** for middle-click. **None** disables an assignment. Combined modifiers do nothing. Defaults are left-click direct heal, right-click quick heal, middle-click Shield for Priest or Rejuvenation for Druid, and Shift+left-click HoT when available. These assignments affect only this panel, not ElvUI, other unit frames or global bindings; no extra addon is required.
+
+The title bar can be dragged **independently of the HCOB HUD** outside combat. Panel position, visibility, position lock and click assignments are saved **per character** in `HCOB_CharacterDB.groupHealingPanel`. Main HUD movement, centering, hiding and scale changes do not reposition or resize this panel. **Center panel** provides an independent position reset; **Reset clicks** restores just the click assignments. Configuration closes when combat starts; secure fixed-unit buttons remain usable, with roster visibility handled by the client.
+
+**Keyboard alternative:** open WoW's Key Bindings and find **HC One Button - Group healing**. Assign **Quick heal** and **Direct heal**; optionally bind **Heal over time** and **Shield** where your class supports them. No keyboard keys are assigned or overwritten automatically. Only learned, usable actions with an available panel click or keyboard bind enter group recommendations.
+
+| Class | Quick heal | Direct heal | Heal over time | Shield |
+| --- | --- | --- | --- | --- |
+| Priest | Flash Heal, or learned direct-heal fallback | Greater Heal / Heal / Lesser Heal | Renew | Power Word: Shield |
+| Paladin | Flash of Light / Holy Light | Holy Light | — | — |
+| Shaman | Lesser Healing Wave / Healing Wave | Healing Wave | — | — |
+| Druid | Regrowth / Healing Touch | Healing Touch | Rejuvenation | — |
+
+**Ranks update automatically:** panel clicks and mouseover bindings cast the localized spell name without a fixed rank, so WoW uses the **highest learned rank**. No rebinding is needed after training. Role assignments also follow learned spell-family upgrades (for example Lesser Heal → Heal → Greater Heal) prepared outside combat. Native costs/cast times include available rank/talent effects. Existing Action Panel slots and BASE modifiers remain self-targeted.
+
+**Panel example:** set left-click to Renew and middle-click to Shield. Click Marco's bar with the left button to cast Renew on Marco, or middle-click the same bar for Shield, using the highest learned rank. The hostile target stays selected. A suggested heal is highlighted on its teammate's bar with the configured click; you still decide whether to perform it.
+
+Middle-click and Mouse 4/5 also use secure temporary bindings while hovering a party bar, including their modifier combinations. Leaving or hiding the bar removes its overrides and restores the underlying game bindings; permanent bindings are never rewritten. Left/right clicks and mouse-wheel scrolling are unchanged. Unassigned combinations remain inactive on the bar. Each heal still requires a deliberate press and release.
+
+**Keyboard example:** with Quick heal bound to F6, the HUD displays **Marco 35%**, **Flash Heal**, **MOUSEOVER + F6**. Hover Marco's party frame or character and press F6. When your mouse is over the suggested unit, the prompt becomes **PRESS F6**. You keep your hostile target. The key always heals the friendly, living unit actually under the mouse, not a secretly selected target; with no valid mouseover it does nothing. Pointing alone does not cast.
+
+The Advisor considers readable health, incoming heals when exposed by the client, spell-specific range, current mana, cooldowns, movement and existing HoTs/shields. Direct healing takes precedence for larger deficits; an instant HoT can be a fallback while moving. Unknown range is not presented as castable. Personal emergencies, interrupts and ongoing casts/channels retain priority. It does not cancel Shadowform automatically; a Druid group-heal macro leaves form only on a deliberate valid mouseover press or party-bar click.
+
+During a cast, wait for **LET IT FINISH**. Afterward the group is reevaluated: another necessary heal may be suggested, otherwise normal combat advice resumes. Instant HoTs/shields do not hold the rotation until their buff expires.
+
+In `/hcob options`, the healer-only **Group healing - Party support** section contains **Group healing advice**: ON by default, saved in `HCOB_DB.groupHealing` across reload/logout. OFF disables group suggestions but preserves manual panel clicks and mouseover bindings. **Show party panel** separately controls panel visibility. With no available panel click or keyboard binding, normal combat advice continues. This feature does not change the game target, choose a secure target by health, or execute a heal automatically: you click the specific teammate's bar or press a mouseover binding yourself. Names are shown only in the live UI, not added to feedback or tuning records.
 
 ## Between-pull recovery
 
@@ -1225,7 +1259,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.11` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.12` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1233,12 +1267,14 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.11` passes the following automated checks:
+Version `1.29.12` passes the following automated checks:
 
-- **52/52 Lua chunks** pass syntax parsing in the current validation environment;
-- **36/36 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
-- **53/53 TOC references** resolved (`52 Lua + Bindings.xml`);
+- **56/56 Lua chunks** pass syntax parsing in the current validation environment;
+- **38/38 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **57/57 TOC references** resolved (`56 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
+- **1,261 party-panel checks** cover all four healer classes, fixed-unit clicks, modifiers, learned-rank upgrades, persistence, independent movement, solo/party/raid visibility, combat-safe configuration and temporary hover-binding cleanup;
+- **198 group-healing checks** cover triage, mana/range/movement, incoming heals, maintained auras, optional advice, dedicated mouseover actions and isolation from self-survival tuning;
 - **250 wand checks** cover Priest/Mage/Warlock auto-repeat detection, real event dispatch, localized queries, missing/error API fallback, cooldown cycles, start/stop and range transitions, preserved efficiency scoring, healing/proc/cast/channel precedence and consistent BASE feedback;
 - **114 Priest leveling checks** cover all three talent-tree classifications, early/mixed learned spells, rank/talent-adjusted mana costs and cast times, reserve boundaries, DoT lifetime, close casting, recovery priority, no-wand fallback and extreme adaptive biases; see `docs/PRIEST_LEVELING_REVIEW.md` for the policy review;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
@@ -1248,7 +1284,7 @@ Version `1.29.11` passes the following automated checks:
 - SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
 - malformed adaptive action collections fail closed in the inspector, status command and offensive-bias lookup without crashing;
-- Options layout tests instantiate all nine classes and verify Warrior/Rogue-only grouping, setting persistence/reload/reset, deferred secure updates, slider-label spacing and CTA/footer separation; inspector tests verify the visible baseline legend and its reserved space;
+- Options layout tests instantiate all nine classes and verify Warrior/Rogue/healer-specific grouping, setting persistence/reload/reset, deferred secure updates, slider-label spacing and CTA/footer separation; inspector tests verify the visible baseline legend and its reserved space;
 - fresh-install binding-path verification: auto-bind defaults to enabled and is applied during `PLAYER_LOGIN`;
 - all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants;
 - Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, localized learned-spell range overrides incomplete rank-1 metadata, explicit ranged BASE contracts remain protected, and friendly/melee actions are excluded from ranged warnings;
@@ -1266,7 +1302,7 @@ Version `1.29.11` passes the following automated checks:
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
 - 81 target-cast checks cover live casts/channels, Classic shifted API signatures, delay/expiry, stop versus stale API data, old same-spell stop events, target changes, bounded combat-event fallback and shared interrupt/control contracts across all nine classes;
-- 182 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 136 Advisor checks cover wand start/active/wait/disabled-HUD feedback, the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
+- 182 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 162 Advisor checks cover group-healing prompts, wand start/active/wait/disabled-HUD feedback, the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
 - 113 participation checks cover all nine classes, observed-opponent recovery, unknown/API-failed levels, elite classification, pet/healing/control participation, late-tag boundaries, runtime-identity cleanup and the full logger lifecycle. Excluded fights remain in history and older records are untouched;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - Warrior escape-Rage coverage verifies low-Rage Hamstring priority, excess-Rage spending, proc/core/queued-strike ordering, controlled two-target spending and strict panic preemption at low HP or 3+ enemies;
@@ -1277,11 +1313,11 @@ Version `1.29.11` passes the following automated checks:
 - Diagnostic Pixel acknowledgement coverage verifies rank-safe cast matching, an observable `60 ms` black edge at 50 Hz, suppression of an already-computed next suggestion during that edge and same-slot re-emission afterward;
 - TOC order, referenced files, runtime/TOC/documentation version parity and packaged README/CHANGELOG/LICENSE consistency are checked automatically.
 
-Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). Two Priest review/refinement passes, the user-confirmed in-game smoke test and the regression checklist are recorded in `docs/PRIEST_LEVELING_REVIEW.md`; earlier review records remain in `docs/WAND_REVIEW.md`, `docs/RECOVERY_REVIEW.md`, `docs/BAG_QUICK_DELETE_REVIEW.md`, `docs/ROGUE_FOLLOWUP_REVIEW.md`, `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cover simulated APIs and do not establish a measured DPS improvement.
+Release-specific historical validation belongs in [`CHANGELOG.md`](CHANGELOG.md). The group-healing review, all-four-healer checks and user-confirmed panel smoke test are recorded in `docs/GROUP_HEALING_REVIEW.md`; earlier review records remain in `docs/PRIEST_LEVELING_REVIEW.md`, `docs/WAND_REVIEW.md`, `docs/RECOVERY_REVIEW.md`, `docs/BAG_QUICK_DELETE_REVIEW.md`, `docs/ROGUE_FOLLOWUP_REVIEW.md`, `docs/ROGUE_1296_REVIEW.md`, `docs/ROGUE_LEVELING_REVIEW.md` and `docs/ADAPTIVE_REVIEW.md` (repository only). Automated checks cover simulated APIs and do not establish a measured DPS improvement.
 
 ---
 
-Curated public notes are in `docs/releases/1.29.11.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.12.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 

@@ -71,6 +71,8 @@ local playerBuffObservations = {}
 local playerSpellcastGrace = {}
 
 function NotePlayerSpellcastSucceeded(spellID)
+    local groupHealing = HCOB.Advisor and HCOB.Advisor.GroupHealing
+    if groupHealing and groupHealing.IsOtherUnitCast(spellID) then return end
     local name = SpellName(spellID)
     if not name then return end
     playerSpellcastGrace[name] = GetTime() + PLAYER_BUFF_CAST_GRACE

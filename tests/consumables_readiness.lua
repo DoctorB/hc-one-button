@@ -277,7 +277,7 @@ targetLevel = 30
 
 local source = assert(io.open("HCOneButton/UI/SurvivalStrip.lua", "rb")):read("*a")
 assert(source:find('SecureActionButtonTemplate', 1, true), "survival buttons must be secure")
-assert(source:find('button:SetAttribute("type1", "item")', 1, true), "secure item action missing")
+assert(source:find('button:SetAttribute("macrotext1", ConsumableMacro(item.id,true,role == "bandage"))', 1, true), "secure manual consumable macro missing")
 assert(source:find('Strip.pendingConfigure = true', 1, true), "combat-deferred assignment missing")
 assert(source:find('button.assignedItemID', 1, true), "visual state must follow frozen secure assignment")
 assert(source:find('Consumables.GetRoleCooldown(button.role, itemID)', 1, true), "button must include role-specific cooldown locks")

@@ -354,6 +354,13 @@ function Recommend()
     HCOB.Advisor.Engine.lastCandidates = {}
     HCOB.Advisor.Engine.lastBaseline = nil
     HCOB.Advisor.Engine.lastCandidateSelectionAt = nil
+    local groupHealing = HCOB.Advisor.GroupHealing
+    if groupHealing then groupHealing.current = nil end
+    local strip = HCOB.UI and HCOB.UI.SurvivalStrip
+    if strip and strip.ManualUsePending and strip.ManualUsePending() then
+        return nil, "MANUAL PRIORITY", "LET IT FINISH",
+            "Manual consumable input; waiting for the action to settle", "caution"
+    end
     local inCombat = UnitAffectingCombat("player") and true or false
     local hostile = HostileLiveTarget()
     local hp, hpReadable = UnitHealthPct("player")
@@ -449,6 +456,11 @@ function Recommend()
                 return nil, "UNFAVORABLE FIGHT", "PREPARE ESCAPE", trendText .. ": preserve control/defensives", "caution"
             end
         end
+    end
+
+    if groupHealing and hpReadable then
+        local gid, gtitle, gkey, greason, gkind = groupHealing.Recommend(hp)
+        if gtitle then return gid, gtitle, gkey, greason, gkind end
     end
 
     if not inCombat and hostile then

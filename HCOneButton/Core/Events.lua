@@ -17,6 +17,7 @@ local events = {
     "COMBAT_LOG_EVENT_UNFILTERED", "UNIT_PET", "PET_BAR_UPDATE", "UNIT_HAPPINESS",
     "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL", "PLAYER_DEAD", "PLAYER_ENTERING_WORLD",
     "CURRENT_SPELL_CAST_CHANGED",
+    "GROUP_ROSTER_UPDATE", "UPDATE_MOUSEOVER_UNIT", "UPDATE_BINDINGS", "UNIT_CONNECTION", "UNIT_HEAL_PREDICTION",
     "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED",
     "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
 }
@@ -70,6 +71,10 @@ local function RequestAdvisorRefresh()
 end
 
 local function EventNeedsAdvisorRefresh(event, unit)
+    if event == "GROUP_ROSTER_UPDATE" or event == "UPDATE_MOUSEOVER_UNIT" or event == "UPDATE_BINDINGS" then return true end
+    if type(unit) == "string" and (unit:match("^party%d+$") or unit:match("^raid%d+$")) then
+        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" or event == "UNIT_AURA" or event == "UNIT_CONNECTION" or event == "UNIT_HEAL_PREDICTION" then return true end
+    end
     if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_TARGET_CHANGED" then return true end
     if event == "SPELL_UPDATE_COOLDOWN" or event == "SPELL_UPDATE_USABLE" or event == "PLAYER_COMBO_POINTS" or event == "UPDATE_SHAPESHIFT_FORM" or event == "UPDATE_SHAPESHIFT_FORMS" then return true end
     if event == "UNIT_PET" or event == "PET_BAR_UPDATE" or event == "UNIT_HAPPINESS" then return true end
@@ -117,6 +122,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     end
 
     local function HandleEvent()
+        local groupHealing = HCOB.Advisor.GroupHealing
+        if groupHealing then groupHealing.HandleCast(event, eventArg1, eventArg2, eventArg3) end
         if HandleTargetCastEvent then HandleTargetCastEvent(event, eventArg1, eventArg2, eventArg3) end
         if HandleWandEvent then HandleWandEvent(event, eventArg1) end
         if event == "PLAYER_LOGIN" then

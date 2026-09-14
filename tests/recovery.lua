@@ -12,6 +12,15 @@ local function runtime(class)
     e.PLAYER_CLASS=class or "MAGE"; e.now=100; e.level=30; e.hp=50; e.mana=30; e.hpKnown=true; e.manaKnown=true
     e.counts={}; e.meta={}; e.cooldowns={}; e.auras={}; e.widgets={}; e.infoCalls=0; e.requests={}
     e.GetTime=function() return e.now end
+    e.timers={}
+    e.C_Timer={After=function(delay,callback) e.timers[#e.timers+1]={at=e.now+delay,callback=callback} end}
+    e.advance=function(seconds)
+        e.now=e.now+seconds
+        local pending=e.timers; e.timers={}
+        for _, timer in ipairs(pending) do
+            if timer.at<=e.now then timer.callback() else e.timers[#e.timers+1]=timer end
+        end
+    end
     e.PlayerLevel=function() return e.level end
     e.UnitLevel=function() return e.level end
     e.UnitExists=function() return true end
@@ -62,6 +71,7 @@ local function runtime(class)
     for _, method in ipairs({"SetFrameStrata","EnableMouse","SetJustifyH","SetColorTexture","SetTextColor","SetVertexColor","SetBlendMode","SetDrawEdge","SetHideCountdownNumbers","RegisterEvent"}) do
         methods[method]=function() end
     end
+    function methods:SetColorTexture(r,g,b,a) self.color={r,g,b,a} end
     function methods:SetSize(w,h) self.width,self.height=w,h end
     function methods:GetWidth() return self.width end
     function methods:SetWidth(w) self.width=w end
@@ -87,9 +97,14 @@ local function runtime(class)
     e.CreateFrame=widget
     e.UIParent=widget("Frame")
     e.HCOB_CoreShell=widget("Frame")
-    e.HCOneButton.UI.ActionPanel={frame=widget("Frame")}
+    e.HCOneButton.UI.ActionPanel={frame=widget("Frame"),idToSlot={[123]=1,[456]=2}}
+    e.advisor=widget("Frame")
+    e.SetDisplay=function(id,title,key,reason,kind)
+        e.display={id=id,title=title,key=key,reason=reason,kind=kind}
+        e.UpdateDiagnosticPixel(id)
+    end
     e.HCOneButton.Systems.ProfessionCoach={Reanchor=function() e.reanchors=(e.reanchors or 0)+1 end}
-    for _, path in ipairs({"Core/Auras.lua","Systems/Consumables.lua","Systems/Recovery.lua","UI/SurvivalStrip.lua","Advisor/Engine.lua"}) do
+    for _, path in ipairs({"Core/Auras.lua","Systems/Consumables.lua","Systems/Recovery.lua","UI/SurvivalStrip.lua","Advisor/Engine.lua","UI/DiagnosticPixel.lua"}) do
         local chunk=assert(loadfile("HCOneButton/"..path)); setfenv(chunk,e); chunk()
     end
     e.C=e.HCOneButton.Systems.Consumables; e.R=e.HCOneButton.Systems.Recovery; e.strip=e.HCOneButton.UI.SurvivalStrip
@@ -221,7 +236,9 @@ for _, property in ipairs({"combat","dead","mounted","flying","casting","channel
     e=runtime(); e.add(117,3); e.add(159,3); e.configure(); e[property]=true
     expect(e.R.CanUse("food",e.C.GetRole("food")),false,"food blocked: "..property)
     expect(e.R.CanUse("drink",e.C.GetRole("drink")),false,"water blocked: "..property)
-    if not e.combat then expect(e.click("food"),"/stopmacro","click blocked: "..property) end
+    if property=="casting" or property=="channel" then
+        assert(e.click("food"):find("/stopcasting",1,true),"explicit rest click can interrupt "..property)
+    elseif not e.combat then expect(e.click("food"),"/stopmacro","click blocked: "..property) end
 end
 e=runtime("DRUID"); e.add(159,4); e.configure(); e.form=1
 expect(e.R.UsesMana(),true,"Druid hidden mana retained")
@@ -279,4 +296,143 @@ expect(title,"ESCAPE","panic guidance preserved")
 e=runtime(); e.add(117,3)
 e.C_Item.GetItemInfo=e.GetItemInfo; e.GetItemInfo=nil
 assert(e.R.FindBest("food").id==117,"namespaced item metadata API fallback")
+
+-- Manual survival precedence: exercise real strip/Advisor/pixel code together.
+local function ready(class)
+    local state=runtime(class)
+    state.add(118,3); state.add(5512,3); state.add(2455,3); state.add(1251,3)
+    state.add(117,3); state.add(159,3); state.configure()
+    state.HostileLiveTarget=function() return false end
+    state.CountActiveEnemies=function() return 0 end
+    state.SafeUnitLevel=function() return 30 end
+    state.SafeUnitClassification=function() return "normal" end
+    state.TalentSpec=function() return 1 end
+    state.HCOneButton.Classes[state.PLAYER_CLASS]={GetRecommendation=function() return 123,"NEW ACTION","MANUAL","test" end}
+    state.HCOneButton.Advisor.Engine.kindPriority={action=40,caution=70,danger=100}
+    state.PanicRecommendation=function() return 456,"PANIC","MANUAL","test" end
+    state.CooldownReady=function() return true end
+    state.IsKnown=function() return true end
+    state.IsUsable=function() return true end
+    state.HCOneButton.Advisor.Engine.IsRangedHostileSpell=function() return false end
+    return state
+end
+for _, class in ipairs({"WARRIOR","HUNTER","MAGE","WARLOCK","PRIEST","ROGUE","PALADIN","SHAMAN","DRUID"}) do
+    e=ready(class)
+    for _, role in ipairs({"healingPotion","healthstone","manaPotion","bandage"}) do
+        local b=e.strip.roleToButton[role]
+        expect(b.clicks[1],"LeftButtonUp",class.." one physical click edge for "..role)
+        expect(#b.clicks,1,"no second edge")
+        expect(b.attrs.useOnKeyDown,false,"key-down preference cannot double-cancel")
+        expect(b.attrs.type1,"macro","native macro action")
+        expect(b.attrs.item1,nil,"old item attribute removed")
+        local macro=b.attrs.macrotext1
+        assert(macro:find("/cancelqueuedspell\n/stopcasting\n",1,true)==1,"queue must be cleared before the cast")
+        assert(macro:find("/use [@player] item:"..b.assignedItemID,1,true),"survival consumable uses self without changing target")
+        expect(macro:find("/stopattack",1,true)~=nil,role=="bandage","only bandage stops melee auto-attack")
+        assert(#macro<=255,"secure macro length")
+        e.combat=true
+        local writes=b.writes
+        local frozen=b.attrs.macrotext1
+        e.UpdateDiagnosticPixel(123)
+        e.click(role)
+        expect(e.strip.ManualUsePending(),true,class.." handoff starts")
+        expect(e.diagPixelTex.color[1],0,"output cleared synchronously before native action")
+        expect(e.display.id,nil,"HUD action cleared synchronously")
+        expect(e.display.title,"MANUAL PRIORITY","visible manual handoff")
+        expect(b.writes,writes,"no protected writes in combat")
+        expect(b.attrs.macrotext1,frozen,"frozen macro preserved")
+        e.UpdateDiagnosticPixel(456)
+        expect(e.diagPixelTex.color[1],0,"even a direct output update is suppressed")
+        e.hp=10
+        local id,title=e.Recommend()
+        expect(id,nil,"manual handoff precedes panic recommendation")
+        expect(title,"MANUAL PRIORITY","handoff visible during danger")
+        e.advance(.41)
+        expect(e.strip.ManualUsePending(),false,"failed/instant attempt cannot latch")
+        id,title=e.Recommend()
+        expect(id,456,"fresh panic recommendation resumes")
+        e.hp=50; e.combat=false
+    end
+end
+
+e=ready()
+e.UpdateDiagnosticPixel(123); e.AcknowledgeDiagnosticPixelCast(123)
+e.click("healingPotion")
+e.UpdateDiagnosticPixel(456)
+e.advance(.07)
+expect(e.diagPixelTex.color[1],0,"old ACK timer cannot reopen output during handoff")
+e.advance(.4)
+expect(e.diagPixelTex.color[1],0,"handoff timeout never replays discarded suggestion")
+e.UpdateDiagnosticPixel(e.Recommend())
+expect(e.diagPixelTex.color[1],12/255,"only fresh decision releases output")
+
+e=ready()
+e.HCOneButton.Advisor.Engine.Stabilize(456,"PANIC","MANUAL","test","danger")
+e.UpdateDiagnosticPixel(123); e.AcknowledgeDiagnosticPixelCast(123)
+e.click("bandage"); e.UpdateDiagnosticPixel(456)
+expect(e.HCOneButton.Advisor.Engine.displayState,nil,"manual input discards old stabilized danger")
+e.advance(.6)
+expect(e.diagPixelTex.color[1],0,"late ACK callback cannot replay an obsolete decision after handoff")
+e.channel=true
+local resumedID,resumedTitle=e.HCOneButton.Advisor.Engine.Stabilize(e.Recommend())
+expect(resumedID,nil,"new channel replaces old stabilized danger")
+expect(resumedTitle,"CHANNEL ACTIVE","live channel state wins after handoff")
+e.channel=false
+e.UpdateDiagnosticPixel(e.Recommend())
+expect(e.diagPixelTex.color[1],12/255,"channel interruption restores fresh output")
+
+e=ready()
+local b=e.strip.roleToButton.healingPotion
+b.scripts.PreClick(b,"LeftButton",true)
+expect(e.strip.ManualUsePending(),false,"down edge ignored")
+b.scripts.PreClick(b,"RightButton",false)
+expect(e.strip.ManualUsePending(),false,"right click ignored")
+e.counts[118]=0; e.configure(); e.click("healingPotion")
+expect(e.strip.ManualUsePending(),false,"empty unassigned button ignored")
+e=ready(); e.cooldowns[118]=120; e.click("healingPotion"); e.advance(.41)
+expect(e.strip.ManualUsePending(),false,"cooldown failure cannot leave output locked")
+e=ready(); e.click("healingPotion"); e.advance(.3); e.click("healthstone"); e.advance(.2)
+expect(e.strip.ManualUsePending(),true,"a second deliberate click gets its own handoff")
+e.advance(.21); expect(e.strip.ManualUsePending(),false,"second handoff expires")
+
+for _, field in ipairs({"channel","casting"}) do
+    e=ready(); e[field]=true; e.click("bandage")
+    e.advance(.41)
+    local id,title=e.Recommend()
+    expect(id,nil,"active "..field.." holds beyond the click window")
+    assert(title=="CHANNEL ACTIVE" or title=="CAST ACTIVE","real cast/channel owns ongoing hold")
+    e.advance(5); expect(e.Recommend(),nil,"long action still protected")
+    e[field]=false
+    expect(e.Recommend(),123,"actual action end resumes a fresh decision")
+end
+for _, role in ipairs({"food","drink"}) do
+    e=ready(); e.casting=true
+    local macro=e.click(role)
+    assert(macro:find("/stopmacro [combat][mounted][flying]\n/cancelqueuedspell\n/stopcasting\n/stopattack\n/use item:",1,true)==1,
+        "rest guards must precede all cancellation commands")
+    expect(e.strip.ManualUsePending(),true,"explicit rest click starts handoff")
+    e.casting=false; e.eat(role=="food",role=="drink"); e.advance(.41)
+    expect(e.Recommend(),nil,"real recovery aura owns longer hold")
+    e.eat(false,false); expect(e.Recommend(),123,"interrupted recovery releases hold")
+    e=ready(); e.combat=true; e.click(role)
+    expect(e.strip.ManualUsePending(),false,"combat-rejected rest click cannot hide danger")
+    e=ready(); e.hp=100; e.mana=100; e.click(role)
+    expect(e.strip.ManualUsePending(),false,"full resources do not trigger a handoff")
+end
+
+e=ready(); e.GetNetStats=function() return 0,0,25,400 end
+e.click("healingPotion"); e.advance(.5)
+expect(e.strip.ManualUsePending(),true,"world latency extends handoff")
+e.advance(.41); expect(e.strip.ManualUsePending(),false,"latency handoff remains bounded")
+for _, invalid in ipairs({-1,math.huge,0/0,"invalid"}) do
+    e=ready(); e.GetNetStats=function() return 0,0,25,invalid end
+    e.click("healingPotion"); e.advance(.41)
+    expect(e.strip.ManualUsePending(),false,"invalid latency uses finite fallback")
+end
+e=ready(); e.GetNetStats=function() error("unavailable") end
+e.click("healingPotion"); e.advance(.41)
+expect(e.strip.ManualUsePending(),false,"latency API failure cannot latch")
+e=ready(); e.GetNetStats=function() return 0,0,25,100000 end
+e.click("healingPotion"); e.advance(1.51)
+expect(e.strip.ManualUsePending(),false,"excessive latency cannot suppress indefinitely")
 print("Between-pull recovery regression: PASS ("..checks.." checks)")

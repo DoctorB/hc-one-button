@@ -1,3 +1,7 @@
 <Bindings>
     <Binding name="CLICK HCOneButtonFrame:LeftButton" header="HCOB" />
+    <Binding name="CLICK HCOneButtonGroupHeal1:LeftButton" header="HCOB_GROUP_HEAL" />
+    <Binding name="CLICK HCOneButtonGroupHeal2:LeftButton" />
+    <Binding name="CLICK HCOneButtonGroupHeal3:LeftButton" />
+    <Binding name="CLICK HCOneButtonGroupHeal4:LeftButton" />
 </Bindings>

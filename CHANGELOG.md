@@ -2,7 +2,29 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.11`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.12`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.12 — 2026-09-14
+
+### Added — party click-healing panel and group support
+
+- Priest, Paladin, Shaman and Druid can follow group-healing advice with a teammate name, health, spell and dedicated key shown in the HUD. Mouseover the party/raid frame or character, then press the key without changing the hostile target.
+- Four separate binding roles cover quick/direct heals, supported HoTs and Shield. Learned spells, current mana costs, range, incoming heals, movement and active auras determine advice; existing self-heal actions are unchanged. Bindings are configured by the player and never overwrite existing keys automatically.
+- Add a compact party health panel with configurable left/right/middle/Mouse 4/Mouse 5 heals and optional Shift, Ctrl or Alt. Highlight the suggested teammate and click; no keyboard binding is required for available panel actions. Mouseover keys continue to support parties and raids; the new grid covers the player and four party members.
+- Move the panel independently of the main HUD using its title bar. Save its position, visibility, position lock and click assignments per character. Preview and configure it outside combat through a dedicated Options window; fixed-unit secure clicks remain available during combat without changing the hostile target.
+- Keep the enabled healing panel visible while solo with the player's real name and health, including after closing Options and during combat. Configured clicks can be checked on the player's own bar; real teammate bars appear on joining a party. Explicit panel OFF remains respected.
+- Explicitly enable mouse input on party healing rows, keep middle/side buttons on the secure row and prevent the visual health bar from intercepting clicks. Preserve one native action on release, configured modifiers and fixed-unit targeting.
+- Add secure hover-only bindings for middle-click and Mouse 4/5, including modifier combinations. Remove row-owned overrides on leave/hide and restore the underlying game bindings without rewriting them. Keep left/right clicks unchanged and unassigned combinations inactive; process both binding input edges with the native action restricted to release.
+- Always use the highest learned spell rank automatically, with no need to reassign clicks after training. Role assignments follow learned healing upgrades outside combat. No ElvUI or additional addon is required.
+- Add the healer-only **Group healing advice** ON/OFF option, persisted across reload/logout. Disabling advice preserves manual panel clicks and mouseover bindings; without an available panel click or keyboard action, normal advice continues.
+- Keep personal emergencies, interrupts and real cast/channel holds ahead of group advice. Reevaluate after healing and return to normal combat suggestions when no further group heal is needed. Group targeting remains a player choice, separate from local self-survival tuning; teammate names stay in the live HUD only.
+
+### Compatibility and validation
+
+- Version `1.29.12`, Interface `11509`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. Existing settings, HUD positions, combat history, learning data, fixed action slots and permanent bindings are preserved.
+- The maintainer confirmed the party panel in game, including left/right/middle clicks, on 2026-09-14 and authorized publication. This is a panel smoke test; automated coverage separately exercises all four healer classes.
+- Final review: 56/56 Lua chunks, 38/38 Lua harnesses, 1,261 party-panel checks, 198 group-healing checks, 162 Advisor UI checks, 57/57 TOC references and 19/19 offline release-tool tests pass. The package contains 61 files with matching runtime versions and root/package documentation.
+- Review: `docs/GROUP_HEALING_REVIEW.md`. Curated CurseForge notes: `docs/releases/1.29.12.md`. Publish through the existing authorized GitHub Release → CurseForge workflow without changing secrets or publisher permissions.
 
 ## 1.29.11 — 2026-09-13
 

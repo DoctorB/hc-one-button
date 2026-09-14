@@ -245,6 +245,36 @@ function CreateOptionsPanel()
         description:SetJustifyH("LEFT")
         description:SetText("Manual secure openers only.\nCheck Auto Loot and its modifier key.\nLoot timing and resisted attempts can affect the opening.")
         panel.rogueSection = rogue
+    elseif PLAYER_CLASS == "PRIEST" or PLAYER_CLASS == "PALADIN" or PLAYER_CLASS == "SHAMAN" or PLAYER_CLASS == "DRUID" then
+        local group = CreateFrame("Frame", nil, panel)
+        group:SetPoint("TOPLEFT",24,-378)
+        group:SetSize(294,142)
+        local background = group:CreateTexture(nil,"BACKGROUND")
+        background:SetAllPoints()
+        background:SetColorTexture(0.025,0.060,0.045,0.90)
+        local heading = group:CreateFontString(nil,"ARTWORK","GameFontNormal")
+        heading:SetPoint("TOPLEFT",12,-12)
+        heading:SetText("Group healing - Party support")
+        add(CreateCheckBox(group,"Group healing advice","Suggest learned, bound heals for injured party/raid members in range. Click the indicated party bar, or hover a friendly frame/character and press your dedicated keyboard bind. Existing self-heal keys stay self-only. Disabling advice preserves manual healing.",function()
+            return HCOB_DB.groupHealing ~= false
+        end,function(v) HCOB_DB.groupHealing=v; UpdateDisplay() end,10,-30))
+        local description=group:CreateFontString(nil,"ARTWORK","GameFontHighlightSmall")
+        description:SetPoint("TOPLEFT",14,-64)
+        description:SetWidth(266)
+        description:SetHeight(34)
+        description:SetJustifyH("LEFT")
+        description.Refresh=function(self)
+            local g=HCOB.Advisor and HCOB.Advisor.GroupHealing
+            local function key(slot) return g and g.Binding(slot) or "--" end
+            self:SetText("Keys - Quick: "..key(1).."   Direct: "..key(2).."\nHoT: "..key(3).."   Shield: "..key(4))
+        end
+        description:Refresh()
+        add(description)
+        local configure=CreateFrame("Button",nil,group,"UIPanelButtonTemplate")
+        configure:SetSize(266,26); configure:SetPoint("TOPLEFT",14,-106)
+        configure:SetText("Party panel and click bindings...")
+        configure:SetScript("OnClick",function() HCOB.UI.GroupHealingOptions.Open() end)
+        panel.groupHealingSection=group
     end
 
     local learningTitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -285,7 +315,7 @@ function CreateOptionsPanel()
 
     local centerBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     centerBtn:SetSize(125, 25)
-    centerBtn:SetPoint("TOPLEFT", 24, (panel.warriorSection or panel.rogueSection) and -534 or -388)
+    centerBtn:SetPoint("TOPLEFT", 24, (panel.warriorSection or panel.rogueSection or panel.groupHealingSection) and -534 or -388)
     centerBtn:SetText("Center HUD")
     centerBtn:SetScript("OnClick", Center)
 
@@ -328,6 +358,7 @@ function CreateOptionsPanel()
         HCOB_DB.bagQuickDelete = false
         if HCOB.UI.BagQuickDelete then HCOB.UI.BagQuickDelete.Sync() end
         HCOB_DB.showConsumables = true
+        HCOB_DB.groupHealing = true
         if HCOB.Systems and HCOB.Systems.AdaptiveTuner and HCOB.Systems.AdaptiveTuner.SetEnabled then HCOB.Systems.AdaptiveTuner.SetEnabled(true) end
         runtimeSmartDisabled = false
         runtimeCombatLogDisabled = false

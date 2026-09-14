@@ -7,6 +7,10 @@ HCOB.Classes.DRUID = Class
 Class.classToken = "DRUID"
 Class.fallbackSpec = 2
 
+function Class:GetGroupHealingSpells()
+    return {quick={S.REGROWTH,S.HEALING_TOUCH},direct={S.HEALING_TOUCH},hot={S.REJUVENATION}}
+end
+
 -- Internal form tokens are deliberately independent from stance-bar indexes.
 -- Classic characters can expose different stance indexes as forms are learned,
 -- while GetShapeshiftFormID() provides stable DBC form IDs. Dire Bear has its

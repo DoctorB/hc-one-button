@@ -11,7 +11,7 @@ HCOB.Advisor.Engine = HCOB.Advisor.Engine
 HCOB.Advisor.Engine.samples = HCOB.Advisor.Engine.samples or {}
 HCOB.Advisor.Engine.lastCandidates = HCOB.Advisor.Engine.lastCandidates or {}
 HCOB.Advisor.Engine.kindPriority = {
-    idle=0, buff=20, action=40, caution=70, interrupt=90, danger=100,
+    idle=0, buff=20, action=40, caution=70, groupheal=75, interrupt=90, danger=100,
 }
 
 function HCOB.Advisor.Engine.ResetDynamics()

@@ -175,6 +175,10 @@ HCOB.UI.ThreatMeter.Init(dpsMeter)
 
 
 function SetDisplay(spellId, title, keyHint, reason, kind)
+    local group = kind == "groupheal" and HCOB.Advisor.GroupHealing and HCOB.Advisor.GroupHealing.current
+    -- A group heal has a separate secure binding. Never highlight or emit the
+    -- same spell's self-cast Action Panel slot.
+    if kind == "groupheal" then spellId = nil end
     advisor.preparationHint:SetText("")
     UpdateDiagnosticPixel(spellId)
     if HCOB.UI.ActionPanel then
@@ -190,7 +194,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     -- Do not show a ? when there is simply no manual priority.
     -- While idle use the base action icon; for warnings without a spell use
     -- explicit UI textures. The question mark remains a true error fallback.
-    local displayId = spellId
+    local displayId = group and group.id or spellId
     local fallbackTexture
     if not displayId then
         if keyHint == "MOVE CLOSER" then
@@ -213,8 +217,8 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         end
     end
     advisorIcon:SetTexture(SpellIcon(displayId, fallbackTexture))
-    advisorTitle:SetText(title or "ADVISOR")
-    advisorReason:SetText(reason or "")
+    advisorTitle:SetText(group and (group.name .. " " .. math.floor(group.hp) .. "%") or title or "ADVISOR")
+    advisorReason:SetText(group and SpellName(group.id,"Heal") or reason or "")
 
     local actionHint = keyHint or "CAST MANUALLY"
     local baseKey = nil
@@ -345,7 +349,23 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
             or (baseAction and baseOnceHint or "PRESS SHOOT ONCE")))
     end
 
-    if kind == "danger" then
+    if group then
+        local correct = UnitIsUnit and UnitIsUnit("mouseover",group.unit)
+        advisorMode:SetText("GROUP HEAL")
+        advisorMode:SetTextColor(0.72,1,0.88)
+        advisorBanner:SetColorTexture(0.02,0.35,0.24,1)
+        advisorBG:SetColorTexture(0.01,0.06,0.04,0.98)
+        HCOB_SetRectBorderColor(HCOB_CoreShell,0.15,0.9,0.6,0.95)
+        HCOB_SetRectBorderColor(dpsMeter,0.15,0.9,0.6,0.90)
+        advisorKey:SetText(group.panel and (group.key.." ON PARTY BAR")
+            or ((correct and "PRESS " or "MOUSEOVER + ") .. group.key))
+        advisorKey:SetTextColor(0.6,1,0.8)
+        advisorTitle:SetTextColor(0.65,1,0.85)
+        advisorGlow:SetVertexColor(0.15,1,0.65); advisorGlow:Show()
+        advisorReason:SetTextColor(0.65,1,0.85)
+        advisor:SetAlpha(1)
+        if advisorIcon.SetDesaturated then advisorIcon:SetDesaturated(false) end
+    elseif kind == "danger" then
         advisorGlow:SetVertexColor(1,0.1,0.1); advisorGlow:Show()
         advisorReason:SetTextColor(1, 0.8, 0.8)
     elseif kind == "caution" then

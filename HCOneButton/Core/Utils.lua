@@ -57,6 +57,7 @@ function InitializeSavedVariables()
     Default("roguePickPocket", false)
     Default("bagQuickDelete", false)
     Default("showConsumables", true)
+    Default("groupHealing", true)
 
     for _, key in ipairs({"actionSlotKeys", "actionSlotAppliedKeys"}) do
         if HCOB_DB[key] ~= nil and type(HCOB_DB[key]) ~= "table" then

@@ -166,12 +166,35 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
         if class == "ROGUE" then
             local _,sy,_,sh=rect(panel.rogueSection)
             assert(y>=sy+sh+10,"utility buttons overlap Rogue section")
+        elseif panel.groupHealingSection then
+            local _,sy,_,sh=rect(panel.groupHealingSection)
+            assert(y>=sy+sh+10,"utility buttons overlap Group healing section")
         else
             assert(y<400,class..": hidden Warrior section left a large layout gap")
         end
     end
     local logger,meter,tuning,details=find(widgets,"Combat logger"),find(widgets,"DPS / aggro meter"),
         find(widgets,"Local Adaptive Tuning"),find(widgets,"View learned adjustments...")
+    local groupToggle=find(widgets,"Group healing advice")
+    local healer=class=="PRIEST" or class=="PALADIN" or class=="DRUID" or class=="SHAMAN"
+    assert((groupToggle~=nil)==healer,"group option must be healer-only")
+    if healer then
+        local configure=find(widgets,"Party panel and click bindings...")
+        assert(configure and configure.parent==panel.groupHealingSection,"party panel configuration is grouped")
+        local cx,cy,cw,ch=rect(configure)
+        local gx,gy,gw,gh=rect(panel.groupHealingSection)
+        assert(cx>=gx and cx+cw<=gx+gw and cy>=gy+100 and cy+ch<=gy+gh,"party CTA escapes section or overlaps text")
+        assert(groupToggle.parent==panel.groupHealingSection,"group option is not grouped")
+        local sx,sy,sw,sh=rect(panel.groupHealingSection)
+        local x,y,w,h=rect(groupToggle)
+        assert(x>=sx and y>=sy and x+w<=sx+sw and y+h<=sy+sh,"group option escapes its section")
+        groupToggle:SetChecked(false); groupToggle.scripts.OnClick(groupToggle)
+        assert(env.HCOB_DB.groupHealing==false,"group option is not persisted")
+        local restored,restoredWidgets=runtime(class,env.HCOB_DB)
+        assert(not find(restoredWidgets,"Group healing advice").checked,"group option reset on reload")
+        find(restoredWidgets,"Reset defaults").scripts.OnClick()
+        assert(restored.HCOB_DB.groupHealing==true,"reset must restore group advice")
+    end
     local previousBottom=372+12
     for _, control in ipairs({logger,meter,tuning,details}) do
         local x,y,_,h=rect(control)

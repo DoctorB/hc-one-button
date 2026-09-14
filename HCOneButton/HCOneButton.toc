@@ -2,7 +2,7 @@
 ## Title: HC One Button
 ## Notes: Hardcore combat assistant with Local Adaptive Tuning, live DPS/threat HUD, pre-pull readiness, secure survival consumables, class-aware Advisor and deterministic action slots for WoW Classic Era.
 ## Author: DoctorB
-## Version: 1.29.11
+## Version: 1.29.12
 ## SavedVariables: HCOB_DB, HCOB_CombatLog
 ## SavedVariablesPerCharacter: HCOB_CharacterDB
 
@@ -26,6 +26,7 @@ Advisor/Threat.lua
 Advisor/Survival.lua
 Advisor/Readiness.lua
 Advisor/Engine.lua
+Advisor/GroupHealing.lua
 
 Hunter/Pet.lua
 Hunter/Ammo.lua
@@ -50,6 +51,9 @@ UI/Advisor.lua
 UI/WindowManager.lua
 UI/ActionPanel.lua
 UI/SurvivalStrip.lua
+UI/GroupHealing.lua
+UI/GroupHealingPanel.lua
+UI/GroupHealingOptions.lua
 UI/Options.lua
 UI/BagQuickDelete.lua
 UI/AdaptiveTuning.lua

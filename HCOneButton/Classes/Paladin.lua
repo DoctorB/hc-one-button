@@ -7,6 +7,10 @@ HCOB.Classes.PALADIN = Class
 Class.classToken = "PALADIN"
 Class.fallbackSpec = 3
 
+function Class:GetGroupHealingSpells()
+    return {quick={S.FLASH_LIGHT,S.HOLY_LIGHT},direct={S.HOLY_LIGHT}}
+end
+
 local DIVINE_SHIELD_IMMEDIATE_HP = 25
 local DIVINE_SHIELD_PRESSURE_HP = 35
 local DIVINE_SHIELD_FORECAST_SECONDS = 6
