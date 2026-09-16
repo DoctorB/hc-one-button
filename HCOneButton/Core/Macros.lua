@@ -123,22 +123,27 @@ end
 
 function ApplyAttributes(target, main, mods)
     if not target or InCombatLockdown() then return false end
+    local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
+    local function ModifierText(key)
+        if class and class.baseIgnoresModifiers then return main or "/stopmacro" end
+        return mods and mods[key] or "/stopmacro"
+    end
     target:SetAttribute("type1", "macro")
     target:SetAttribute("macrotext1", main or "/stopmacro")
     target:SetAttribute("shift-type1", "macro")
-    target:SetAttribute("shift-macrotext1", mods.shift or "/stopmacro")
+    target:SetAttribute("shift-macrotext1", ModifierText("shift"))
     target:SetAttribute("ctrl-type1", "macro")
-    target:SetAttribute("ctrl-macrotext1", mods.ctrl or "/stopmacro")
+    target:SetAttribute("ctrl-macrotext1", ModifierText("ctrl"))
     target:SetAttribute("alt-type1", "macro")
-    target:SetAttribute("alt-macrotext1", mods.alt or "/stopmacro")
+    target:SetAttribute("alt-macrotext1", ModifierText("alt"))
     target:SetAttribute("ctrl-shift-type1", "macro")
-    target:SetAttribute("ctrl-shift-macrotext1", mods.ctrlshift or "/stopmacro")
+    target:SetAttribute("ctrl-shift-macrotext1", ModifierText("ctrlshift"))
     target:SetAttribute("alt-shift-type1", "macro")
-    target:SetAttribute("alt-shift-macrotext1", mods.altshift or "/stopmacro")
+    target:SetAttribute("alt-shift-macrotext1", ModifierText("altshift"))
     target:SetAttribute("alt-ctrl-type1", "macro")
-    target:SetAttribute("alt-ctrl-macrotext1", mods.altctrl or "/stopmacro")
+    target:SetAttribute("alt-ctrl-macrotext1", ModifierText("altctrl"))
     target:SetAttribute("alt-ctrl-shift-type1", "macro")
-    target:SetAttribute("alt-ctrl-shift-macrotext1", mods.all or "/stopmacro")
+    target:SetAttribute("alt-ctrl-shift-macrotext1", ModifierText("all"))
     return true
 end
 
@@ -224,7 +229,10 @@ function PrintPlan()
     local wandBase = baseId == S.SHOOT and IsWandUser and IsWandUser()
     print((PLAYER_CLASS == "ROGUE" or wandBase) and "|cffffcc00BASE macro (player input):|r" or "|cffffcc00BASE SPAM macro:|r")
     print(btn:GetAttribute("macrotext1") or "")
-    if currentMods and currentMods.desc then
+    local class = ActiveClassModuleForMacros()
+    if class and class.baseIgnoresModifiers then
+        print("BASE ignores SHIFT/CTRL/ALT. Use the Action Panel icons or dedicated spell bindings.")
+    elseif currentMods and currentMods.desc then
         local d=currentMods.desc
         print("SHIFT="..tostring(d.shift).." | CTRL="..tostring(d.ctrl).." | ALT="..tostring(d.alt))
         print("CTRL+SHIFT="..tostring(d.ctrlshift).." | ALT+SHIFT="..tostring(d.altshift).." | ALT+CTRL="..tostring(d.altctrl).." | ALL="..tostring(d.all))

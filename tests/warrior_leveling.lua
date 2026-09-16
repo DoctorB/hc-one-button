@@ -10,7 +10,7 @@ local function recommend() return I.Recommend() end
 local function expectHS(label, kind)
     local id, _, key, reason, actualKind = recommend()
     expect(id,S.HEROIC_STRIKE,label)
-    expect(key,"ALT+SHIFT",label .. " retains binding")
+    expect(key,"CAST MANUALLY",label .. " uses dedicated spell slot")
     expect(actualKind,kind or "action",label .. " severity")
     return reason
 end

@@ -8,6 +8,9 @@ Class.classToken = "WARRIOR"
 Class.fallbackSpec = 1
 -- Risk warnings inform the player; only critical HP overrides offense.
 Class.riskWarningsOnly = true
+-- Dedicated action slots own spells; a held slot modifier must never turn
+-- the repeatable BASE input into an unrelated Rage spender.
+Class.baseIgnoresModifiers = true
 
 local BATTLE_SHOUT_REFRESH_SECONDS = 10
 local DEFENSIVE_DEBUFF_REFRESH_SECONDS = 3
@@ -23,6 +26,51 @@ end
 local function CurrentRage()
     local pType = UnitPowerType("player")
     return SafeUnitPower("player", pType, 0) or 0
+end
+
+function Class:RageCost(id)
+    if not id then return nil end
+    -- Localized names resolve learned ranks and client-side talent discounts.
+    local name = SpellName(id)
+    local function ReadCost(api)
+        if type(api) ~= "function" or not name then return nil end
+        local ok, costs = pcall(api, name)
+        if not ok or type(costs) ~= "table" then return nil end
+        for _, entry in ipairs(costs) do
+            if type(entry) == "table" and SafeNumber(entry.type, nil) == 1 then
+                local cost = SafeNumber(entry.cost, nil)
+                if cost and cost == cost and cost >= 0 and cost < math.huge then return cost end
+            end
+        end
+    end
+    local cost = ReadCost(GetSpellPowerCost)
+    if cost == nil then cost = ReadCost(C_Spell and C_Spell.GetSpellPowerCost) end
+    if cost ~= nil then return cost end
+    -- Conservative undiscounted Classic costs if neither API can answer.
+    if id == S.HEROIC_STRIKE or id == S.SUNDER_ARMOR then return 15 end
+    if id == S.CLEAVE or id == S.THUNDER_CLAP then return 20 end
+    if id == S.BATTLE_SHOUT or id == S.REND or id == S.DEMO_SHOUT then return 10 end
+end
+
+local function QueuedStrike()
+    if not IsQueuedMeleeSwingSpell then return nil end
+    if IsQueuedMeleeSwingSpell(S.HEROIC_STRIKE) then return S.HEROIC_STRIKE end
+    if S.CLEAVE and IsQueuedMeleeSwingSpell(S.CLEAVE) then return S.CLEAVE end
+end
+
+function Class:CanFundMaintenance(id, rage)
+    local queued = QueuedStrike()
+    if not queued then return true end
+    local queuedCost, cost = self:RageCost(queued), self:RageCost(id)
+    return queuedCost ~= nil and cost ~= nil and rage >= queuedCost + cost
+end
+
+function Class:IsPendingRecommendationValid(id)
+    if id and (id == S.BATTLE_SHOUT or id == S.REND or id == S.SUNDER_ARMOR
+       or id == S.THUNDER_CLAP or id == S.DEMO_SHOUT) then
+        return self:CanFundMaintenance(id, CurrentRage())
+    end
+    return true
 end
 
 local function DefensiveDebuffNeedsRefresh(id)
@@ -115,11 +163,12 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
 
     -- Mitigation can be worth more than another rage dump on a hard/long mob.
     if (enemies >= 2 or (tough and reserve < 58)) and targetHP >= 45 and IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP)
-       and IsUsable(S.THUNDER_CLAP) and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.THUNDER_CLAP, "THUNDER CLAP", "CTRL", "Reduce melee pressure on a difficult fight | " .. context, 79 + (55 - math.min(55, reserve)) * 0.25, "mitigation")
+       and IsUsable(S.THUNDER_CLAP) and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP)
+       and self:CanFundMaintenance(S.THUNDER_CLAP, rage) then
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.THUNDER_CLAP, "THUNDER CLAP", "CAST MANUALLY", "Reduce melee pressure on a difficult fight | " .. context, 79 + (55 - math.min(55, reserve)) * 0.25, "mitigation")
     end
     if tough and targetHP >= 50 and IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT)
-       and DefensiveDebuffNeedsRefresh(S.DEMO_SHOUT) then
+       and DefensiveDebuffNeedsRefresh(S.DEMO_SHOUT) and self:CanFundMaintenance(S.DEMO_SHOUT, rage) then
         local longEnough = not estimatedTTK or estimatedTTK >= 11
         if longEnough then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.DEMO_SHOUT, "DEMO SHOUT", "CAST MANUALLY", "Long fight: reduce incoming damage | " .. context, 70 + (reserve < 50 and 8 or 0), "mitigation")
@@ -132,7 +181,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local hasBattleShout, battleShoutRemaining = BattleShoutState()
     if IsKnown(S.BATTLE_SHOUT)
        and (not hasBattleShout or battleShoutRemaining <= BATTLE_SHOUT_REFRESH_SECONDS)
-       and IsUsable(S.BATTLE_SHOUT) and rage >= 10 then
+       and IsUsable(S.BATTLE_SHOUT) and rage >= 10 and self:CanFundMaintenance(S.BATTLE_SHOUT, rage) then
         local worth = not hasBattleShout
             or (estimatedTTK and estimatedTTK >= 10)
             or (not estimatedTTK and targetHP >= 68)
@@ -141,11 +190,12 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
                 and ("Refresh before expiry (" .. math.floor(battleShoutRemaining) .. "s)")
                 or "Battle Shout missing in combat"
             local shoutScore = hasBattleShout and 65 or 84
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.BATTLE_SHOUT, "BATTLE SHOUT", "SHIFT", shoutReason .. " | " .. context, shoutScore, "buff")
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.BATTLE_SHOUT, "BATTLE SHOUT", "CAST MANUALLY", shoutReason .. " | " .. context, shoutScore, "buff")
         end
     end
 
-    if IsKnown(S.REND) and level <= 45 and not currentWarriorAutoRend and not HasMyTargetDebuff(S.REND) and IsUsable(S.REND) then
+    if IsKnown(S.REND) and level <= 45 and not currentWarriorAutoRend and not HasMyTargetDebuff(S.REND) and IsUsable(S.REND)
+       and self:CanFundMaintenance(S.REND, rage) then
         local worthRend = tough or targetLevel <= 0 or targetLevel >= (level - 4)
         if level >= 36 then worthRend = tough and (not estimatedTTK or estimatedTTK >= 12) end
         if estimatedTTK and level <= 35 then worthRend = estimatedTTK >= 8.0 end
@@ -155,7 +205,8 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    if HCOB_DB.warriorSunderBase ~= false and IsKnown(S.SUNDER_ARMOR) and IsUsable(S.SUNDER_ARMOR) and not HasMyTargetDebuff(S.SUNDER_ARMOR) then
+    if HCOB_DB.warriorSunderBase ~= false and IsKnown(S.SUNDER_ARMOR) and IsUsable(S.SUNDER_ARMOR) and not HasMyTargetDebuff(S.SUNDER_ARMOR)
+       and self:CanFundMaintenance(S.SUNDER_ARMOR, rage) then
         local levelWindow = level >= 22 and level <= 35 and targetLevel >= level
         local longEnough = estimatedTTK and estimatedTTK >= 13 or (not estimatedTTK and targetHP >= 72)
         if targetHP >= 60 and longEnough and (tough or levelWindow) then
@@ -166,7 +217,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     if IsKnown(S.BLOODRAGE) and rage <= 10 and hp >= 85 and targetHP >= 50 and enemies <= 1 and CooldownReady(S.BLOODRAGE) and IsUsable(S.BLOODRAGE) and elapsed <= 9 then
         local longEnough = not estimatedTTK or estimatedTTK >= 7
         if longEnough and reserve >= 55 then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.BLOODRAGE, "BLOODRAGE", "ALT+CTRL", "Opener: generate rage without stressing reserve | " .. context, 61, "resource")
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.BLOODRAGE, "BLOODRAGE", "CAST MANUALLY", "Opener: generate rage without stressing reserve | " .. context, 61, "resource")
         end
     end
 
@@ -193,7 +244,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         local excess = math.max(0, rage - hsThreshold)
         local noExecuteFinisher = not IsKnown(S.EXECUTE)
         local score = 64 + math.min(16, excess * 0.8) + (targetHP <= 30 and noExecuteFinisher and 8 or 0)
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. swingText .. " | " .. context, score, "dump", nil, {
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "CAST MANUALLY", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. swingText .. " | " .. context, score, "dump", nil, {
             baseThreshold=hsBase, effectiveThreshold=hsThreshold,
             rage=rage, enemies=enemies, reserve=reserve, executePooling=executePooling,
             swingRemaining=swingRemaining,
@@ -239,8 +290,8 @@ end
 
 function Class:GetPanicRecommendation()
         if IsKnown(S.SHIELD_WALL) and CooldownReady(S.SHIELD_WALL) and IsUsable(S.SHIELD_WALL) then return S.SHIELD_WALL, "SHIELD WALL", "CAST MANUALLY", "Immediately reduce incoming damage" end
-        if IsKnown(S.RETALIATION) and CooldownReady(S.RETALIATION) and IsUsable(S.RETALIATION) then return S.RETALIATION, "PANIC", "ALL MODS", "Retaliation" end
-        if IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not HasMyTargetDebuff(S.HAMSTRING) then return S.HAMSTRING, "RUN!", "ALT", "Hamstring and create distance" end
+        if IsKnown(S.RETALIATION) and CooldownReady(S.RETALIATION) and IsUsable(S.RETALIATION) then return S.RETALIATION, "PANIC", "CAST MANUALLY", "Retaliation" end
+        if IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not HasMyTargetDebuff(S.HAMSTRING) then return S.HAMSTRING, "RUN!", "CAST MANUALLY", "Hamstring and create distance" end
         return nil, "RUN!", "PREPARE ESCAPE", "No immediate Warrior defensive available"
 end
 
@@ -251,8 +302,8 @@ end
 -- Class interrupt contract. Advisor/Threat only detects the cast;
 -- the class decides which control/interrupt spell is valid.
 function Class:GetInterruptRecommendation()
-        if IsKnown(S.PUMMEL) and CooldownReady(S.PUMMEL) and IsUsable(S.PUMMEL) then return S.PUMMEL, "INTERRUPT!", "CTRL+SHIFT", "Pummel" end
-        if IsKnown(S.SHIELD_BASH) and CooldownReady(S.SHIELD_BASH) and IsUsable(S.SHIELD_BASH) then return S.SHIELD_BASH, "INTERRUPT!", "CTRL+SHIFT", "Shield Bash" end
+        if IsKnown(S.PUMMEL) and CooldownReady(S.PUMMEL) and IsUsable(S.PUMMEL) then return S.PUMMEL, "INTERRUPT!", "CAST MANUALLY", "Pummel" end
+        if IsKnown(S.SHIELD_BASH) and CooldownReady(S.SHIELD_BASH) and IsUsable(S.SHIELD_BASH) then return S.SHIELD_BASH, "INTERRUPT!", "CAST MANUALLY", "Shield Bash" end
 end
 
 -- Secure macro class contract. Core/Macros owns only secure attribute orchestration;
@@ -266,7 +317,7 @@ function Class:BuildMainMacro()
         --   * Heroic Strike is NEVER part of BASE spam.
         --
         -- A secure macro cannot read rage and decide whether to queue HS.
-        -- HS therefore remains an Advisor decision and is used manually (ALT+SHIFT)
+        -- HS therefore remains an Advisor decision and uses its dedicated slot
         -- only when the adaptive rage threshold is actually reached.
         local lines = NewLines()
         AddLine(lines, "/startattack [harm]", 1)
@@ -287,21 +338,9 @@ function Class:BuildMainMacro()
 end
 
 function Class:BuildModifierMacros()
-        local interrupt = NewLines()
-        AddLine(interrupt, IsKnown(S.PUMMEL) and ("/cast [stance:3] " .. SpellName(S.PUMMEL)) or nil, 1)
-        AddLine(interrupt, IsKnown(S.SHIELD_BASH) and ("/cast [stance:1/2] " .. SpellName(S.SHIELD_BASH)) or nil, 1)
-        local panic = IsKnown(S.RETALIATION) and BuildSpellMacro(S.RETALIATION, "stance:1", false) or BuildSpellMacro(S.DEMO_SHOUT)
-        local heroicStrike = CastLine(S.HEROIC_STRIKE, nil, true)
-        heroicStrike = heroicStrike and ("/startattack\n" .. heroicStrike) or "/stopmacro"
-        return {
-            shift=BuildSpellMacro(S.BATTLE_SHOUT), ctrl=BuildSpellMacro(S.THUNDER_CLAP, nil, true),
-            alt=BuildSpellMacro(S.HAMSTRING, nil, true), ctrlshift=FitMacro(interrupt),
-            -- The bang form prevents repeated hardware/key samples from
-            -- toggling an already queued Heroic Strike back off.
-            altshift=heroicStrike, altctrl=BuildSpellMacro(S.BLOODRAGE, "combat"),
-            all=panic,
-            desc={shift="Battle Shout",ctrl="Thunder Clap",alt="Hamstring",ctrlshift="Interrupt",altshift="Heroic Strike",altctrl="Bloodrage",all="Retaliation / Demo Shout"}
-        }
+    -- ApplyAttributes explicitly installs BASE for every modifier combination.
+    -- Spells (including queue-safe HS/Cleave) remain on fixed action slots.
+    return {desc={}}
 end
 
 function Class:GetBaseActionInfo(spec)

@@ -152,10 +152,11 @@ now, rage, enemyCount = 110, 50, 1
 id = Warrior:GetRecommendation(true, true, 70, 1)
 expect(id, S.HEROIC_STRIKE, "first-swing fallback")
 
--- The secure modifier uses !Heroic Strike so duplicate physical inputs cannot
--- toggle an already queued strike off before it lands.
+-- BASE modifiers no longer execute spells. Queue-safe !HS/Cleave actions live
+-- on the fixed panel (covered by action_panel_layout.lua).
 local macros = Warrior:BuildModifierMacros()
-assert(macros.altshift:find("/cast !Heroic Strike", 1, true), "Heroic Strike modifier must be queue-safe")
+assert(macros.altshift == nil and next(macros.desc) == nil, "obsolete BASE modifier must not be exposed")
+assert(Warrior.baseIgnoresModifiers == true, "Warrior BASE must ignore held modifiers")
 
 local eventsFile = assert(io.open("HCOneButton/Core/Events.lua", "rb"))
 local eventsSource = eventsFile:read("*a")

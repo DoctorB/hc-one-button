@@ -125,6 +125,13 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
         or CooldownRemaining(state.spellId) <= 1.60
     local oldStillPlausible = state.spellId == nil or (IsKnown(state.spellId)
         and IsUsable(state.spellId) and oldCooldownPlausible)
+    local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
+    if state.spellId and oldStillPlausible and class and class.IsPendingRecommendationValid
+       and not class:IsPendingRecommendationValid(state.spellId) then
+        -- A funded queued strike can invalidate maintenance without changing
+        -- native spell usability. Do not hold the stale spender for confirmation.
+        oldStillPlausible = false
+    end
     -- Once live class state withdraws a one-press restart hint, do not retain
     -- it for swap confirmation and invite an unnecessary second BASE press.
     if state.key == "PRESS BASE ONCE" then oldStillPlausible = false end

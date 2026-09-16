@@ -67,6 +67,7 @@ for _, token in ipairs(classTokens) do
     assert(type(class) == "table", token .. " module missing")
     assert(class.classToken == token, token .. " classToken mismatch")
     assert((class.riskWarningsOnly == true) == (token == "WARRIOR"), token .. " incorrect advisory-risk opt-in")
+    assert((class.baseIgnoresModifiers == true) == (token == "WARRIOR"), token .. " incorrect BASE modifier opt-in")
     assert(type(class.fallbackSpec) == "number" and class.fallbackSpec >= 1 and class.fallbackSpec <= 3,
         token .. " fallbackSpec invalid")
     for _, contract in ipairs(requiredContracts) do

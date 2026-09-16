@@ -365,6 +365,9 @@ btn:SetScript("OnEnter", function(self)
         or "SPAM: safe base action. Advisor: situational spell to cast manually.", 0.3, 1, 0.3, true)
     local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]
     local preparation = class and class.GetPreparationNotice and class:GetPreparationNotice()
+    if class and class.baseIgnoresModifiers then
+        GameTooltip:AddLine("BASE ignores SHIFT/CTRL/ALT. Use each spell's Action Panel icon or dedicated binding.", 0.8, 0.8, 0.8, true)
+    end
     if preparation then
         GameTooltip:AddLine("Rogue preparation (optional)", 1, 0.76, 0.28)
         GameTooltip:AddLine(preparation, 1, 0.86, 0.55, true)
