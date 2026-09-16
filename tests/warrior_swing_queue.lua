@@ -99,8 +99,8 @@ now = 100.50 -- 3.0s until the next 3.5s swing
 local id = Warrior:GetRecommendation(true, true, 70, 1)
 expect(id, nil, "Heroic Strike hidden outside queue window")
 
--- The final adaptive window is long enough for the 50Hz reader to observe.
-now = 103.00 -- 0.5s remaining; 3.5 * 0.17 = 0.595s window
+-- The enlarged final window leaves time to react after display confirmation.
+now = 103.00 -- 0.5s remaining; 3.5 * 0.30 = 1.05s window
 id = Warrior:GetRecommendation(true, true, 70, 1)
 expect(id, S.HEROIC_STRIKE, "Heroic Strike shown near next swing")
 

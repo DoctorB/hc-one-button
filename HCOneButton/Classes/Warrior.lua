@@ -6,6 +6,8 @@ local Class = HCOB.Classes.WARRIOR or {}
 HCOB.Classes.WARRIOR = Class
 Class.classToken = "WARRIOR"
 Class.fallbackSpec = 1
+-- Risk warnings inform the player; only critical HP overrides offense.
+Class.riskWarningsOnly = true
 
 local BATTLE_SHOUT_REFRESH_SECONDS = 10
 local DEFENSIVE_DEBUFF_REFRESH_SECONDS = 3
@@ -49,52 +51,18 @@ local function ShouldPoolForExecute(targetHP, rage)
         and rage < EXECUTE_POOL_RELEASE_RAGE
 end
 
--- A caution/escape plan must not leave the Warrior sitting near the Rage cap.
--- Keep enough Rage for Hamstring/control, but let a high-value spender pass
--- through before returning to the escape recommendation.
-local function EscapeRageSpendRecommendation(ctx)
-    ctx = type(ctx) == "table" and ctx or {}
-    local rage = CurrentRage()
-    local targetHP = SafeNumber(ctx.targetHP, 100) or 100
-    local reserve = SafeNumber(ctx.reserve, 100) or 100
-    local enemies = SafeNumber(ctx.enemies, 1) or 1
-    local configured = tonumber(HCOB_DB.warriorHeroicRage) or 35
-    local threshold = math.max(40, configured + 5)
-    if reserve < 35 then threshold = threshold + 5 end
-    if targetHP <= 35 then threshold = math.max(35, threshold - 5) end
-    if rage < threshold then return nil end
-
-    local reason = string.format(
-        "Spend excess Rage (%d / %d) before continuing the escape plan",
-        rage, threshold
-    )
-    if IsKnown(S.EXECUTE) and targetHP <= 20 and IsUsable(S.EXECUTE) then
-        return S.EXECUTE, "EXECUTE - THEN EXIT", "CAST MANUALLY", reason, "caution"
+function Class:HeroicRageThreshold(targetHP)
+    local base = tonumber(HCOB_DB.warriorHeroicRage) or 35
+    if base ~= base or base == math.huge or base == -math.huge then base = 35 end
+    base = math.max(20, math.min(70, base))
+    -- Reserve the developed kit's budget only after its repeatable offensive
+    -- spenders are learned. Saved custom values remain unchanged.
+    local developed = IsKnown(S.MORTAL_STRIKE) or IsKnown(S.BLOODTHIRST) or IsKnown(S.WHIRLWIND)
+    local threshold = developed and base or math.max(20, base - 10)
+    if targetHP and targetHP <= 30 and not IsKnown(S.EXECUTE) then
+        threshold = math.max(20, threshold - 5)
     end
-    if IsKnown(S.OVERPOWER) and CooldownReady(S.OVERPOWER) and IsUsable(S.OVERPOWER) then
-        return S.OVERPOWER, "OVERPOWER - THEN EXIT", "CAST MANUALLY", reason, "caution"
-    end
-    if IsKnown(S.MORTAL_STRIKE) and CooldownReady(S.MORTAL_STRIKE) and IsUsable(S.MORTAL_STRIKE) then
-        return S.MORTAL_STRIKE, "MORTAL STRIKE - EXIT", "CAST MANUALLY", reason, "caution"
-    end
-    if IsKnown(S.BLOODTHIRST) and CooldownReady(S.BLOODTHIRST) and IsUsable(S.BLOODTHIRST) then
-        return S.BLOODTHIRST, "BLOODTHIRST - EXIT", "CAST MANUALLY", reason, "caution"
-    end
-    if IsKnown(S.WHIRLWIND) and CooldownReady(S.WHIRLWIND) and IsUsable(S.WHIRLWIND) then
-        return S.WHIRLWIND, "WHIRLWIND - THEN EXIT", "CAST MANUALLY", reason, "caution"
-    end
-    if ShouldPoolForExecute(targetHP, rage) then return nil end
-    local cleaveKnown = S.CLEAVE and (IsKnown(S.CLEAVE)
-        or knownSpellNames[SpellName(S.CLEAVE) or ""] == true)
-    local heroicKnown = IsKnown(S.HEROIC_STRIKE) or knownSpellNames[SpellName(S.HEROIC_STRIKE) or ""] == true
-    local swingReady = NextSwingQueueReady()
-    if enemies >= 2 and cleaveKnown and swingReady and IsUsable(S.CLEAVE) then
-        return S.CLEAVE, "CLEAVE - THEN EXIT", "CAST MANUALLY", reason, "caution"
-    end
-    if heroicKnown and swingReady and IsUsable(S.HEROIC_STRIKE) then
-        return S.HEROIC_STRIKE, "HEROIC STRIKE - EXIT", "ALT+SHIFT", reason, "caution"
-    end
-    return nil
+    return threshold, base
 end
 
 function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
@@ -115,23 +83,10 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local reserve, reserveLabel = HCOB.Advisor.Engine.SurvivalReserve()
     local dyn = HCOB.Advisor.Engine.RollingDynamics(targetHP)
     local estimatedTTK = dyn and dyn.confidence >= 0.38 and dyn.ttk or nil
-    local riskPenalty = reserve < 55 and ((55 - reserve) * 0.55) or 0
-    if reserve < 35 then riskPenalty = riskPenalty + 8 end
     local context = string.format("rage %d | reserve %.0f %s", rage, reserve, reserveLabel)
     if estimatedTTK and estimatedTTK < math.huge then context = context .. string.format(" | TTK ~%.0fs", estimatedTTK) end
 
-    -- Proactive survival before the global HP panic threshold.  These actions
-    -- only compete when the reserve is already poor; normal DPS never burns a
-    -- major defensive just because it is off cooldown.
-    if reserve <= 28 and hp <= 52 and IsKnown(S.SHIELD_WALL) and CooldownReady(S.SHIELD_WALL) and IsUsable(S.SHIELD_WALL) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.SHIELD_WALL, "SHIELD WALL", "CAST MANUALLY", "Critical survival reserve | " .. context, 108, "survival")
-    end
-    if reserve <= 38 and targetHP > 25 and IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not HasMyTargetDebuff(S.HAMSTRING) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.HAMSTRING, "HAMSTRING + DISTANCE", "ALT", "Low reserve: prepare an escape route | " .. context, 94, "survival")
-    end
-    if tough and reserve <= 46 and hp <= 68 and IsKnown(S.RETALIATION) and CooldownReady(S.RETALIATION) and IsUsable(S.RETALIATION) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.RETALIATION, "RETALIATION", "ALL MODS", "Hard melee fight is trending badly: convert pressure into a short counterattack window | " .. context, 99, "survival")
-    end
+    -- Escape tools remain manually available; the engine owns critical HP.
 
     if IsKnown(S.EXECUTE) and targetHP <= 20 and IsUsable(S.EXECUTE) then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.EXECUTE, "EXECUTE!", "CAST MANUALLY", "Target <=20% | " .. context, 115, "finisher")
@@ -143,23 +98,23 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     -- Core strike: high priority, but still scored so an Execute/Overpower or
     -- genuine survival action can beat it cleanly.
     if IsKnown(S.MORTAL_STRIKE) and CooldownReady(S.MORTAL_STRIKE) and IsUsable(S.MORTAL_STRIKE) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.MORTAL_STRIKE, "MORTAL STRIKE", "CAST MANUALLY", "Core single-target | " .. context, 96 - riskPenalty * 0.15, "core")
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.MORTAL_STRIKE, "MORTAL STRIKE", "CAST MANUALLY", "Core single-target | " .. context, 96, "core")
     end
     if IsKnown(S.BLOODTHIRST) and CooldownReady(S.BLOODTHIRST) and IsUsable(S.BLOODTHIRST) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.BLOODTHIRST, "BLOODTHIRST", "CAST MANUALLY", "Core single-target | " .. context, 95 - riskPenalty * 0.15, "core")
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.BLOODTHIRST, "BLOODTHIRST", "CAST MANUALLY", "Core single-target | " .. context, 95, "core")
     end
     if enemies >= 2 and IsKnown(S.WHIRLWIND) and CooldownReady(S.WHIRLWIND) and IsUsable(S.WHIRLWIND) then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.WHIRLWIND, "WHIRLWIND", "CAST MANUALLY", enemies .. " enemies | " .. context, 91 - riskPenalty * 0.2, "aoe")
-    elseif enemies <= 1 and IsKnown(S.WHIRLWIND) and CooldownReady(S.WHIRLWIND) and IsUsable(S.WHIRLWIND) and reserve >= 48 and targetHP >= 30 then
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.WHIRLWIND, "WHIRLWIND", "CAST MANUALLY", enemies .. " enemies | " .. context, 91, "aoe")
+    elseif enemies <= 1 and IsKnown(S.WHIRLWIND) and CooldownReady(S.WHIRLWIND) and IsUsable(S.WHIRLWIND) and targetHP >= 30 then
         local majorReady = (IsKnown(S.MORTAL_STRIKE) and CooldownReady(S.MORTAL_STRIKE) and IsUsable(S.MORTAL_STRIKE))
             or (IsKnown(S.BLOODTHIRST) and CooldownReady(S.BLOODTHIRST) and IsUsable(S.BLOODTHIRST))
         if not majorReady and (not estimatedTTK or estimatedTTK >= 5) then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.WHIRLWIND, "WHIRLWIND", "CAST MANUALLY", "Single-target rage spender while the major strike is unavailable | " .. context, 84 - riskPenalty * 0.2, "damage")
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.WHIRLWIND, "WHIRLWIND", "CAST MANUALLY", "Single-target rage spender while the major strike is unavailable | " .. context, 84, "damage")
         end
     end
 
     -- Mitigation can be worth more than another rage dump on a hard/long mob.
-    if tough and reserve < 58 and targetHP >= 45 and IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP)
+    if (enemies >= 2 or (tough and reserve < 58)) and targetHP >= 45 and IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP)
        and IsUsable(S.THUNDER_CLAP) and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP) then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.THUNDER_CLAP, "THUNDER CLAP", "CTRL", "Reduce melee pressure on a difficult fight | " .. context, 79 + (55 - math.min(55, reserve)) * 0.25, "mitigation")
     end
@@ -186,7 +141,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
                 and ("Refresh before expiry (" .. math.floor(battleShoutRemaining) .. "s)")
                 or "Battle Shout missing in combat"
             local shoutScore = hasBattleShout and 65 or 84
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.BATTLE_SHOUT, "BATTLE SHOUT", "SHIFT", shoutReason .. " | " .. context, shoutScore - riskPenalty * 0.25, "buff")
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.BATTLE_SHOUT, "BATTLE SHOUT", "SHIFT", shoutReason .. " | " .. context, shoutScore, "buff")
         end
     end
 
@@ -196,7 +151,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         if estimatedTTK and level <= 35 then worthRend = estimatedTTK >= 8.0 end
         if elapsed > 7.0 then worthRend = false end
         if targetHP >= 45 and worthRend then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.REND, "REND", "CAST MANUALLY", "Early DoT with enough time to tick | " .. context, 69 - riskPenalty * 0.4, "dot")
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.REND, "REND", "CAST MANUALLY", "Early DoT with enough time to tick | " .. context, 69, "dot")
         end
     end
 
@@ -204,7 +159,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         local levelWindow = level >= 22 and level <= 35 and targetLevel >= level
         local longEnough = estimatedTTK and estimatedTTK >= 13 or (not estimatedTTK and targetHP >= 72)
         if targetHP >= 60 and longEnough and (tough or levelWindow) then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.SUNDER_ARMOR, "SUNDER x1", "CAST MANUALLY", "Armor debuff on a durable/long target | " .. context, 63 - riskPenalty * 0.35, "setup")
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.SUNDER_ARMOR, "SUNDER x1", "CAST MANUALLY", "Armor debuff on a durable/long target | " .. context, 63, "setup")
         end
     end
 
@@ -215,18 +170,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    local hsThreshold = tonumber(HCOB_DB.warriorHeroicRage) or 35
-    local levelDiff = targetLevel > 0 and (targetLevel - level) or 0
-    if level < 20 then
-        if levelDiff <= -3 then hsThreshold = math.max(25, hsThreshold - 5)
-        elseif levelDiff <= -2 then hsThreshold = math.max(30, hsThreshold)
-        else hsThreshold = math.max(35, hsThreshold) end
-    elseif targetHP <= 35 then
-        hsThreshold = math.max(25, hsThreshold - 5)
-    end
-    if targetHP <= 30 and not IsKnown(S.EXECUTE) then hsThreshold = math.max(20, hsThreshold - 10) end
-    if reserve < 42 then hsThreshold = hsThreshold + 10 end
-    if reserve >= 72 and targetHP <= 45 then hsThreshold = math.max(20, hsThreshold - 5) end
+    local hsThreshold, hsBase = self:HeroicRageThreshold(targetHP)
 
     local executePooling = ShouldPoolForExecute(targetHP, rage)
     local heroicKnown = IsKnown(S.HEROIC_STRIKE) or knownSpellNames[SpellName(S.HEROIC_STRIKE) or ""] == true
@@ -234,13 +178,13 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         or knownSpellNames[SpellName(S.CLEAVE) or ""] == true)
     local swingReady, swingRemaining = NextSwingQueueReady()
     local swingText = swingRemaining and string.format(" | next swing %.1fs", swingRemaining) or ""
-    local cleaveThreshold = math.max(40, hsThreshold + 5)
+    local cleaveThreshold = hsThreshold + 5
     if not executePooling and enemies >= 2 and cleaveKnown and swingReady
        and rage >= cleaveThreshold and IsUsable(S.CLEAVE) then
         local excess = math.max(0, rage - cleaveThreshold)
-        local score = 71 + math.min(18, excess * 0.8) + math.min(6, (enemies - 1) * 3) - riskPenalty * 0.50
+        local score = 71 + math.min(18, excess * 0.8) + math.min(6, (enemies - 1) * 3)
         HCOB.Advisor.Engine.AddCandidate(candidates, S.CLEAVE, "CLEAVE", "CAST MANUALLY", "Multi-target swing dump: " .. rage .. " / threshold " .. cleaveThreshold .. swingText .. " | " .. context, score, "aoe", nil, {
-            baseThreshold=tonumber(HCOB_DB.warriorHeroicRage) or 35, effectiveThreshold=cleaveThreshold,
+            baseThreshold=hsBase, effectiveThreshold=cleaveThreshold,
             rage=rage, enemies=enemies, reserve=reserve, executePooling=executePooling,
             swingRemaining=swingRemaining,
         })
@@ -248,9 +192,9 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     if not executePooling and heroicKnown and swingReady and rage >= hsThreshold and IsUsable(S.HEROIC_STRIKE) then
         local excess = math.max(0, rage - hsThreshold)
         local noExecuteFinisher = not IsKnown(S.EXECUTE)
-        local score = 64 + math.min(16, excess * 0.8) + (targetHP <= 30 and noExecuteFinisher and 8 or 0) - riskPenalty * 0.55
+        local score = 64 + math.min(16, excess * 0.8) + (targetHP <= 30 and noExecuteFinisher and 8 or 0)
         HCOB.Advisor.Engine.AddCandidate(candidates, S.HEROIC_STRIKE, "HEROIC STRIKE", "ALT+SHIFT", "Rage dump: " .. rage .. " / threshold " .. hsThreshold .. swingText .. " | " .. context, score, "dump", nil, {
-            baseThreshold=tonumber(HCOB_DB.warriorHeroicRage) or 35, effectiveThreshold=hsThreshold,
+            baseThreshold=hsBase, effectiveThreshold=hsThreshold,
             rage=rage, enemies=enemies, reserve=reserve, executePooling=executePooling,
             swingRemaining=swingRemaining,
         })
@@ -273,13 +217,7 @@ function Class:GetBuffRecommendation(inCombat)
 end
 
 function Class:GetCautionRecommendation(ctx)
-    local id, title, key, reason, kind = EscapeRageSpendRecommendation({
-        targetHP=ctx.targetHP, reserve=ctx.reserve, enemies=1,
-    })
-    if id then return id, title, key, ctx.text .. ": " .. reason, kind end
-    if IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not HasMyTargetDebuff(S.HAMSTRING) then
-        return S.HAMSTRING, "UNFAVORABLE FIGHT", "ALT", ctx.text .. ": prepare Hamstring + distance", "caution"
-    end
+    return nil -- continue normal scoring; Engine decorates it with the warning
 end
 
 -- Hardcore safety class contract. Advisor/Survival owns policy orchestration;
@@ -307,56 +245,7 @@ function Class:GetPanicRecommendation()
 end
 
 function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
-        if enemies >= 3 then
-            if IsKnown(S.RETALIATION) and CooldownReady(S.RETALIATION) and IsUsable(S.RETALIATION) then
-                return S.RETALIATION, "3+ MOBS - PANIC", "ALL MODS", "Use Retaliation now; then reduce the pull", "danger"
-            end
-            if IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP) and IsUsable(S.THUNDER_CLAP)
-               and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP) then
-                return S.THUNDER_CLAP, "3+ MOBS - CONTROL", "CTRL", "Use Thunder Clap now; then create distance", "danger"
-            end
-            if IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT)
-               and DefensiveDebuffNeedsRefresh(S.DEMO_SHOUT) then
-                return S.DEMO_SHOUT, "3+ MOBS - DEBUFF", "CAST MANUALLY", "Demoralizing Shout, then prepare to escape", "danger"
-            end
-            local id, _, key, reason = self:GetPanicRecommendation()
-            return id, "3+ MOBS - GET OUT", key or "ALL MODS", reason or "Create distance", "danger"
-        end
-
-        if hp <= 50 then
-            local id, _, key, reason = self:GetPanicRecommendation()
-            return id, "2 MOBS - GET OUT", key or "ALL MODS", reason or "Reduce pressure", "danger"
-        end
-
-        if IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP) and IsUsable(S.THUNDER_CLAP)
-           and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP) then
-            return S.THUNDER_CLAP, "MULTI x2 - CONTROL", "CTRL", "Reduce attack speed and pressure", "caution"
-        end
-
-        if IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT)
-           and DefensiveDebuffNeedsRefresh(S.DEMO_SHOUT) then
-            return S.DEMO_SHOUT, "MULTI x2 - DEBUFF", "CAST MANUALLY", "Demoralizing Shout reduces melee damage", "caution"
-        end
-
-        local reserve = select(1, HCOB.Advisor.Engine.SurvivalReserve())
-        local spendID, _, spendKey, spendReason = EscapeRageSpendRecommendation({
-            targetHP=targetHP, reserve=reserve, enemies=enemies,
-        })
-        if spendID then
-            local kind = hp <= 68 and "danger" or "caution"
-            return spendID, "MULTI x2 - SPEND RAGE", spendKey, spendReason .. "; then create distance", kind
-        end
-
-        if hp <= 68 or reserve <= 45 then
-            if IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not HasMyTargetDebuff(S.HAMSTRING) then
-                return S.HAMSTRING, "MULTI x2 - RISK", "ALT", "Hamstring and prepare an escape route", "danger"
-            end
-            return nil, "MULTI x2 - RISK", "PREPARE ESCAPE", "High pressure: create distance", "danger"
-        end
-        -- A healthy, controlled two-target pull must yield to the normal class
-        -- scorer after mitigation setup. Returning a caution title here would
-        -- short-circuit Mortal Strike, Bloodthirst and Whirlwind indefinitely.
-        return nil
+    return nil -- mitigation now competes with damage in the normal scorer
 end
 
 -- Class interrupt contract. Advisor/Threat only detects the cast;

@@ -109,7 +109,7 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
     assert(panel.width == 700 and panel.height == 760,"Options window grew unexpectedly")
     local rend=find(widgets,"Smart pre-pull Rend")
     local sunder=find(widgets,"Situational Sunder")
-    local heroic=find(widgets,"Heroic Strike rage threshold")
+    local heroic=find(widgets,"Heroic Strike base rage")
     local pick=find(widgets,"Pick Pocket with openers")
     if class == "ROGUE" then
         assert(panel.rogueSection and pick and pick.parent == panel.rogueSection,"Rogue option is not grouped")
@@ -141,6 +141,12 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
         assert(rend and sunder and heroic and rend.parent == section and sunder.parent == section and heroic.parent == section,
             "Warrior controls are not grouped in one parent")
         assert(not rend.checked and not sunder.checked and heroic.value == 48,"saved Warrior preferences were reset")
+        env.GameTooltip={SetOwner=function() end,SetText=function() end,
+            AddLine=function(_,text) env.rageTip=text end,Show=function() end,Hide=function() end}
+        heroic.scripts.OnEnter(heroic)
+        assert(env.rageTip:find("base minus 10",1,true) and env.rageTip:find("minimum 20",1,true),
+            "Rage tooltip does not explain the effective starting-kit threshold")
+        heroic.scripts.OnLeave(heroic)
         local sx,sy,sw,sh=rect(section)
         for _, control in ipairs({rend,sunder,heroic,heroic.ValueText}) do
             local x,y,w,h=rect(control)
@@ -216,7 +222,7 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
 end
 local _,reloadWidgets=runtime("WARRIOR",warriorDB)
 assert(find(reloadWidgets,"Smart pre-pull Rend").checked and find(reloadWidgets,"Situational Sunder").checked
-    and find(reloadWidgets,"Heroic Strike rage threshold").value == 52,"Warrior values did not survive reload")
+    and find(reloadWidgets,"Heroic Strike base rage").value == 52,"Warrior values did not survive reload")
 
 local resetEnv,resetWidgets=runtime("ROGUE",{roguePickPocket=true,bagQuickDelete=true})
 local reset=find(resetWidgets,"Reset defaults")

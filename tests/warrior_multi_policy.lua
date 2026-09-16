@@ -80,16 +80,16 @@ end
 reset()
 enable(S.THUNDER_CLAP)
 enable(S.DEMO_SHOUT)
-local id, title = Warrior:GetMultiPullRecommendation(2, 90, 80)
+local id, title = Warrior:GetRecommendation(true, true, 80, 1)
 expect(id, S.THUNDER_CLAP, "missing Thunder Clap")
 debuffs[S.THUNDER_CLAP] = 20
-id = Warrior:GetMultiPullRecommendation(2, 90, 80)
+id = Warrior:GetRecommendation(true, true, 80, 1)
 expect(id, S.DEMO_SHOUT, "missing Demoralizing Shout")
 
 -- Healthy debuffs do not consume more Rage/GCDs. Their final three seconds are
 -- refreshable, after which a healthy two-target pull yields to normal scoring.
 debuffs[S.DEMO_SHOUT] = 20
-id, title = Warrior:GetMultiPullRecommendation(2, 90, 80)
+id, title = Warrior:GetRecommendation(true, true, 80, 1)
 expect(id, nil, "healthy two-target setup has no forced action")
 expect(title, nil, "healthy two-target setup yields to rotation")
 enable(S.MORTAL_STRIKE)
@@ -97,15 +97,18 @@ id = Warrior:GetRecommendation(true, true, 80, 1)
 expect(id, S.MORTAL_STRIKE, "healthy two-target pull resumes core DPS scorer")
 debuffs[S.THUNDER_CLAP] = 3
 id = Warrior:GetMultiPullRecommendation(2, 90, 80)
-expect(id, S.THUNDER_CLAP, "Thunder Clap final-three-second refresh")
+expect(id, nil, "multi contract never forces mitigation")
+usable[S.MORTAL_STRIKE] = false
+id = Warrior:GetRecommendation(true, true, 80, 1)
+expect(id, S.THUNDER_CLAP, "Thunder Clap final-three-second refresh remains available")
 
--- Survival Reserve remains authoritative even when raw HP is still high.
+-- Low reserve no longer replaces an available offensive strike with Hamstring.
 debuffs[S.THUNDER_CLAP], debuffs[S.DEMO_SHOUT] = 20, 20
 reserve = 45
 enable(S.HAMSTRING)
-id, title = Warrior:GetMultiPullRecommendation(2, 90, 80)
-expect(id, S.HAMSTRING, "low-reserve two-target escape setup")
-expect(title, "MULTI x2 - RISK", "low-reserve warning preserved")
+usable[S.MORTAL_STRIKE] = true
+id = Warrior:GetRecommendation(true, true, 80, 1)
+expect(id, S.MORTAL_STRIKE, "low-reserve two-target damage continues")
 
 -- Three-target setup also suppresses healthy debuffs and cannot advertise an
 -- unusable Retaliation in the wrong stance.
@@ -116,10 +119,10 @@ enable(S.DEMO_SHOUT)
 debuffs[S.THUNDER_CLAP], debuffs[S.DEMO_SHOUT] = 20, 20
 id, title = Warrior:GetMultiPullRecommendation(3, 90, 80)
 expect(id, nil, "unusable Retaliation suppressed")
-expect(title, "3+ MOBS - GET OUT", "three-target danger warning preserved")
+expect(title, nil, "three-target contract yields to scorer and engine warning")
 usable[S.RETALIATION] = true
-id = Warrior:GetMultiPullRecommendation(3, 90, 80)
-expect(id, S.RETALIATION, "usable Retaliation preserved")
+id = Warrior:GetPanicRecommendation()
+expect(id, S.RETALIATION, "usable Retaliation preserved for critical panic")
 
 -- Interrupt choice follows actual stance/equipment usability instead of
 -- returning the first learned spell whose cooldown happens to be ready.

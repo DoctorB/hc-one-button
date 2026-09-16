@@ -92,7 +92,7 @@ SlashCmdList.HCOB = function(msg)
         local v = tonumber(arg)
         if v then
             HCOB_DB.warriorHeroicRage = Clamp(v, 20, 70)
-            print("|cff00ff98HCOB:|r Heroic Strike recommended from " .. HCOB_DB.warriorHeroicRage .. " rage.")
+            print("|cff00ff98HCOB:|r Heroic Strike base: " .. HCOB_DB.warriorHeroicRage .. " rage. Before Mortal Strike/Bloodthirst/Whirlwind: -10, minimum 20; near a kill without Execute: -5. No danger surcharge.")
             UpdateDisplay()
         else print("|cffffcc00HCOB:|r /hcob hsrage 20-70") end
     elseif cmd == "tuning" or cmd == "adaptive" then

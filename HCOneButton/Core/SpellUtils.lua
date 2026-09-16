@@ -188,10 +188,9 @@ function MainhandSwingQueueOpen()
         return true, nil, nil
     end
     local remaining = math.max(0, speed - math.max(0, GetTime() - lastAutoAttack))
-    -- Stabilization confirms a normal recommendation for 0.20s. This window
-    -- leaves roughly 0.25-0.45s of visible time afterwards, enough for a 50Hz
-    -- reader without occupying the full duration of a slow weapon swing.
-    local queueWindow = Clamp(speed * 0.17, 0.45, 0.65)
+    -- Leave human reaction time after display confirmation and the heartbeat.
+    -- Very fast weapons still retain an explicit non-queue phase.
+    local queueWindow = math.min(speed * 0.65, Clamp(speed * 0.30, 0.80, 1.10))
     return remaining <= queueWindow, remaining, queueWindow
 end
 

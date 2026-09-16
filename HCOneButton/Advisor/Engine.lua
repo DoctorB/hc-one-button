@@ -96,17 +96,20 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
     end
     local now = GetTime()
     local priority = HCOB.Advisor.Engine.kindPriority[kind or "idle"] or 0
+    local advisoryRisk = HCOB.Advisor.Engine.advisoryRiskActive == true
+        and (kind == "caution" or kind == "danger")
     local state = HCOB.Advisor.Engine.displayState
     local signature = tostring(spellId) .. ":" .. tostring(kind) .. ":" .. tostring(title)
 
     if not state then
-        HCOB.Advisor.Engine.displayState = {spellId=spellId,title=title,key=keyHint,reason=reason,kind=kind,priority=priority,signature=signature,since=now}
+        HCOB.Advisor.Engine.displayState = {spellId=spellId,title=title,key=keyHint,reason=reason,kind=kind,priority=priority,signature=signature,since=now,advisoryRisk=advisoryRisk}
         HCOB.Advisor.Engine.pendingDisplayState = nil
         return spellId, title, keyHint, reason, kind
     end
     if state.signature == signature then
         state.reason = reason
         state.key = keyHint
+        state.advisoryRisk = advisoryRisk
         HCOB.Advisor.Engine.pendingDisplayState = nil
         return spellId, title, keyHint, reason, kind
     end
@@ -135,12 +138,22 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
         -- stale action to both the player and passive diagnostic readers.
         oldStillPlausible = false
     end
+    if state.spellId and oldStillPlausible and S
+       and (state.spellId == S.HEROIC_STRIKE or state.spellId == S.CLEAVE)
+       and MainhandSwingQueueOpen and not MainhandSwingQueueOpen() then
+        -- A fresh swing closes eligibility immediately. Do not retain the old
+        -- unqueued request for swap confirmation into the next swing cycle.
+        oldStillPlausible = false
+    end
     if state.spellId and oldStillPlausible and HCOB.Advisor.Engine.IsRangedHostileSpell(state.spellId)
        and HCOB.Advisor.Engine.SpellRange(state.spellId, "target") == false then
         oldStillPlausible = false
     end
 
-    local normalSwap = priority < 70 and (state.priority or 0) < 70
+    -- A Warrior risk color is informational, not permission to bypass normal
+    -- spell-swap confirmation. Real critical/interrupt escalation stays immediate.
+    local normalSwap = (priority < 70 or advisoryRisk)
+        and ((state.priority or 0) < 70 or state.advisoryRisk)
     if normalSwap and oldStillPlausible then
         local pending = HCOB.Advisor.Engine.pendingDisplayState
         if not pending or pending.signature ~= signature then
@@ -152,7 +165,7 @@ function HCOB.Advisor.Engine.Stabilize(spellId, title, keyHint, reason, kind)
         end
     end
 
-    HCOB.Advisor.Engine.displayState = {spellId=spellId,title=title,key=keyHint,reason=reason,kind=kind,priority=priority,signature=signature,since=now}
+    HCOB.Advisor.Engine.displayState = {spellId=spellId,title=title,key=keyHint,reason=reason,kind=kind,priority=priority,signature=signature,since=now,advisoryRisk=advisoryRisk}
     HCOB.Advisor.Engine.pendingDisplayState = nil
     return spellId, title, keyHint, reason, kind
 end
@@ -187,6 +200,7 @@ function HCOB.Advisor.Engine.ResetStabilization()
     HCOB.Advisor.Engine.pendingDisplayState = nil
     HCOB.Advisor.Engine.lastClassActionId = nil
     HCOB.Advisor.Engine.lastClassActionAt = nil
+    HCOB.Advisor.Engine.advisoryRiskActive = nil
 end
 
 
@@ -348,6 +362,7 @@ function HCOB.Advisor.Engine.PlayerRecoveryHold()
 end
 
 function Recommend()
+    HCOB.Advisor.Engine.advisoryRiskActive = nil
     -- Recommendation-local candidate snapshots must never leak across an early
     -- safety/interrupt return. SelectCandidate repopulates these when class
     -- scoring is actually reached during this Recommend() call.
@@ -394,6 +409,23 @@ function Recommend()
     local classification = hostile and SafeUnitClassification("target", "normal") or "normal"
     if inCombat or not hostile then HCOB.Advisor.Engine.lastPrePullReadiness = nil end
 
+    local actionClass = ActiveClassModule()
+    local advisoryRisk = actionClass and actionClass.riskWarningsOnly == true
+    local riskWarning
+    local function Warn(kind, title, text)
+        if not riskWarning or (kind == "danger" and riskWarning.kind ~= "danger") then
+            riskWarning = {kind=kind, title=title, text=text}
+        end
+    end
+    local function WithRisk(id, title, key, reason, kind)
+        if not riskWarning then return id, title, key, reason, kind end
+        HCOB.Advisor.Engine.advisoryRiskActive = true
+        -- Keep the selected spell/binding and its tuning snapshot. Color and
+        -- explanatory text communicate risk without imposing an escape action.
+        if not id and (not title or title == "BASE OK") then title = riskWarning.title end
+        return id, title, key, riskWarning.text .. " | " .. (reason or "Choose whether to continue or disengage"), riskWarning.kind
+    end
+
     if inCombat and hp <= (HCOB_DB.criticalHP or 20) then
         local id, title, key, reason = PanicRecommendation({
             source="critical_hp", hp=hp, enemies=enemies, targetHP=targetHP,
@@ -401,16 +433,19 @@ function Recommend()
         return id, title or "CRITICAL", key or "ALL MODS", reason or "Escape / potion", "danger"
     end
     if inCombat and hp <= (HCOB_DB.dangerHP or 35) then
-        local id, title, key, reason = PanicRecommendation({
-            source="danger_hp", hp=hp, enemies=enemies, targetHP=targetHP,
-        })
-        return id, title or "DANGER", key or "ALL MODS", reason or "Consider escaping", "danger"
+        if advisoryRisk then
+            Warn("danger", "LOW HEALTH", "Low health: decide whether to continue or disengage")
+        else
+            local id, title, key, reason = PanicRecommendation({
+                source="danger_hp", hp=hp, enemies=enemies, targetHP=targetHP,
+            })
+            return id, title or "DANGER", key or "ALL MODS", reason or "Consider escaping", "danger"
+        end
     end
 
     -- Class-owned control windows (e.g. Rogue Gouge) clear the action/pixel
     -- immediately, before normal trend/multi-pull scoring can break the pause.
     -- Real HP emergencies above still take precedence. No secure input is blocked.
-    local actionClass = ActiveClassModule()
     if actionClass and actionClass.GetActionHold then
         local hid, htitle, hkey, hreason, hkind = actionClass:GetActionHold(inCombat, hostile)
         if htitle then return hid, htitle, hkey, hreason, hkind end
@@ -426,8 +461,13 @@ function Recommend()
     end
 
     if inCombat and enemies >= 2 and HCOB_DB.hcDangerAdvisor ~= false then
-        local mid, mtitle, mkey, mreason, mkind = MultiPullRecommendation(enemies, hp, targetHP)
-        if mtitle then return HCOB.Advisor.Engine.AdaptSpecial(mid, mtitle, mkey, mreason, mkind, inCombat, hostile, targetHP) end
+        if advisoryRisk then
+            Warn((enemies >= 3 or hp <= 50) and "danger" or "caution", "MULTI x" .. enemies,
+                enemies .. " enemies: increased pressure; disengaging remains your decision")
+        else
+            local mid, mtitle, mkey, mreason, mkind = MultiPullRecommendation(enemies, hp, targetHP)
+            if mtitle then return HCOB.Advisor.Engine.AdaptSpecial(mid, mtitle, mkey, mreason, mkind, inCombat, hostile, targetHP) end
+        end
     end
 
     -- HC single-target fight trend: CAUTION enters before the old DANGER,
@@ -438,7 +478,9 @@ function Recommend()
             local trend = HCOB.Advisor.Engine.TrendState(dyn, hp)
             local reserve, reserveLabel = HCOB.Advisor.Engine.SurvivalReserve()
             local trendText = string.format("You ~%.0fs / mob ~%.0fs | conf %.0f%% | reserve %.0f %s", dyn.ttd, dyn.ttk, (dyn.confidence or 0)*100, reserve or 0, reserveLabel or "?")
-            if trend == "danger" then
+            if advisoryRisk and (trend == "danger" or trend == "caution") then
+                Warn(trend, "UNFAVORABLE FIGHT", trendText .. ": unfavorable estimate, not a forced escape")
+            elseif trend == "danger" then
                 local id, _, key, reason = PanicRecommendation({
                     source="trend", hp=hp, enemies=enemies, targetHP=targetHP,
                     reserve=reserve, dynamics=dyn,
@@ -483,10 +525,10 @@ function Recommend()
     -- First handle combat windows that can expire (proc/execute/cooldown),
     -- then buffs. ClassRecommendation returns NIL if there is nothing manual to do.
     local id, title, key, reason, classKind = ClassRecommendation(inCombat, hostile, targetHP)
-    if id or title then return id, title, key, reason, classKind or "action" end
+    if id or title then return WithRisk(id, title, key, reason, classKind or "action") end
 
     id, title, key, reason = BuffRecommendation(inCombat)
-    if id then return id, title, key, reason, "buff" end
+    if id then return WithRisk(id, title, key, reason, "buff") end
 
     local class = ActiveClassModule()
     if class and class.GetIdleRecommendation then
@@ -506,7 +548,7 @@ function Recommend()
     if PLAYER_CLASS == "ROGUE" or (IsWandUser and IsWandUser() and HasWandEquipped()) then
         return nil, "NO ACTIVE TARGET", "SELECT TARGET", "Select a live hostile target; no attack input is needed yet", "idle"
     end
-    return nil, "BASE OK", "KEEP SPAMMING", "No urgent manual spell", "idle"
+    return WithRisk(nil, "BASE OK", "KEEP SPAMMING", "No urgent manual spell", "idle")
 end
 
 

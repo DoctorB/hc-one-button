@@ -193,7 +193,7 @@ function CreateOptionsPanel()
         HCOB_DB.bagQuickDelete = v
         if HCOB.UI.BagQuickDelete then HCOB.UI.BagQuickDelete.Sync() end
     end, 24, -342))
-    add(CreateCheckBox(panel, "HC danger advisor", "Multi-pull and fight trend: enter CAUTION/DANGER before relying on HP threshold alone.", function() return HCOB_DB.hcDangerAdvisor ~= false end, function(v) HCOB_DB.hcDangerAdvisor = v; UpdateDisplay() end, 350, -82))
+    add(CreateCheckBox(panel, "HC danger advisor", "Multi-pull and fight trend warnings. Warrior keeps its offensive rotation above Critical HP; warnings do not force an escape.", function() return HCOB_DB.hcDangerAdvisor ~= false end, function(v) HCOB_DB.hcDangerAdvisor = v; UpdateDisplay() end, 350, -82))
     if PLAYER_CLASS == "WARRIOR" then
         -- All class-specific controls live together, including the Rage slider.
         -- This section is never created for another class; saved keys/callbacks
@@ -214,7 +214,15 @@ function CreateOptionsPanel()
         heading:SetText("Warrior - Combat policy")
         add(CreateCheckBox(warrior, "Smart pre-pull Rend", "Out of combat, if the target is equal/near-equal level or elite, prepare one Rend on the opener. Skip trivial mobs.", function() return HCOB_DB.warriorAutoRend ~= false end, function(v) HCOB_DB.warriorAutoRend = v; BuildMacros(); UpdateDisplay() end, 10, -30))
         add(CreateCheckBox(warrior, "Situational Sunder", "Sunder remains in the Advisor against durable targets; it is not spammed at low levels.", function() return HCOB_DB.warriorSunderBase ~= false end, function(v) HCOB_DB.warriorSunderBase = v; BuildMacros(); UpdateDisplay() end, 10, -57))
-        add(CreateSlider(warrior, "Heroic Strike rage threshold", 20, 70, 1, function() return HCOB_DB.warriorHeroicRage or 35 end, function(v) HCOB_DB.warriorHeroicRage = v; UpdateDisplay() end, 37, -110, "20", "70", "%d rage"))
+        local rageSlider = CreateSlider(warrior, "Heroic Strike base rage", 20, 70, 1, function() return HCOB_DB.warriorHeroicRage or 35 end, function(v) HCOB_DB.warriorHeroicRage = v; UpdateDisplay() end, 37, -110, "20", "70", "%d base")
+        rageSlider:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Heroic Strike Rage policy")
+            GameTooltip:AddLine("Before learning Mortal Strike, Bloodthirst or Whirlwind: base minus 10, minimum 20 Rage. No extra reserve for danger warnings. Near a kill without Execute: another 5 less, minimum 20. Cleave adds 5. Learned Execute retains its finishing reserve.", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        rageSlider:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        add(rageSlider)
         panel.warriorSection = warrior
     elseif PLAYER_CLASS == "ROGUE" then
         local rogue = CreateFrame("Frame", nil, panel)
