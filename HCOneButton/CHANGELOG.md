@@ -2,7 +2,23 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.13`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.14`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.14 — 2026-09-16
+
+### Fixed — Warrior offensive inputs and committed Rage
+
+- Make Warrior BASE independent of SHIFT/CTRL/ALT and their combinations. Dedicated spell-slot bindings remain unchanged; holding a slot modifier no longer redirects BASE to Battle Shout, Thunder Clap or another unrelated spell. Other classes retain their existing modifier actions.
+- Remove obsolete Warrior BASE modifier hints from the Advisor, tooltip and printed plan. Spells remain accessible through their dedicated icons/bindings or the player's action bar.
+- Reserve the cost of an already queued Heroic Strike/Cleave before suggesting maintenance buffs/debuffs. Use native learned-spell costs and talent discounts when readable; otherwise use conservative undiscounted costs. Allow maintenance when both actions are funded and clear a newly unfunded displayed hint immediately.
+- Preserve configured thresholds, critical-health safeguards, interrupts, core/proc priorities, saved data and fixed action slots. No additional DPS gain is claimed from the unchanged local tuning.
+- Add focused regression coverage for queue budgets, cost APIs, all BASE modifier states, combat-lockdown boundaries and isolation from the other eight classes.
+
+### Compatibility and validation
+
+- Version `1.29.14`, Interface `11509`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. No settings, permanent binding, history or learning reset. Warrior BASE modifier spell shortcuts are deliberately replaced by the same BASE action in every modifier state.
+- Two review/refinement passes; 56/56 addon Lua chunks, 40/40 Lua harnesses, 134 focused offensive-budget/input checks, 491 existing Warrior leveling checks, 57/57 TOC references and 19/19 offline release-tool tests pass. Automated checks use simulated client APIs, not measured DPS.
+- Review: `docs/WARRIOR_OFFENSIVE_INPUT_REVIEW.md`. Curated public notes: `docs/releases/1.29.14.md`. The 61-file package is published through the existing authorized GitHub → CurseForge workflow.
 
 ## 1.29.13 — 2026-09-16
 

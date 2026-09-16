@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.13`
+- **Current version:** `1.29.14`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.13` makes Warrior leveling more offensive: spend Rage earlier with the starting kit, keep damage suggestions during risk warnings and get a more usable next-swing window.
+Version `1.29.14` refines offensive Warrior leveling: BASE no longer changes action when a modifier is held, and maintenance recommendations protect the Rage committed to a queued Heroic Strike or Cleave.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -43,9 +43,9 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.13` brings **offensive Warrior leveling**. Risk warnings remain visible without forcing an early escape or hiding available attacks above the configured Critical HP threshold. The starting kit spends from 25 Rage with the saved default base of 35, and Heroic Strike/Cleave guidance leaves more time to react.
+Version `1.29.14` brings **consistent Warrior inputs and queued-strike Rage protection**. SHIFT/CTRL/ALT no longer redirect BASE to Battle Shout or another spell; dedicated spell bindings remain available. Maintenance buffs/debuffs are recommended around a queued Heroic Strike/Cleave only when both costs are covered. The offensive risk policy, learned-kit thresholds and next-swing timing from 1.29.13 are preserved.
 
-**Upgrade without resetting:** existing settings, Rage base, HUD positions, combat history, learning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, Action Panel slots and permanent bindings remain unchanged. The new risk policy is Warrior-only; Priest combat and the independent party click-healing panel retain their existing behavior. Protected actions still require player input.
+**Upgrade without resetting:** existing settings, Rage base, HUD positions, combat history, learning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, Action Panel slots and permanent bindings remain unchanged. Warrior modifier+BASE shortcuts now perform BASE; use the dedicated spell icons/bindings instead. Other classes and the independent party click-healing panel retain their existing behavior. Protected actions still require player input.
 
 ## Warrior leveling flow
 
@@ -64,6 +64,10 @@ Thus the default base of 35 becomes **25 Rage** for the starting kit; choosing a
 The next-swing window is normally **0.80–1.10 seconds**, capped at 65% of the weapon swing for very fast weapons. Display stabilization still applies; a queued strike or a fresh swing clears the old request immediately. These are eligibility/priority refinements, not a measured DPS guarantee.
 
 **Example:** at level 6, with Battle Shout active and Rend already applied, 25 Rage is enough to propose Heroic Strike near the next swing with the standard base. A caution warning no longer replaces it with PREPARE ESCAPE. You decide whether to continue; critical health still activates emergency guidance.
+
+**Consistent BASE inputs:** Warrior BASE keeps the same action with SHIFT, CTRL, ALT or their combinations held. It no longer casts Battle Shout or another spell through a modifier shortcut. Use the dedicated Action Panel icons or their unchanged slot bindings for those spells; other classes keep their existing BASE modifier behavior. The BASE tooltip and `/hcob plan` explain this distinction.
+
+Once Heroic Strike or Cleave is queued, the Advisor reserves its cost before suggesting Battle Shout, Rend, Sunder Armor, Thunder Clap or Demoralizing Shout. These maintenance spells remain available when both costs are covered; a stale maintenance hint is cleared immediately if a newly queued attack consumes its budget. Cost lookup uses the learned localized spell and current client talent discounts, with conservative undiscounted costs if unavailable. Core attacks, procs, critical emergencies and interrupts retain their priorities. This changes neither the saved Heroic Strike threshold nor the swing window; it prevents avoidable spending from starving an already selected attack. Manual actions can still spend Rage, and no cast is guaranteed by a recommendation.
 
 ## Wand combat flow
 
@@ -198,7 +202,7 @@ The `1.28.5` **Warrior Swing Queue Update** remains part of the current baseline
 
 The queue window scales with the equipped main-hand speed and is normally `0.80–1.10` seconds, capped at 65% of a swing for very fast weapons. Heroic Strike and Cleave hit/miss events realign the swing timer, an armed queued strike suppresses further requests, and queue-safe `!` macros prevent duplicate input samples from toggling it back off. Cleave is now the appended deterministic Warrior slot 20 and becomes the preferred queued Rage dump during controlled multi-target pressure.
 
-When Execute is learned and the target is between `21%` and `30%` HP, queued Rage dumps pause and the Advisor displays `POOL FOR EXECUTE`. Spending is released at `85` Rage to avoid wasting generation near the cap; Execute, Overpower and efficient core strikes retain priority. Healthy two-target pulls now return to Mortal Strike/Bloodthirst/Whirlwind after defensive setup, while low HP, low Survival Reserve and 3+ enemy states retain escape priority. Active Thunder Clap and Demoralizing Shout debuffs are not repeatedly requested before their final `3` seconds.
+When Execute is learned and the target is between `21%` and `30%` HP, queued Rage dumps pause and the Advisor displays `POOL FOR EXECUTE`. Spending is released at `85` Rage to avoid wasting generation near the cap; Execute, Overpower and efficient core strikes retain priority. Two-target pulls use normal offensive scoring; low Survival Reserve and additional enemies remain warnings rather than forced escape above Critical HP. Active Thunder Clap and Demoralizing Shout debuffs are not repeatedly requested before their final `3` seconds.
 
 The `1.28.4` combat-only aura policy remains part of the baseline. It covers Battle Shout, Blessing of Might and Paladin seals, Inner Fire/Fortitude/Power Word: Shield/Renew, Mage armor/Arcane Intellect/Ice Barrier/Mana Shield, Demon Armor/Demon Skin, Mark of the Wild, Lightning Shield and weapon imbues, Hunter aspects/Mend Pet, and Slice and Dice. A shared stabilization layer absorbs short Classic aura-API races and the stale near-expiry frame that can follow a successful refresh, preventing duplicate requests without hiding a genuinely removed aura.
 
@@ -1278,7 +1282,7 @@ HCOB_CombatLog
 HCOB_CharacterDB (per character)
 ```
 
-`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.13` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
+`HCOB_DB` and `HCOB_CombatLog` remain account-wide. `HCOB_CharacterDB` is stored in WoW's character-specific SavedVariables path and contains the anonymous telemetry profile, that character's session label and the versioned `adaptive` context store. Adaptive schema `2` preserves explicit opt-out and the inspection tab, with at most 24 contexts, 64 action-role records per context and 12 comparison situations per record. Version `1.29.14` uses learner revision `4` and preserves valid revision-3 comparisons; older aggregate-only coefficients are not promoted into comparative learning. Inspector grouping does not merge saved records. Deleting the account-wide `WTF/.../SavedVariables/HCOneButton.lua` resets addon configuration and shared fight telemetry; deleting the character-specific copy resets that character's anonymous profile and learner state. Back up files first to retain history.
 
 `/hcob log clear` removes the active character's records in place; `/hcob log clear all` resets the complete combat-log table in place. Both preserve the live WoW SavedVariable identity across `/reload` and logout.
 
@@ -1286,10 +1290,10 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.13` passes the following automated checks:
+Version `1.29.14` passes the following automated checks:
 
 - **56/56 Lua chunks** pass syntax parsing in the current validation environment;
-- **39/39 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **40/40 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
 - **57/57 TOC references** resolved (`56 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
 - **1,261 party-panel checks** cover all four healer classes, fixed-unit clicks, modifiers, learned-rank upgrades, persistence, independent movement, solo/party/raid visibility, combat-safe configuration and temporary hover-binding cleanup;
@@ -1325,6 +1329,7 @@ Version `1.29.13` passes the following automated checks:
 - 113 participation checks cover all nine classes, observed-opponent recovery, unknown/API-failed levels, elite classification, pet/healing/control participation, late-tag boundaries, runtime-identity cleanup and the full logger lifecycle. Excluded fights remain in history and older records are untouched;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - 491 Warrior offensive-leveling checks cover learned-kit budgets, level/target differences, saved custom bases, warning-versus-critical boundaries, multi-pull damage, native usability, learned ranks, active auras, Execute pooling, suggestion confirmation and 60 swing timing combinations (minimum simulated visible lead `0.45s`);
+- 134 Warrior offensive-budget checks cover native/talent-adjusted costs, malformed API fallback, funded maintenance around both queued strikes, immediate withdrawal of stale hints, all eight BASE modifier combinations, out-of-combat rebuilds and unchanged modifier behavior for other classes; see `docs/WARRIOR_OFFENSIVE_INPUT_REVIEW.md` for the two-pass review;
 - Warrior escape/multi-pull coverage verifies that warning routes yield to normal scoring, damage continues at 25/35/39/40/50/85/100 Rage, critical HP still preempts offense, maintained mitigation is not spammed and stance/equipment usability remains respected;
 - Warrior swing-queue coverage verifies the adaptive Heroic Strike/Cleave window, immediate queue suppression, special hit/miss timer reset, first-swing fallback, Execute pooling/release boundaries, slot-20 Cleave priority and queue-safe secure actions;
 - Rogue leveling coverage verifies first-point talents/respec, localized rank-safe costs/macros, mixed-tree learned actives, early finishers, affordable Slice and Dice, logger-independent target trends, Gouge affordability/control/range/expiry and immediate pause display, emergency precedence and protected finishing windows under tuning. Restart-hint coverage checks actual attack state, unknown data, range/control/cast guards, immediate withdrawal and the real HUD/pixel renderer with changed or missing bindings and no-spam energy waits. The development checklist is in `docs/ROGUE_LEVELING_REVIEW.md` (repository only);
@@ -1336,7 +1341,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.13.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.14.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 
