@@ -2,7 +2,29 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.12`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.13`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.13 — 2026-09-16
+
+### Improved — offensive Warrior leveling
+
+- Keep normal offensive scoring active above configured Critical HP. Low-health warnings, unfavorable forecasts and multi-pulls remain visible without forcing an escape spell or withholding funded attacks. Only Warrior opts into this policy; other class rotations are unchanged.
+- Remove speculative Hamstring/Retaliation/Shield Wall candidates and reserve-based offensive score penalties from the normal rotation. Critical HP retains the existing emergency contract; interrupts and real casts/channels retain priority.
+- Use the saved Heroic Strike base minus 10 (minimum 20) before Mortal Strike, Bloodthirst or Whirlwind is learned. Default base 35 therefore gives the starting kit an effective threshold of 25. Learning a core spender restores the configured base; near a kill without Execute subtract another 5, floor 20. Cleave adds 5.
+- Remove hidden low-level Rage floors, danger surcharges and the separate 40-Rage escape gate. Preserve saved values; explain the calculation in the renamed Heroic Strike base rage slider, tooltip and slash-command response.
+- Keep learned Execute pooling, proc/core priorities, combat-only Battle Shout and active-debuff refresh guards. Mitigation now competes with damage instead of forcing the multi-pull path.
+
+### Fixed — usable and stable next-swing suggestions
+
+- Enlarge the Heroic Strike/Cleave queue window to 0.80–1.10 seconds, capped at 65% of the swing for very fast weapons. Retain immediate suppression once queued.
+- Clear an outdated unqueued strike as soon as a fresh swing closes eligibility. Informational danger colors no longer bypass normal spell-swap confirmation; real emergencies and interrupts remain immediate.
+
+### Compatibility and validation
+
+- Version `1.29.13`, Interface `11509`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. No settings, binding, history or learning reset.
+- Two review/refinement passes; 56/56 addon Lua chunks, 39/39 Lua harnesses, 491 Warrior checks, 57/57 TOC references and 19/19 offline release-tool tests pass. The 61-file package keeps matching metadata and root/package documentation.
+- Sixty simulated swing/heartbeat timing combinations leave at least 0.45 seconds of visible pre-swing guidance. The repeatable low-level diagnostic reports 25 Rage at default, under caution and at 37% HP; an explicit base of 20 yields 20. These checks establish behavior under simulated APIs, not measured damage gains.
+- Review: `docs/WARRIOR_LEVELING_REVIEW.md`. Curated public notes: `docs/releases/1.29.13.md`. Publish as a stable Release through the existing authorized GitHub → CurseForge workflow.
 
 ## 1.29.12 — 2026-09-14
 
