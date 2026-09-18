@@ -41,6 +41,7 @@ environment.SafeUnitClassification = function() return "normal" end
 environment.GetTime = function() return 100 end
 
 local Engine = environment.HCOneButton.Advisor.Engine
+Engine.SpellRange = function() return true end
 Engine.SurvivalReserve = function() return reserve, reserve <= 45 and "LOW" or "HIGH" end
 Engine.RollingDynamics = function() return nil end
 Engine.AddCandidate = function(list, id, title, key, reason, score, tag, displayKind)

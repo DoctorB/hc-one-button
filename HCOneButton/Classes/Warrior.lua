@@ -16,6 +16,40 @@ local BATTLE_SHOUT_REFRESH_SECONDS = 10
 local DEFENSIVE_DEBUFF_REFRESH_SECONDS = 3
 local EXECUTE_POOL_START_HP = 30
 local EXECUTE_POOL_RELEASE_RAGE = 85
+local defensiveAuras = {}
+
+-- AoE shouts can succeed (and spend Rage) without reaching the target.
+-- A known melee-range spell is a conservative reach check, not proof that
+-- merely entering combat or selecting a target put it inside the AoE.
+local function MitigationInRange()
+    local range = HCOB.Advisor.Engine.SpellRange
+    return range and range(S.HEROIC_STRIKE, "target") == true
+end
+
+local function MitigationPressure()
+    local elite = SafeUnitClassification("target", "normal")
+    local lastMelee = HCOB.Advisor.Engine.lastMeleeAt
+    local recentMelee = lastMelee and GetTime() >= lastMelee and GetTime() - lastMelee <= 4
+    return CountActiveEnemies() >= 2 or elite == "elite" or elite == "rareelite"
+        or elite == "worldboss" or (UnitHealthPct("player") <= 60 and recentMelee)
+end
+
+function Class:HandleEvent(event, unit, _, spellID)
+    if self.ResetDPRInputs and (event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD"
+        or event == "PLAYER_TALENT_UPDATE" or event == "SPELLS_CHANGED" or event == "PLAYER_LEVEL_UP") then
+        self:ResetDPRInputs()
+    end
+    if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_ENTERING_WORLD" then
+        defensiveAuras = {}
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" and unit == "player" then
+        local name = spellID and SpellName(spellID)
+        for _, id in ipairs({S.DEMO_SHOUT, S.THUNDER_CLAP, S.SUNDER_ARMOR}) do
+            if name and name == SpellName(id) then
+                defensiveAuras[id] = {guid=SafeUnitGUID("target"), castUntil=GetTime() + 2}
+            end
+        end
+    end
+end
 
 local function BattleShoutState()
     local active, remaining = StablePlayerBuff(S.BATTLE_SHOUT)
@@ -66,6 +100,9 @@ function Class:CanFundMaintenance(id, rage)
 end
 
 function Class:IsPendingRecommendationValid(id)
+    if id == S.DEMO_SHOUT or id == S.THUNDER_CLAP then
+        if not MitigationInRange() or not MitigationPressure() then return false end
+    end
     if id and (id == S.BATTLE_SHOUT or id == S.REND or id == S.SUNDER_ARMOR
        or id == S.THUNDER_CLAP or id == S.DEMO_SHOUT) then
         return self:CanFundMaintenance(id, CurrentRage())
@@ -73,11 +110,34 @@ function Class:IsPendingRecommendationValid(id)
     return true
 end
 
-local function DefensiveDebuffNeedsRefresh(id)
-    local active, remaining = HasMyTargetDebuff(id)
-    if not active then return true end
-    remaining = SafeNumber(remaining, 999) or 999
-    return remaining <= DEFENSIVE_DEBUFF_REFRESH_SECONDS
+local function DefensiveDebuffNeedsRefresh(id, refreshSeconds)
+    refreshSeconds = refreshSeconds or DEFENSIVE_DEBUFF_REFRESH_SECONDS
+    local guid = SafeUnitGUID and SafeUnitGUID("target")
+    local now = GetTime()
+    local state = defensiveAuras[id]
+    if not guid or not state or state.guid ~= guid then
+        state = {guid=guid}
+        defensiveAuras[id] = state
+    end
+    if guid and (state.castUntil or 0) > now then return false end
+    -- The same debuff supplied by another player is also sufficient.
+    local active, remaining
+    if AuraByName then
+        active, remaining = AuraByName("target", SpellName(id), "HARMFUL", false)
+    else
+        active, remaining = HasMyTargetDebuff(id)
+    end
+    if active then
+        remaining = SafeNumber(remaining, 999) or 999
+        state.expires = now + remaining
+        state.missingSince = nil
+        return remaining <= refreshSeconds
+    end
+    if guid and state.expires and state.expires - now > refreshSeconds then
+        state.missingSince = state.missingSince or now
+        if now - state.missingSince < 0.75 then return false end
+    end
+    return true
 end
 
 local function NextSwingQueueReady()
@@ -121,6 +181,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     if not inCombat or not hostile then return HCOB.Advisor.Engine.SelectCandidate(candidates) end
 
     local rage = CurrentRage()
+    local executePooling = ShouldPoolForExecute(targetHP, rage)
     local hp = UnitHealthPct("player")
     local enemies = CountActiveEnemies()
     local level = PlayerLevel()
@@ -131,6 +192,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local reserve, reserveLabel = HCOB.Advisor.Engine.SurvivalReserve()
     local dyn = HCOB.Advisor.Engine.RollingDynamics(targetHP)
     local estimatedTTK = dyn and dyn.confidence >= 0.38 and dyn.ttk or nil
+    local efficiency = self.DamageEfficiency and self:DamageEfficiency(estimatedTTK)
     local context = string.format("rage %d | reserve %.0f %s", rage, reserve, reserveLabel)
     if estimatedTTK and estimatedTTK < math.huge then context = context .. string.format(" | TTK ~%.0fs", estimatedTTK) end
 
@@ -161,17 +223,19 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    -- Mitigation can be worth more than another rage dump on a hard/long mob.
-    if (enemies >= 2 or (tough and reserve < 58)) and targetHP >= 45 and IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP)
+    -- Equal level alone is not a defensive emergency. Require reach and either
+    -- a multi-pull, an elite, or actual recent melee pressure at reduced HP.
+    local mitigation = MitigationInRange() and MitigationPressure()
+    if mitigation and targetHP >= 45 and IsKnown(S.THUNDER_CLAP) and CooldownReady(S.THUNDER_CLAP)
        and IsUsable(S.THUNDER_CLAP) and DefensiveDebuffNeedsRefresh(S.THUNDER_CLAP)
        and self:CanFundMaintenance(S.THUNDER_CLAP, rage) then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.THUNDER_CLAP, "THUNDER CLAP", "CAST MANUALLY", "Reduce melee pressure on a difficult fight | " .. context, 79 + (55 - math.min(55, reserve)) * 0.25, "mitigation")
     end
-    if tough and targetHP >= 50 and IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT)
+    if mitigation and targetHP >= 50 and IsKnown(S.DEMO_SHOUT) and IsUsable(S.DEMO_SHOUT)
        and DefensiveDebuffNeedsRefresh(S.DEMO_SHOUT) and self:CanFundMaintenance(S.DEMO_SHOUT, rage) then
         local longEnough = not estimatedTTK or estimatedTTK >= 11
         if longEnough then
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.DEMO_SHOUT, "DEMO SHOUT", "CAST MANUALLY", "Long fight: reduce incoming damage | " .. context, 70 + (reserve < 50 and 8 or 0), "mitigation")
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.DEMO_SHOUT, "DEMO SHOUT", "CAST MANUALLY", "Melee pressure: reduce incoming damage | " .. context, 70 + (reserve < 50 and 8 or 0), "mitigation")
         end
     end
 
@@ -194,22 +258,34 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    if IsKnown(S.REND) and level <= 45 and not currentWarriorAutoRend and not HasMyTargetDebuff(S.REND) and IsUsable(S.REND)
+    if IsKnown(S.REND) and (level <= 45 or (efficiency and efficiency[S.REND])) and not currentWarriorAutoRend and not HasMyTargetDebuff(S.REND) and IsUsable(S.REND)
        and self:CanFundMaintenance(S.REND, rage) then
         local worthRend = tough or targetLevel <= 0 or targetLevel >= (level - 4)
         if level >= 36 then worthRend = tough and (not estimatedTTK or estimatedTTK >= 12) end
         if estimatedTTK and level <= 35 then worthRend = estimatedTTK >= 8.0 end
         if elapsed > 7.0 then worthRend = false end
-        if targetHP >= 45 and worthRend then
+        local efficient = self.DPRSetupWorth and self:DPRSetupWorth(efficiency, S.REND)
+        if efficient ~= nil then worthRend = efficient end
+        if elapsed > 7.0 then worthRend = false end -- preserve the bounded opener policy
+        if executePooling then worthRend = false end
+        if (efficient ~= nil or targetHP >= 45) and worthRend then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.REND, "REND", "CAST MANUALLY", "Early DoT with enough time to tick | " .. context, 69, "dot")
         end
     end
 
-    if HCOB_DB.warriorSunderBase ~= false and IsKnown(S.SUNDER_ARMOR) and IsUsable(S.SUNDER_ARMOR) and not HasMyTargetDebuff(S.SUNDER_ARMOR)
+    local exposedArmor = AuraByName and AuraByName("target", SpellName(8647), "HARMFUL", false)
+    if HCOB_DB.warriorSunderBase ~= false and not exposedArmor and IsKnown(S.SUNDER_ARMOR) and IsUsable(S.SUNDER_ARMOR) and DefensiveDebuffNeedsRefresh(S.SUNDER_ARMOR, 0)
        and self:CanFundMaintenance(S.SUNDER_ARMOR, rage) then
         local levelWindow = level >= 22 and level <= 35 and targetLevel >= level
+        -- Sunder is offensive setup, not mitigation: its payoff falls with
+        -- remaining enemy HP. Do not require a speculative future HS budget
+        -- or delay the opener; only already queued strikes reserve Rage.
         local longEnough = estimatedTTK and estimatedTTK >= 13 or (not estimatedTTK and targetHP >= 72)
-        if targetHP >= 60 and longEnough and (tough or levelWindow) then
+        local worth = targetHP >= 60 and longEnough and (tough or levelWindow)
+        local efficient = self.DPRSetupWorth and self:DPRSetupWorth(efficiency, S.SUNDER_ARMOR)
+        if efficient ~= nil then worth = efficient end
+        if executePooling then worth = false end
+        if worth then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.SUNDER_ARMOR, "SUNDER x1", "CAST MANUALLY", "Armor debuff on a durable/long target | " .. context, 63, "setup")
         end
     end
@@ -222,8 +298,10 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     end
 
     local hsThreshold, hsBase = self:HeroicRageThreshold(targetHP)
+    if efficiency and efficiency.finishing then
+        hsThreshold = math.min(hsThreshold, self:RageCost(S.HEROIC_STRIKE) or hsThreshold)
+    end
 
-    local executePooling = ShouldPoolForExecute(targetHP, rage)
     local heroicKnown = IsKnown(S.HEROIC_STRIKE) or knownSpellNames[SpellName(S.HEROIC_STRIKE) or ""] == true
     local cleaveKnown = S.CLEAVE and (IsKnown(S.CLEAVE)
         or knownSpellNames[SpellName(S.CLEAVE) or ""] == true)
@@ -251,6 +329,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         })
     end
 
+    if self.RankDamageCandidates then self:RankDamageCandidates(candidates, efficiency, rage) end
     local id, title, key, reason, kind = HCOB.Advisor.Engine.SelectCandidate(candidates)
     if id or title then return id, title, key, reason, kind end
     if executePooling then

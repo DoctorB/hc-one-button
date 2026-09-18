@@ -252,8 +252,10 @@ env.IsUsable=function() return true end; env.CooldownReady=function() return tru
 env.StablePlayerBuff=function() return true,120 end
 env.HasMyTargetDebuff=function(spell) return spell==6343 and env.clapActive or false,20 end
 engine.RollingDynamics=function() return nil end
+engine.SpellRange=function() return true end
 loadInto(env,"HCOneButton/Classes/Warrior.lua")
 fight=start(env,t)
+env.enemies=2
 local warrior=env.HCOneButton.Classes.WARRIOR
 warrior:GetRecommendation(true,true,75,1)
 local clap,sunder

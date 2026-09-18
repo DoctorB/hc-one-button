@@ -35,6 +35,7 @@ Hunter/PetFood.lua
 Hunter/Management.lua
 
 Classes/Warrior.lua
+Classes/WarriorDPR.lua
 Classes/Hunter.lua
 Classes/Mage.lua
 Classes/Warlock.lua

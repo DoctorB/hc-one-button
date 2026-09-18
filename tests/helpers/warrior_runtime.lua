@@ -47,7 +47,8 @@ env.HostileLiveTarget = function() return true end
 env.CountActiveEnemies = function() return state.enemies end
 env.PlayerLevel = function() return state.level end
 env.SafeUnitLevel = function() return state.targetLevel end
-env.SafeUnitClassification = function() return "normal" end
+env.SafeUnitClassification = function() return state.classification or "normal" end
+env.SafeUnitGUID = function() return state.guid end
 env.HasMyTargetDebuff = function(id) return state.debuffs[id] ~= nil, state.debuffs[id] or 0 end
 env.StablePlayerBuff = function(id)
     return id == S.BATTLE_SHOUT and state.shout, state.shout and 60 or 0
@@ -65,10 +66,12 @@ local function load(path)
 end
 load("HCOneButton/Core/SpellUtils.lua")
 load("HCOneButton/Classes/Warrior.lua")
+load("HCOneButton/Classes/WarriorDPR.lua")
 load("HCOneButton/Advisor/Engine.lua")
 load("HCOneButton/Advisor/Survival.lua")
 local Engine = env.HCOneButton.Advisor.Engine
-Engine.RollingDynamics = function() return nil end
+Engine.RollingDynamics = function() return state.dynamics end
+Engine.SpellRange = function() return state.inRange end
 Engine.TrendState = function() return state.trend end
 Engine.RangedBaseRecommendation = function() return nil end
 Engine.IsRangedHostileSpell = function() return false end
@@ -79,6 +82,7 @@ local function reset()
     state = {
         now=103, speed=3.5, hp=100, targetHP=70, targetLevel=6,
         rage=50, level=6, enemies=1, inCombat=true, shout=true, known={}, learnedNames={}, usable={}, debuffs={}, cooldowns={},
+        guid="target-a", inRange=true,
     }
     for _, id in ipairs({S.HEROIC_STRIKE, S.BATTLE_SHOUT, S.REND, S.CHARGE, S.THUNDER_CLAP}) do
         state.known[id] = true
@@ -92,6 +96,9 @@ local function reset()
     internal.knownSpellNames = {}
     env.HCOB_DB = {warriorHeroicRage=35, warriorSunderBase=true}
     Engine.ResetStabilization()
+    Engine.lastMeleeAt=nil
+    env.HCOneButton.Classes.WARRIOR:HandleEvent("PLAYER_REGEN_ENABLED")
+    env.HCOneButton.Classes.WARRIOR:ResetDPRInputs()
     internal.PLAYER_CLASS="WARRIOR"
     env.HCOneButton.Classes.WARRIOR.riskWarningsOnly=true
     env.HCOneButton.UI.SurvivalStrip=nil

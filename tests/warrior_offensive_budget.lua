@@ -74,7 +74,7 @@ expect(recommend(),nil,"Clap cannot cancel a funded Cleave")
 state.rage=40
 expect(recommend(),S.THUNDER_CLAP,"funded multi-target Clap remains available")
 reset(); state.queued=S.HEROIC_STRIKE; state.rage=24
-state.known[S.DEMO_SHOUT]=true
+state.known[S.DEMO_SHOUT]=true; state.enemies=2
 expect(recommend(),nil,"Demo cannot consume pending HS budget")
 state.rage=25
 expect(recommend(),S.DEMO_SHOUT,"fully funded Demo remains eligible")
