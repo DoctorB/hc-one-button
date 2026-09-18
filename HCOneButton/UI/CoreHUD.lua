@@ -324,13 +324,16 @@ function UpdateDPSMeter()
         local elapsed = math.max(0.05, GetTime() - (currentFight.startClock or GetTime()))
         local damage = (tonumber(currentFight.damageDone) or 0) + (tonumber(currentFight.petDamage) or 0)
         local dps = damage / elapsed
+        if DamageMeterValues then dps, damage, elapsed = DamageMeterValues(currentFight) end
         dpsValue:SetText(string.format("DPS %.1f", dps))
         dpsMeta:SetText(string.format("AVG%d %.1f | DMG %d | %.1fs", math.max(1, avgCount), avg5, damage, elapsed))
     else
         local last = LastCurrentCharacterFight and LastCurrentCharacterFight() or nil
         if last then
-            dpsValue:SetText(string.format("LAST %.1f", tonumber(last.dps) or 0))
-            dpsMeta:SetText(string.format("AVG%d %.1f | DMG %d | %.1fs", math.max(1, avgCount), avg5, tonumber(last.totalDamage) or 0, tonumber(last.duration) or 0))
+            local dps, damage, elapsed = tonumber(last.dps) or 0, tonumber(last.totalDamage) or 0, tonumber(last.duration) or 0
+            if DamageMeterValues then dps, damage, elapsed = DamageMeterValues(last) end
+            dpsValue:SetText(string.format("LAST %.1f", dps))
+            dpsMeta:SetText(string.format("AVG%d %.1f | DMG %d | %.1fs", math.max(1, avgCount), avg5, damage, elapsed))
         else
             dpsValue:SetText("DPS --")
             dpsMeta:SetText("AVG5 -- | DMG 0 | 0.0s")

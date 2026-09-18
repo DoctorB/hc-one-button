@@ -224,6 +224,10 @@ local function AddFight(lines, f, detailed, label)
     Add(lines, string.format("%s: #%s", label or "Fight", tostring(f.id or "?")))
     Add(lines, string.format("  Duration: %s | DPS: %s | damage: %d | damage taken: %d | healing: %d",
         Fmt(f.duration, "%.1fs"), Fmt(f.dps, "%.1f"), tonumber(f.totalDamage) or 0, tonumber(f.damageTaken) or 0, tonumber(f.healingDone) or 0))
+    if f.damageDuration then
+        Add(lines, string.format("  HUD damage window: %s | HUD DPS: %s (full combat duration/DPS above retained for learning)",
+            Fmt(f.damageDuration, "%.1fs"), Fmt(f.damageDps, "%.1f")))
+    end
     Add(lines, string.format("  Min HP: %s | max enemies: %d | kills: %d | died: %s",
         Fmt(f.hpMinPct, "%.1f%%"), tonumber(f.maxEnemies) or 1, tonumber(f.kills) or 0, tostring(f.died == true)))
     Add(lines, "  " .. PowerSummary(f))

@@ -170,4 +170,18 @@ assert(threatTop>=5+env.dpsValue.height+4,"threat overlaps DPS text")
 assert(env.HCOB_CoreShell.height>=4+env.advisor.height+4+env.dpsMeter.height+4,
     "footer extends below shell into Action Panel")
 assert(96<98 and 98+98<266-66,"threat label/bar/status lack clearance")
+-- Use the actual logger metric helpers, not a stubbed display value. Live,
+-- finalized, legacy and averaged displays all use the same timing contract.
+local logChunk=assert(loadfile("HCOneButton/Systems/CombatLog.lua")); setfenv(logChunk,env); logChunk()
+env.PLAYER_CLASS="WARRIOR"; env.VERSION="test"; env.HCOB_CharacterDB={logProfileId="fixture"}
+local saved={class="WARRIOR",profileId="fixture",addonVersion="test",duration=16,totalDamage=300,dps=18.75,
+    damageDuration=10,damageDps=30}
+env.HCOB_CombatLog={fights={saved}}
+env.currentFight={startClock=4,damageDone=200,petDamage=100,_damageStoppedAt=10}
+env.UpdateDPSMeter()
+assert(env.dpsValue.text=="DPS 30.0" and env.dpsMeta.text=="AVG1 30.0 | DMG 300 | 10.0s")
+env.currentFight=nil; env.UpdateDPSMeter()
+assert(env.dpsValue.text=="LAST 30.0" and env.dpsMeta.text=="AVG1 30.0 | DMG 300 | 10.0s")
+saved.damageDuration=nil; env.UpdateDPSMeter()
+assert(env.dpsValue.text=="LAST 18.8" and env.dpsMeta.text=="AVG1 18.8 | DMG 300 | 16.0s")
 print(string.format("Threat/DPS meter regression: PASS (%d threat states plus live HUD/layout checks)", checks))

@@ -5,7 +5,7 @@ local E = HCOB.Internal
 setfenv(1, E)
 
 local COMBAT_LOG_VERSION = 12
-local FIGHT_SCHEMA_VERSION = 13
+local FIGHT_SCHEMA_VERSION = 14
 local GLOBAL_FIGHT_HARD_CAP = 600
 
 function InitCombatLogDB()
@@ -95,6 +95,26 @@ function LastCurrentCharacterFight()
     return nil
 end
 
+-- Display-only timing: keep the complete combat interval and its original DPS
+-- for learning, safety rates and historical comparisons. Trim only a confirmed
+-- post-kill tail, never a wait between swings/casts or a living opponent.
+function DamageMeterDuration(f)
+    if not f then return 0.05 end
+    local duration = f.startClock and math.max(0, GetTime() - f.startClock) or tonumber(f.duration) or 0
+    local stopped = f.startClock and f._damageStoppedAt or tonumber(f.damageDuration)
+    if f.startClock and (f.died or (f.endReason and f.endReason ~= "combat_end")) then stopped = nil end
+    if stopped and stopped == stopped and stopped >= 0 and stopped < math.huge then
+        duration = math.min(duration, stopped)
+    end
+    return math.max(0.05, duration)
+end
+
+function DamageMeterValues(f)
+    local duration = DamageMeterDuration(f)
+    local damage = f and (tonumber(f.totalDamage) or ((tonumber(f.damageDone) or 0) + (tonumber(f.petDamage) or 0))) or 0
+    return damage / duration, damage, duration
+end
+
 function RecentCharacterDPSAverage(limit)
     local fights = type(HCOB_CombatLog) == "table" and type(HCOB_CombatLog.fights) == "table" and HCOB_CombatLog.fights or {}
     local need = math.max(1, math.floor(tonumber(limit) or 5))
@@ -104,7 +124,7 @@ function RecentCharacterDPSAverage(limit)
             local f = fights[i]
             if FightBelongsToCurrentCharacter(f) and (pass == 2 or f.addonVersion == VERSION) then
                 local d = tonumber(f.totalDamage) or 0
-                local t = tonumber(f.duration) or 0
+                local t = (tonumber(f.duration) or 0) > 0 and DamageMeterDuration(f) or 0
                 if t > 0 then
                     damage = damage + d
                     duration = duration + t
@@ -201,6 +221,22 @@ function MarkFightKill(guid)
     if currentFight._killed[guid] then return end
     currentFight._killed[guid] = true
     currentFight.kills = (tonumber(currentFight.kills) or 0) + 1
+    local engaged = currentFight._damageEnemies
+    if engaged and engaged[guid] then
+        engaged[guid] = nil
+        if not next(engaged) then
+            currentFight._damageStoppedAt = math.max(0, GetTime() - currentFight.startClock)
+        end
+    end
+end
+
+local function NoteDamageEnemy(guid)
+    if not guid or (currentFight._killed and currentFight._killed[guid]) then return end
+    currentFight._damageEnemies = currentFight._damageEnemies or {}
+    currentFight._damageEnemies[guid] = true
+    -- A new opponent in the same combat interval resumes the clock, including
+    -- the gap. No removal of arbitrary idle/resource/CC time inside a fight.
+    currentFight._damageStoppedAt = nil
 end
 
 function AbilityRecord(owner, spellId, spellName)
@@ -342,6 +378,8 @@ function FinalizeCombatTelemetry(reason)
     f.survivalReserveAvg = ((tonumber(f.survivalReserveSamples) or 0) > 0) and ((tonumber(f.survivalReserveSum) or 0) / f.survivalReserveSamples) or nil
     f.totalDamage = (tonumber(f.damageDone) or 0) + (tonumber(f.petDamage) or 0)
     f.dps = f.totalDamage / f.duration
+    local meterDps, meterDamage, meterDuration = DamageMeterValues(f)
+    f.damageDps, f.damageDuration = meterDps, meterDuration
     f.playerDps = (tonumber(f.damageDone) or 0) / f.duration
     f.dtps = (tonumber(f.damageTaken) or 0) / f.duration
     if FinalizeFightTuningTelemetry then FinalizeFightTuningTelemetry(f) end
@@ -351,6 +389,8 @@ function FinalizeCombatTelemetry(reason)
     table.sort(f.enemies)
     f._enemies = nil
     f._killed = nil
+    f._damageEnemies = nil
+    f._damageStoppedAt = nil
     f._feedbackLastKey = nil
     f.targetGuid = nil
     f.startClock = nil
@@ -423,6 +463,13 @@ function ProcessCombatTelemetry(args)
     local damageExchange = IsDamageEvent(subevent) or IsMissEvent(subevent)
     local controlExchange = subevent == "SPELL_INTERRUPT" or subevent == "SPELL_STOLEN"
         or ((subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH") and args[15] == "DEBUFF")
+    if damageExchange or controlExchange then
+        if owner and destIsOther and (damageExchange or CombatLogFlagIsHostile(destFlags)) then
+            NoteDamageEnemy(destGUID)
+        elseif destIsOurs and sourceIsOther and (damageExchange or CombatLogFlagIsHostile(sourceFlags)) then
+            NoteDamageEnemy(sourceGUID)
+        end
+    end
     -- Damage/misses are direct evidence even for neutral duels. For control,
     -- require a hostile reaction too: friendly spells can apply debuffs such as
     -- Weakened Soul and must not contaminate PvE learning.
@@ -538,7 +585,8 @@ function PrintLastCombatLog()
     local f = LastCurrentCharacterFight()
     if not f then print("|cffffcc00HCOB LOG:|r no fights recorded."); return end
     local enemies = (f.enemies and #f.enemies > 0) and table.concat(f.enemies, ", ") or (f.target or "?")
-    print(string.format("|cff00ff98HCOB LOG #%d|r %s | %.1fs | %.1f DPS | dmg %d | taken %d", f.id or 0, enemies, f.duration or 0, f.dps or 0, f.totalDamage or 0, f.damageTaken or 0))
+    local dps, damage, damageTime = DamageMeterValues(f)
+    print(string.format("|cff00ff98HCOB LOG #%d|r %s | combat %.1fs / damage %.1fs | %.1f DPS | dmg %d | taken %d", f.id or 0, enemies, f.duration or 0, damageTime, dps, damage, f.damageTaken or 0))
     print(string.format("Min HP %.1f%% | avg %s %.1f | max hit dealt %d / taken %d | max enemies %d", f.hpMinPct or 100, f.powerType or "Power", f.powerAvg or 0, f.maxHitDone or 0, f.maxHitTaken or 0, f.maxEnemies or 1))
     if f.powerType == "RAGE" then
         print(string.format("Rage start/end %.0f/%.0f | >=80: %.1f%% of fight | CAP: %.1f%%", f.powerStart or 0, f.powerEnd or 0, f.powerHighPct or 0, f.powerCapPct or 0))
@@ -572,10 +620,12 @@ function PrintCombatLogStats()
     if #fights == 0 then print("|cffffcc00HCOB LOG:|r no fights recorded."); return end
     local n = #fights
     local td, tt, taken, minHp, rageHigh, rageCap, rageCount = 0,0,0,100,0,0,0
+    local damageTime = 0
     local advDanger, advCaution, advCount = 0,0,0
     for i=1,#fights do
         local f=fights[i]
         td=td+(f.totalDamage or 0); tt=tt+(f.duration or 0); taken=taken+(f.damageTaken or 0); minHp=math.min(minHp,f.hpMinPct or 100)
+        damageTime = damageTime + DamageMeterDuration(f)
         if f.powerType == "RAGE" and f.powerHighPct ~= nil then
             rageHigh = rageHigh + (f.powerHighPct or 0); rageCap = rageCap + (f.powerCapPct or 0); rageCount = rageCount + 1
         end
@@ -585,7 +635,7 @@ function PrintCombatLogStats()
             advCount = advCount + 1
         end
     end
-    print(string.format("|cff00ff98HCOB LOG:|r last %d fights | avg DPS %.1f | avg duration %.1fs | damage taken/fight %.1f | min HP %.1f%%", n, tt>0 and td/tt or 0, tt/n, taken/n, minHp))
+    print(string.format("|cff00ff98HCOB LOG:|r last %d fights | avg DPS %.1f | avg combat duration %.1fs | damage taken/fight %.1f | min HP %.1f%%", n, damageTime>0 and td/damageTime or 0, tt/n, taken/n, minHp))
     if rageCount > 0 then print(string.format("Avg Rage >=80 %.1f%% | avg rage CAP %.1f%%", rageHigh/rageCount, rageCap/rageCount)) end
     if advCount > 0 then print(string.format("Advisor average: DANGER %.1f%% | CAUTION %.1f%%", advDanger/advCount, advCaution/advCount)) end
 end
