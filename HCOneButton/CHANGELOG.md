@@ -2,7 +2,29 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.14`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.15`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.15 — 2026-09-18
+
+### New — Live Warrior leveling efficiency
+
+- Add a focused Fight Club-inspired damage-per-Rage comparison for Heroic Strike, early Rend and the first Sunder Armor application in solo single-target PvE without dual wield. Use live weapon damage/speed, level, crit, learned ranks, native costs, invested Improved Rend/Impale and remaining target health/time.
+- Include foregone white-hit Rage in Heroic Strike's effective cost. Value only Rend ticks that fit and Sunder's remaining-life armor benefit. Favor immediate spending near the Rage cap and likely finishing opportunities while preserving core/proc/interrupt/critical priorities, Execute pooling and queued-strike budgets.
+- Explain estimates in candidate reasons. Missing NPC armor uses a labeled approximation; group/PvP/multi-pull/dual-wield or incomplete inputs retain the previous policy. This is not a full spreadsheet simulation, and no measured DPS/TTK increase is claimed.
+
+### Warrior and combat-data refinements
+
+- Require confirmed melee reach and meaningful pressure for normal Demoralizing Shout/Thunder Clap suggestions. A healthy single enemy of equal level no longer triggers preventive mitigation by itself. Preserve critical-health safeguards, interrupts, offensive Sunder setup and queued-strike Rage protection.
+- Suppress repeated mitigation during brief cast/aura update delays, recognize the same active debuff from another caster, and isolate observations by target.
+- Stop the HUD DPS clock after confirmed deaths of all observed engaged enemies. Preserve waits during a live fight and resume the full interval on a new engagement. Pet damage, multi-pulls and legacy records remain supported.
+- Add separate display-duration/DPS fields to fight schema 14. Preserve full combat duration, historical records, learning inputs and settings; do not reset tuning or change the damage/overkill numerator.
+- Add all-class timing/persistence/HUD tests and focused Warrior mitigation, range and aura regressions. No measured damage gain is claimed.
+
+### Release preparation
+
+- Version `1.29.15`, Interface `11509`, fight schema `14`, learner revision `4`, adaptive schema `2`, telemetry contract `1`. No settings, bindings, history or learning reset.
+- Two review/refinement cycles; 57/57 Lua chunks, 43/43 Lua harnesses, 58/58 TOC references and 19/19 offline release-tool tests pass. Focused coverage includes 173 DPR, 66 mitigation and 118 damage-timing checks, plus the existing 491 leveling and 134 input/budget checks.
+- The verified package contains 62 files. Curated public notes: `docs/releases/1.29.15.md`. Publication uses the existing authorized GitHub to CurseForge workflow.
 
 ## 1.29.14 — 2026-09-16
 

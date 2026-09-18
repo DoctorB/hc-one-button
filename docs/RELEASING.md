@@ -58,18 +58,18 @@ prove the account has upload rights or that CurseForge is currently reachable.
 1. Complete the in-game checks, update the TOC/runtime/fallback version and
    root/package documentation together, then commit and push the intended code.
 2. In GitHub **Releases → Draft a new release**, select that commit with a tag
-   exactly matching `v` plus the TOC version, e.g. `v1.29.14` for version `1.29.14`.
+   exactly matching `v` plus the TOC version, e.g. `v1.29.15` for version `1.29.15`.
    Use a new version/tag for new releases; do not move or recycle published tags.
 3. Paste the user-facing Markdown release notes into the release body. This is
    the exact text uploaded to the CurseForge file's changelog. A blank body
    blocks the upload. The title is not used as a substitute for the changelog.
    The CurseForge display name is always `HCOneButton v<version>`, for example
-   `HCOneButton v1.29.14`, regardless of the GitHub Release title or ZIP filename.
+   `HCOneButton v1.29.15`, regardless of the GitHub Release title or ZIP filename.
    No `ClassicEra`, date or `.zip` suffix is added to the display name.
 4. Choose the release type:
    - ordinary GitHub release → CurseForge **Release**;
    - GitHub prerelease → CurseForge **Beta**;
-   - a tag such as `v1.29.14-alpha.1`, marked as a GitHub prerelease → **Alpha**.
+   - a tag such as `v1.29.15-alpha.1`, marked as a GitHub prerelease → **Alpha**.
    Alpha/beta suffixes must also be present in the TOC/runtime version. A tag
    ending in `-beta.1` must be marked as a prerelease; inconsistent flags fail.
 5. Click **Publish release**. This is the action that authorizes the upload.
@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.14, the version-controlled public notes are in
-[`releases/1.29.14.md`](releases/1.29.14.md). Paste that document into
+For 1.29.15, the version-controlled public notes are in
+[`releases/1.29.15.md`](releases/1.29.15.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -109,7 +109,7 @@ the curated public release text. Formatting these notes does not publish them.
 
 - `HCOneButton/` is the only root directory inside the ZIP.
 - The TOC, all its referenced files, README, CHANGELOG and LICENSE are included.
-  There are currently 61 files, including the group-healing modules. Future assets
+  There are currently 62 files, including the Warrior DPR and group-healing modules. Future assets
   must be explicitly supported in the packaging allowlist; the repository
   coverage test detects omissions.
 - Tests, workflows, local artifacts, development docs and unreferenced local
@@ -139,7 +139,25 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.14 publication validation
+### 1.29.15 publication validation
+
+Stable publication is explicitly authorized on 2026-09-18. Two review/refinement
+passes cover the live Warrior DPR comparison, invested talents/learned ranks,
+fallback contexts, cap/finishing behavior, normal mitigation, aura discipline,
+and damage-window timing without changing the learner's original measurements.
+
+Validation: 57 Lua chunks, 43 Lua harnesses, 173 DPR checks, 66 mitigation checks,
+118 damage-timing checks, 491 existing Warrior leveling checks, 134 input/budget
+checks, 58 TOC references and 19 offline release-tool tests. The package contains
+62 files. See [WARRIOR_DPR_REVIEW.md](WARRIOR_DPR_REVIEW.md) and
+[WARRIOR_DPS_TIMING_REVIEW.md](WARRIOR_DPS_TIMING_REVIEW.md).
+
+Publish tag `v1.29.15`, title **HCOneButton v1.29.15**, using the exact
+[`releases/1.29.15.md`](releases/1.29.15.md) body as an ordinary Release.
+Preserve the existing publisher allowlist and credentials. Verify the upload
+receipt and moderation status separately; never retry an uncertain upload.
+
+### Archived 1.29.14 publication validation
 
 Stable publication is explicitly authorized on 2026-09-16. Two review/refinement
 passes cover Warrior BASE modifier isolation, native/talent-adjusted costs,
