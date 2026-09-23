@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.15`
+- **Current version:** `1.29.16`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.15` adds a live Warrior damage-per-Rage comparison for solo leveling, reduces unnecessary mitigation requests and separates confirmed post-kill time from the HUD DPS clock.
+Version `1.29.16` fixes Hunter BASE attack ordering and improves early leveling, queued Raptor Strike, instant shots, range feedback and Auto Shot recovery.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -43,7 +43,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.15` brings **character-aware Warrior efficiency**: Heroic Strike, early Rend and the first Sunder application are compared using current player inputs, learned ranks, relevant talents and remaining target life. Core/proc/critical priorities and secure inputs are preserved. Normal mitigation now requires meaningful pressure and confirmed reach; the DPS display excludes confirmed post-kill tails without altering learning data.
+Version `1.29.16` focuses on **Hunter leveling from the first levels**. BASE prepares melee before enabling Auto Shot, avoiding a trailing melee command that can stop ranged fire. Raptor Strike is available during ordinary melee and disappears once queued. Instant Arcane Shot no longer depends on a narrow post-shot window, while Aimed Shot and Multi-Shot require standing still. Native auto-repeat state, actual spell reach and bounded Serpent Sting observations improve recovery and prevent stale suggestions.
 
 **Upgrade without resetting:** existing settings, Rage base, HUD positions, combat history, learning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, Action Panel slots and permanent bindings remain unchanged. Warrior modifier+BASE shortcuts now perform BASE; use the dedicated spell icons/bindings instead. Other classes and the independent party click-healing panel retain their existing behavior. Protected actions still require player input.
 
@@ -773,6 +773,10 @@ Typical flow:
 3. let Auto Shot continue;
 4. follow the Advisor for situational abilities.
 
+BASE prepares melee **before** enabling `!Auto Shot`; it never issues a trailing melee-start command after the ranged start. Stay still and in range to maintain ranged fire. BASE remains a start/recovery input, not a key to spam. `STOP TO SHOOT` asks you to stop moving; `RANGE INVALID / ADJUST DISTANCE` can mean the target is too near or too far. Unknown range is not treated as permission to fire.
+
+Raptor Strike can be suggested during ordinary melee, including before you have a pet. Press once to queue the next melee swing: the suggestion clears while queued, and its secure action uses the non-toggle form. Wing Clip, reactive attacks and emergency priorities remain. Arcane Shot can be recommended while moving when actually in range and affordable; Aimed Shot and Multi-Shot retain stationary weaving checks. Learned pet talents are recognized independently of the dominant talent tree. Without a living pet, normal player aggro is not labeled as lost pet threat.
+
 ---
 
 ## Feedback & diagnostic reports
@@ -1310,10 +1314,10 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.15` passes the following automated checks:
+Version `1.29.16` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
-- **43/43 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner;
+- **44/44 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
 - **173 Warrior DPR checks**, **66 mitigation checks** and **118 damage-timing checks** cover changing inputs/decisions, aura/range guards, live/final HUD values and preserved learning metrics;
 - **58/58 TOC references** resolved (`57 Lua + Bindings.xml`);
 - **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
@@ -1362,7 +1366,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.15.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.16.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 

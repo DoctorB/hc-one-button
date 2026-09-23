@@ -2,7 +2,24 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.15`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.16`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.16 — 2026-09-23
+
+### Fixed — Hunter Auto Shot and leveling flow
+
+- Put melee preparation before Auto Shot in BASE, removing the trailing melee-start command that could interrupt ranged auto-repeat. Preserve one-press start/recovery and existing modifiers/bindings.
+- Prefer authoritative native auto-repeat state over stale events. A delayed projectile no longer re-arms stopped state. Do not ask to restart while moving, casting, channeling or when Auto Shot is unusable.
+- Offer Raptor Strike during normal melee, not just finishing opportunities. Suppress queued strikes immediately in the Advisor and use a non-toggle secure macro.
+- Allow instant Arcane Shot outside the short post-Auto-Shot window, including movement at valid range. Require stationary Aimed/Multi-Shot suggestions, including the multi-pull route.
+- Use learned melee spell reach instead of broad interaction distance; fail closed on unknown ranged reach. Explain invalid range and movement instead of always showing ATTACK OK.
+- Check Hunter's Mark usability/cooldown/range; recognize learned pet talents independently of the dominant tree. Do not classify pre-pet player aggro as lost pet threat.
+- Bound Serpent Sting combat-log fallback observations and prevent a previous target's active aura from leaking into a new cast acknowledgement.
+
+### Compatibility and validation
+
+- Version `1.29.16`, Interface `11509`; no settings, bindings, combat history or learning reset. Other class policies remain unchanged.
+- 57 Lua chunks, 44 regression suites, 58 TOC references and 19 offline release-tool tests. The package retains 62 files. Public notes: `docs/releases/1.29.16.md`.
 
 ## 1.29.15 — 2026-09-18
 

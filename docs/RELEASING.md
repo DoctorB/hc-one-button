@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.15, the version-controlled public notes are in
-[`releases/1.29.15.md`](releases/1.29.15.md). Paste that document into
+For 1.29.16, the version-controlled public notes are in
+[`releases/1.29.16.md`](releases/1.29.16.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -139,7 +139,21 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.15 publication validation
+### 1.29.16 publication validation
+
+Stable publication authorized on 2026-09-23. Two review passes cover Hunter
+BASE ordering, native auto-repeat recovery, queued Raptor Strike, instant versus
+stationary shots, range, learned talents, pre-pet threat and bounded aura state.
+Validation: 57 Lua chunks, 44 Lua suites (58 focused Hunter checks), 58 TOC
+references and 19 offline release-tool tests; 62 packaged files.
+See [HUNTER_LEVELING_REVIEW.md](HUNTER_LEVELING_REVIEW.md).
+
+Publish tag `v1.29.16`, title **HCOneButton v1.29.16**, with the exact
+[`releases/1.29.16.md`](releases/1.29.16.md) body as an ordinary Release.
+Preserve the publisher allowlist and verify the upload receipt separately from
+moderation approval. Do not retry an ambiguous upload.
+
+### Archived 1.29.15 publication validation
 
 Stable publication is explicitly authorized on 2026-09-18. Two review/refinement
 passes cover the live Warrior DPR comparison, invested talents/learned ranks,
