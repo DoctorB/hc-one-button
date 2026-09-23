@@ -171,7 +171,7 @@ end
 -- and swing timing in one shared place so class policy, display stabilization
 -- and combat-log tracking agree on the same mechanic.
 function IsQueuedMeleeSwingSpell(id)
-    if id ~= S.HEROIC_STRIKE and id ~= S.CLEAVE then return false end
+    if not id or (id ~= S.HEROIC_STRIKE and id ~= S.CLEAVE and id ~= S.RAPTOR_STRIKE) then return false end
     if not IsCurrentSpell then return false end
     local name = SpellName(id)
     if not name then return false end

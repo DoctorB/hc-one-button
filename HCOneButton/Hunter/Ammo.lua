@@ -24,20 +24,17 @@ function HCOB.Hunter.TargetIsClose()
     -- Current range APIs are authoritative and must beat stale combat-log
     -- evidence. This prevents a melee hit from keeping the target "close"
     -- for seconds after it has already run back into ranged distance.
-    if IsKnown(S.WING_CLIP) then
-        local meleeRange = HCOB.Hunter.SpellRange(S.WING_CLIP)
-        if meleeRange == true then return true end
+    for _, id in ipairs({S.WING_CLIP, S.RAPTOR_STRIKE}) do
+        if IsKnown(id) then
+            local meleeRange = HCOB.Hunter.SpellRange(id)
+            if meleeRange ~= nil then return meleeRange end
+        end
     end
 
     local probe = HCOB.Hunter.RangedProbe()
     if probe then
         local ranged = HCOB.Hunter.SpellRange(probe)
         if ranged == true then return false end
-    end
-
-    if CheckInteractDistance then
-        local ok, close = pcall(CheckInteractDistance, "target", 3)
-        if ok and close then return true end
     end
 
     -- Combat-log fallback only. Keep it short: it is useful during API gaps,
@@ -87,7 +84,13 @@ function HCOB.Hunter.CanShootTarget()
     if HCOB.Hunter.TargetIsClose() then return false end
     local ranged = HCOB.Hunter.AutoShotRange()
     if ranged ~= nil then return ranged end
-    return true
+    return false
+end
+
+function H.IsMoving()
+    if not GetUnitSpeed then return false end
+    local ok, speed = pcall(GetUnitSpeed, "player")
+    return ok and (SafeNumber(speed, 0) or 0) > 0 or false
 end
 
 function HCOB.Hunter.PullRangeState()

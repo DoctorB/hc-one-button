@@ -710,17 +710,21 @@ function CombatLogHandler()
         end
         if sourceGUID == playerGUID and (subevent == "RANGE_DAMAGE" or subevent == "RANGE_MISSED") and spellId == S.AUTO_SHOT then
             HCOB.Hunter.lastAutoShotAt = now
-            HCOB.Hunter.autoRepeatActive = true
+            -- A projectile landing after STOP is not proof that auto-repeat is
+            -- still armed. Only native state / START and STOP events own that.
         end
 
         local serpentName = SpellName(S.SERPENT_STING)
         if sourceGUID == playerGUID and serpentName and spellName == serpentName then
             if subevent == "SPELL_CAST_SUCCESS" then
+                HCOB.Hunter.serpentActive = false
+                HCOB.Hunter.serpentExpiresAt = nil
                 HCOB.Hunter.serpentGUID = destGUID or SafeUnitGUID("target")
                 HCOB.Hunter.serpentPendingUntil = now + 1.0
             elseif subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" then
                 HCOB.Hunter.serpentGUID = destGUID
                 HCOB.Hunter.serpentActive = true
+                HCOB.Hunter.serpentExpiresAt = now + 15
                 HCOB.Hunter.serpentPendingUntil = 0
             elseif subevent == "SPELL_AURA_REMOVED" and destGUID == HCOB.Hunter.serpentGUID then
                 HCOB.Hunter.serpentActive = false

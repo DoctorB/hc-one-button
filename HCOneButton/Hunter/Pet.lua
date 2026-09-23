@@ -51,6 +51,7 @@ function HCOB.Hunter.ResetTargetState(inCombat)
     HCOB.Hunter.targetEngagedAt = (inCombat and HCOB.Hunter.engagedTargetGUID) and GetTime() or nil
     HCOB.Hunter.serpentGUID = nil
     HCOB.Hunter.serpentActive = false
+    HCOB.Hunter.serpentExpiresAt = nil
     HCOB.Hunter.serpentPendingUntil = 0
     HCOB.Hunter.rangedStableSince = nil
 end
@@ -67,6 +68,14 @@ end
 
 function HCOB.Hunter.AutoShotActive()
     if not IsKnown(S.AUTO_SHOT) then return false end
+    if IsAutoRepeatSpell then
+        local ok, active = pcall(IsAutoRepeatSpell, SpellName(S.AUTO_SHOT) or S.AUTO_SHOT)
+        if not ok or active == nil then ok, active = pcall(IsAutoRepeatSpell, S.AUTO_SHOT) end
+        if ok and active ~= nil and CanAccessValue(active) then
+            HCOB.Hunter.autoRepeatActive = SafeBoolean(active, false)
+            return HCOB.Hunter.autoRepeatActive
+        end
+    end
     if HCOB.Hunter.autoRepeatActive == true then return true end
     if IsCurrentSpell then
         local ok, active = pcall(IsCurrentSpell, S.AUTO_SHOT)
@@ -81,6 +90,7 @@ end
 
 function HCOB.Hunter.AutoShotNeedsRestart()
     if not UnitAffectingCombat("player") or not HostileLiveTarget() then return false end
+    if HCOB.Hunter.IsMoving() or not IsUsable(S.AUTO_SHOT) then return false end
     if HCOB.Hunter.TargetIsClose() or not HCOB.Hunter.CanShootTarget() then return false end
     if HCOB.Hunter.AutoShotActive() then return false end
     if UnitCastingInfo then local ok, cast = pcall(UnitCastingInfo, "player"); if ok and cast ~= nil and (not CanAccessValue(cast) or cast) then return false end end
@@ -136,6 +146,9 @@ function H.ThreatSnapshot()
         petTanking = false,
     }
     if not UnitExists("target") or not UnitCanAttack("player", "target") then return out end
+    -- Before taming a pet (or after losing it), player aggro is expected, not
+    -- evidence that we should wait for a nonexistent pet to rebuild threat.
+    if not H.PetAlive() then return out end
 
     if UnitDetailedThreatSituation then
         local okP, pTank, pStatus, pScaled = pcall(UnitDetailedThreatSituation, "player", "target")

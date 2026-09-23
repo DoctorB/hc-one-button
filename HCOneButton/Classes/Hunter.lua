@@ -121,9 +121,10 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
             HCOB.Advisor.Engine.AddCandidate(candidates, S.MONGOOSE_BITE, "MONGOOSE BITE", "CAST MANUALLY", "Reactive dodge proc: use it before the window expires", mongooseScore, "proc")
         end
 
-        if IsKnown(S.RAPTOR_STRIKE) and CooldownReady(S.RAPTOR_STRIKE) and IsUsable(S.RAPTOR_STRIKE) and lowTarget then
-            local raptorScore = dyingSoon and 109 or 97
-            HCOB.Advisor.Engine.AddCandidate(candidates, S.RAPTOR_STRIKE, "RAPTOR FINISH", "CAST MANUALLY", "Target is low: finish it instead of spending a GCD only to create range", raptorScore, "finisher")
+        if IsKnown(S.RAPTOR_STRIKE) and CooldownReady(S.RAPTOR_STRIKE) and IsUsable(S.RAPTOR_STRIKE)
+           and not IsQueuedMeleeSwingSpell(S.RAPTOR_STRIKE) then
+            local raptorScore = dyingSoon and 109 or (lowTarget and 97 or 88)
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.RAPTOR_STRIKE, lowTarget and "RAPTOR FINISH" or "RAPTOR STRIKE", "CAST MANUALLY", "Queue one empowered melee swing; do not press again while queued", raptorScore, lowTarget and "finisher" or "damage")
         end
 
         if IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
@@ -154,7 +155,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    if inCombat and spec == 1 and petAlive and targetHP >= 70 then
+    if inCombat and petAlive and targetHP >= 70 then
         if IsKnown(S.BESTIAL_WRATH) and CooldownReady(S.BESTIAL_WRATH) and IsUsable(S.BESTIAL_WRATH) and (tough or CountActiveEnemies() >= 2) then
             local longEnough = not estimatedTTK or estimatedTTK >= 10
             if longEnough then HCOB.Advisor.Engine.AddCandidate(candidates, S.BESTIAL_WRATH, "BESTIAL WRATH", "CAST MANUALLY", "Important fight: pet burst | " .. context, 75 - riskPenalty, "burst") end
@@ -167,7 +168,8 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
 
     local markWorth = tough or targetLevel >= level - 3
     if estimatedTTK then markWorth = estimatedTTK >= 10 end
-    if IsKnown(S.HUNTERS_MARK) and targetHP >= 60 and (not inCombat or elapsed <= 3.5) and markWorth then
+    if IsKnown(S.HUNTERS_MARK) and CooldownReady(S.HUNTERS_MARK) and HCOB.Hunter.CanCastRanged(S.HUNTERS_MARK)
+       and targetHP >= 60 and (not inCombat or elapsed <= 3.5) and markWorth then
         if not HasMyTargetDebuff(S.HUNTERS_MARK) then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.HUNTERS_MARK, "HUNTER'S MARK", "CAST MANUALLY", "Target will live long enough | " .. context, (inCombat and 54 or 64) - riskPenalty * 0.25, "setup")
         end
@@ -186,7 +188,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         HCOB.Advisor.Engine.AddCandidate(candidates, S.SERPENT_STING, "SERPENT STING", "CAST MANUALLY", "Early DoT, valid range and enough time to tick | " .. context, score, "dot")
     end
 
-    if inCombat and canShoot and afterAuto then
+    if inCombat and canShoot and afterAuto and not HCOB.Hunter.IsMoving() then
         if IsKnown(S.AIMED_SHOT) and CooldownReady(S.AIMED_SHOT) and HCOB.Hunter.CanCastRanged(S.AIMED_SHOT) and manaPct >= 40 and targetHP >= 38 then
             local longEnough = not estimatedTTK or estimatedTTK >= math.max(3.5, SpellCastSeconds(S.AIMED_SHOT) + 0.5)
             if longEnough then
@@ -196,6 +198,9 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         if CountActiveEnemies() <= 1 and IsKnown(S.MULTI_SHOT) and CooldownReady(S.MULTI_SHOT) and HCOB.Hunter.CanCastRanged(S.MULTI_SHOT) and manaPct >= 53 and targetHP >= 30 then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.MULTI_SHOT, "MULTI WEAVE", "CTRL", "After Auto Shot; healthy mana | " .. context, 72 - riskPenalty - threatPenalty * 1.15, "weave")
         end
+    end
+    -- Instant shots do not require the short stationary weaving window.
+    if inCombat and canShoot then
         if IsKnown(S.ARCANE_SHOT) and CooldownReady(S.ARCANE_SHOT) and HCOB.Hunter.CanCastRanged(S.ARCANE_SHOT) then
             local finisher = targetHP <= 28 and manaPct >= 32
             local filler = not IsKnown(S.AIMED_SHOT) and manaPct >= 48 and targetHP >= 25
@@ -237,6 +242,15 @@ end
 
 function Class:GetIdleRecommendation(inCombat, hostile)
     if inCombat and hostile then
+        if not HCOB.Hunter.TargetIsClose() then
+            local range = HCOB.Hunter.PullRangeState()
+            if range ~= "ready" then
+                return nil, range == "unknown" and "RANGE UNKNOWN" or "RANGE INVALID", "ADJUST DISTANCE", "Check ranged distance: the target may be too near or too far for Auto Shot", "idle"
+            end
+            if HCOB.Hunter.IsMoving() then
+                return nil, "STOP TO SHOOT", "STOP MOVING", "Auto Shot needs a stationary firing window; instant shots remain available", "idle"
+            end
+        end
         return nil, "ATTACK OK", "LET IT RUN", "Do not spam BASE: use it only when the Advisor shows ENABLE MELEE / RESUME AUTO SHOT", "idle"
     elseif hostile then
         local pullState = HCOB.Hunter.PullRangeState()
@@ -318,8 +332,8 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
             return S.WING_CLIP, "MULTI x2 - DEAD ZONE", "ALT", "Slow, leave melee and put the pet back in front", "caution"
         end
 
-        if IsKnown(S.MULTI_SHOT) and CooldownReady(S.MULTI_SHOT) and HCOB.Hunter.CanCastRanged(S.MULTI_SHOT) and manaPct >= 48 and (not petHP or petHP >= 50) and HCOB.Hunter.AfterAutoWindow() then
-            return S.MULTI_SHOT, "MULTI x2 - WEAVE", "CTRL", "Only already engaged mobs: after Auto Shot", "caution"
+        if not HCOB.Hunter.IsMoving() and IsKnown(S.MULTI_SHOT) and CooldownReady(S.MULTI_SHOT) and HCOB.Hunter.CanCastRanged(S.MULTI_SHOT) and manaPct >= 48 and (not petHP or petHP >= 50) and HCOB.Hunter.AfterAutoWindow() then
+            return S.MULTI_SHOT, "MULTI x2 - WEAVE", "CTRL", "After Auto Shot; check nearby enemies before using this cleave", "caution"
         end
 
         if petHP and petHP <= 45 and IsKnown(S.MEND_PET) and IsUsable(S.MEND_PET) and not StablePetBuff(S.MEND_PET) and HCOB.Hunter.PetIsTanking() then
@@ -346,15 +360,13 @@ end
 function Class:BuildMainMacro()
         local lines = NewLines()
         AddLine(lines, "/petattack [harm]", 1)
-        -- Hunter v1.21.2: BASE is a hybrid attack-mode synchronizer. Auto Shot must
-        -- remain re-armable in the SAME fight after a melee/dead-zone transition, so
-        -- the old castsequence(..., null) is intentionally gone.  /startattack gives
-        -- us the melee side; !Auto Shot gives us the ranged side without toggling it
-        -- off on a repeated recovery press. BASE is still not intended as a spam key.
+        -- Prepare melee FIRST. A trailing /startattack can switch back to melee
+        -- immediately after enabling ranged auto-repeat. Leave !Auto Shot last.
+        -- BASE is a one-press start/recovery action, not a continuously spammed key.
+        AddLine(lines, "/startattack [harm]", 1)
         if IsKnown(S.AUTO_SHOT) then
             AddLine(lines, "/cast [harm] !" .. SpellName(S.AUTO_SHOT), 1)
         end
-        AddLine(lines, "/startattack [harm]", 1)
         return FitMacro(lines)
 end
 
@@ -445,6 +457,10 @@ end
 -- Fixed Action Panel macro contract. UI/ActionPanel owns slots and rendering;
 -- Hunter owns pet-specific secure macro text.
 function Class:BuildActionPanelMacro(id)
+    if id == S.RAPTOR_STRIKE then
+        local line = CastLine(id, "harm,nodead", true)
+        return line and ("/startattack [harm,nodead]\n" .. line) or "/stopmacro"
+    end
     if id == S.FEED_PET then return HCOB.Hunter.FeedMacro() end
     if id == S.MEND_PET then return BuildSpellMacro(id, "@pet,exists,nodead") end
     if id == S.FEIGN_DEATH then
@@ -455,5 +471,14 @@ function Class:BuildActionPanelMacro(id)
         return FitMacro(lines)
     end
     return nil
+end
+
+function Class:IsPendingRecommendationValid(id)
+    if id == S.RAPTOR_STRIKE then
+        return HCOB.Hunter.TargetIsClose() and not IsQueuedMeleeSwingSpell(id)
+    end
+    if id == S.AIMED_SHOT or id == S.MULTI_SHOT then return not HCOB.Hunter.IsMoving() end
+    if id == S.AUTO_SHOT then return not HCOB.Hunter.AutoShotActive() and not HCOB.Hunter.IsMoving() end
+    return true
 end
 

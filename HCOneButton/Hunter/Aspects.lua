@@ -47,7 +47,7 @@ function HCOB.Hunter.HasSerpentSting()
     if HasMyTargetDebuff(S.SERPENT_STING) then return true end
     local guid = SafeUnitGUID("target")
     if not guid or HCOB.Hunter.serpentGUID ~= guid then return false end
-    if HCOB.Hunter.serpentActive then return true end
+    if HCOB.Hunter.serpentActive and (HCOB.Hunter.serpentExpiresAt or 0) > GetTime() then return true end
     return (HCOB.Hunter.serpentPendingUntil or 0) > GetTime()
 end
 
