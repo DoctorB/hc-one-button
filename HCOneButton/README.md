@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.16`
+- **Current version:** `1.29.17`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.16` fixes Hunter BASE attack ordering and improves early leveling, queued Raptor Strike, instant shots, range feedback and Auto Shot recovery.
+Version `1.29.17` fixes the early-level Rogue Stealth dead end: a trained builder can open combat before a compatible dedicated opener is learned, with optional Pick Pocket support.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -43,7 +43,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.16` focuses on **Hunter leveling from the first levels**. BASE prepares melee before enabling Auto Shot, avoiding a trailing melee command that can stop ranged fire. Raptor Strike is available during ordinary melee and disappears once queued. Instant Arcane Shot no longer depends on a narrow post-shot window, while Aimed Shot and Multi-Shot require standing still. Native auto-repeat state, actual spell reach and bounded Serpent Sting observations improve recovery and prevent stale suggestions.
+Version `1.29.17` restores **a usable Rogue opening from the first levels**. After Stealth, the Advisor suggests trained Sinister Strike/Hemorrhage when no weapon-compatible dedicated opener is learned. Learned Ambush, Garrote and Cheap Shot retain priority, and energy/range waits remain. Optional Pick Pocket also applies to these early builder openers outside combat in Stealth; it never blocks an attack through a castsequence. BASE still preserves Stealth. The Hunter improvements from `1.29.16` remain included.
 
 **Upgrade without resetting:** existing settings, Rage base, HUD positions, combat history, learning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, Action Panel slots and permanent bindings remain unchanged. Warrior modifier+BASE shortcuts now perform BASE; use the dedicated spell icons/bindings instead. Other classes and the independent party click-healing panel retain their existing behavior. Protected actions still require player input.
 
@@ -309,7 +309,9 @@ The Rogue baseline targets ordinary leveling fights from the first learned abili
 
 Ambush, Garrote and Cheap Shot use Stealth-only secure casts without a preceding auto-attack command. There is no reliable behind-target inference: positioning, weapon changes and the actual cast remain manual. Highest-learned-rank localized name casting is preserved. Rogue slots `1–17` and their bindings are unchanged; slot `18` is Ambush (default `CTRL+SHIFT+8`). Backstab is not added.
 
-**Optional Pick Pocket:** enable **Options → Rogue - Stealth openers → Pick Pocket with openers** to prepend learned Pick Pocket to these three secure opener slots. It defaults **OFF**, persists account-wide in `HCOB_DB.roguePickPocket`, and resets to OFF with **Reset defaults**. Its conditions require out-of-combat Stealth and a live hostile target; BASE and other actions are unchanged. Each opener still requires your click/key press. Localized rank-free spell names are used; an unlearned or oversized optional line is omitted, preserving the opener and the secure macro limit. No cast sequence waits for successful pickpocketing, and no global loot setting is changed. Check Auto Loot and its modifier key: the macro attempts Pick Pocket but cannot guarantee collection before the opener. A resisted attempt can compromise Stealth. This is optional convenience, not a guaranteed safe pull or guaranteed extra loot. Secure macro changes made during combat are deferred until combat ends.
+Before a weapon-compatible Ambush, Garrote or Cheap Shot is learned, the Advisor can open from Stealth with the trained Sinister Strike/Hemorrhage builder. This is an explicit suggested attack, not an automatic pull. Known compatible openers retain priority; insufficient energy or invalid range still causes a wait. BASE continues to preserve Stealth.
+
+**Optional Pick Pocket:** enable **Options → Rogue - Stealth openers → Pick Pocket with openers** to prepend learned Pick Pocket to the three dedicated opener slots and the Sinister Strike/Hemorrhage slots when used from Stealth. It defaults **OFF**, persists account-wide in `HCOB_DB.roguePickPocket`, and resets to OFF with **Reset defaults**. Its conditions require out-of-combat Stealth and a live hostile target; BASE is unchanged and ordinary in-combat builder casts skip Pick Pocket. Each opener still requires your click/key press. Localized rank-free spell names are used; an unlearned or oversized optional line is omitted, preserving the opener and the secure macro limit. No cast sequence waits for successful pickpocketing, and no global loot setting is changed. Check Auto Loot and its modifier key: the macro attempts Pick Pocket but cannot guarantee collection before the opener. A resisted attempt can compromise Stealth. This is optional convenience, not a guaranteed safe pull or guaranteed extra loot. Secure macro changes made during combat are deferred until combat ends.
 
 **Consistent Rogue input hints:** idle/no-target guidance says `SELECT TARGET`; normal pulls ask for a single BASE press. Remaining Rogue fallback hints no longer say to spam BASE. With Smart HUD disabled or in safe mode, `ADVISOR OFF / MANUAL CONTROL` does not infer that attacks need restarting. The existing binding-aware attack-stopped alarm and energy/control waits remain unchanged.
 
@@ -1314,7 +1316,7 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.16` passes the following automated checks:
+Version `1.29.17` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
 - **44/44 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
@@ -1350,7 +1352,7 @@ Version `1.29.16` passes the following automated checks:
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
 - 81 target-cast checks cover live casts/channels, Classic shifted API signatures, delay/expiry, stop versus stale API data, old same-spell stop events, target changes, bounded combat-event fallback and shared interrupt/control contracts across all nine classes;
-- 182 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 162 Advisor checks cover group-healing prompts, wand start/active/wait/disabled-HUD feedback, the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
+- 224 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 162 Advisor checks cover group-healing prompts, wand start/active/wait/disabled-HUD feedback, the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
 - 113 participation checks cover all nine classes, observed-opponent recovery, unknown/API-failed levels, elite classification, pet/healing/control participation, late-tag boundaries, runtime-identity cleanup and the full logger lifecycle. Excluded fights remain in history and older records are untouched;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - 491 Warrior offensive-leveling checks cover learned-kit budgets, level/target differences, saved custom bases, warning-versus-critical boundaries, multi-pull damage, native usability, learned ranks, active auras, Execute pooling, suggestion confirmation and 60 swing timing combinations (minimum simulated visible lead `0.45s`);
@@ -1366,7 +1368,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.16.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.17.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 

@@ -2,7 +2,16 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.16`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.17`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.17 — 2026-09-24
+
+### Fixed — Rogue early-level Stealth dead end
+
+- Offer a trained Sinister Strike/Hemorrhage attack from Stealth when no weapon-compatible dedicated opener has been learned. Preserve learned opener priority and energy/range waits; BASE still preserves Stealth.
+- Extend optional Pick Pocket to builder slots used as early openers, only outside combat in Stealth. No castsequence, automatic attack, loot-setting change or binding reset.
+- Add 42 regressions for learning progression, option states, weapon requirements, macro conditions and resource/range waits; 224 Rogue checks and all 44 Lua suites pass.
+- Version `1.29.17`, Interface `11509`; 57 Lua chunks, 58 TOC references and 19 offline release-tool tests. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.17.md`.
 
 ## 1.29.16 — 2026-09-23
 

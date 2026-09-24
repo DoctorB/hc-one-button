@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.16, the version-controlled public notes are in
-[`releases/1.29.16.md`](releases/1.29.16.md). Paste that document into
+For 1.29.17, the version-controlled public notes are in
+[`releases/1.29.17.md`](releases/1.29.17.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -139,7 +139,19 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.16 publication validation
+### 1.29.17 publication validation
+
+Publication authorized on 2026-09-24. Rogue opening fallback and optional
+Pick Pocket builder macros preserve dedicated opener priority, range/energy
+waits and BASE Stealth protection. Validation: 57 Lua chunks, 44 Lua suites,
+224 Rogue checks (42 added), 58 TOC references and 19 offline release-tool tests.
+The package contains 62 files. Settings, learning and bindings are preserved.
+
+Publish tag `v1.29.17`, title **HCOneButton v1.29.17**, using
+[`releases/1.29.17.md`](releases/1.29.17.md) as the ordinary Release body.
+Verify CurseForge acceptance separately from moderation approval.
+
+### Archived 1.29.16 publication validation
 
 Stable publication authorized on 2026-09-23. Two review passes cover Hunter
 BASE ordering, native auto-repeat recovery, queued Raptor Strike, instant versus
