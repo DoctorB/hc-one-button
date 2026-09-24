@@ -239,7 +239,7 @@ function CreateOptionsPanel()
         local heading = rogue:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         heading:SetPoint("TOPLEFT", 12, -12)
         heading:SetText("Rogue - Stealth openers")
-        add(CreateCheckBox(rogue, "Pick Pocket with openers", "Optional and OFF by default. Try learned Pick Pocket before Ambush, Garrote or Cheap Shot, outside combat and in Stealth. Each macro requires your click/key press. Auto Loot and its modifier key affect collection; loot is not guaranteed before the opener. A resisted attempt can compromise Stealth. Global loot settings are never changed. Secure macro updates wait until combat ends.", function()
+        add(CreateCheckBox(rogue, "Pick Pocket with openers", "Optional and OFF by default. Try learned Pick Pocket before Ambush, Garrote, Cheap Shot or a Sinister Strike/Hemorrhage opener, outside combat and in Stealth. Each macro requires your click/key press. Auto Loot and its modifier key affect collection; loot is not guaranteed before the opener. A resisted attempt can compromise Stealth. Global loot settings are never changed. Secure macro updates wait until combat ends.", function()
             return HCOB_DB.roguePickPocket == true
         end, function(v)
             HCOB_DB.roguePickPocket = v

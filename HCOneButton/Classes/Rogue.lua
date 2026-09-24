@@ -215,6 +215,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
                     "Difficult target: prefer opening control; requires Stealth and melee range", 100, "opener", nil, {required=true})
             end
             local weapon = self.GetEquippedWeapon and self:GetEquippedWeapon(16)
+            local hasDagger = weapon and weapon.subclassID == 15
             if weapon and weapon.subclassID == 15 and Ready(S.AMBUSH) then
                 local ambush = math.min(3, self:GetTalentRank(TALENT.AMBUSH))
                 local opportunity = math.min(5, self:GetTalentRank(TALENT.OPPORTUNITY))
@@ -226,6 +227,18 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
                 engine.AddCandidate(candidates, S.GARROTE, "GARROTE - BEHIND", "CAST MANUALLY",
                     "Bleed opener; move behind the target in Stealth. Damage takes time; it prevents a Gouge recovery pause",
                     tough and 76 or 78, "opener")
+            end
+            -- Stealth/Pick Pocket are learned before dedicated stealth attacks.
+            -- BASE deliberately preserves Stealth, so expose an explicit attack
+            -- instead of leaving a low-level Rogue permanently waiting for one.
+            -- Do not replace a learned, weapon-compatible opener merely because
+            -- its energy/cooldown/range is temporarily unavailable.
+            local hasOpener = IsKnown(S.GARROTE) or IsKnown(S.CHEAP_SHOT)
+                or (hasDagger and IsKnown(S.AMBUSH))
+            local builder = Builder()
+            if not hasOpener and Ready(builder) then
+                engine.AddCandidate(candidates, builder, "OPEN WITH " .. string.upper(SpellName(builder, "ATTACK")), "CAST MANUALLY",
+                    "No compatible stealth opener learned: use this attack once to leave Stealth and begin combat", 80, "opener")
             end
             if #candidates == 0 then return nil, "STEALTH - POSITION", "CHECK OPENER",
                 "Check your learned opener, energy, weapon and melee position; BASE preserves Stealth", "idle" end
@@ -432,8 +445,9 @@ end
 
 function Class:BuildActionPanelMacro(id)
     if id == S.GOUGE then return "/stopattack\n" .. BuildSpellMacro(id, "harm") end
-    if id == S.AMBUSH or id == S.GARROTE or id == S.CHEAP_SHOT then
-        local opener = BuildSpellMacro(id, "stealth,harm")
+    local builder = id == S.SINISTER_STRIKE or id == S.HEMORRHAGE
+    if builder or id == S.AMBUSH or id == S.GARROTE or id == S.CHEAP_SHOT then
+        local opener = BuildSpellMacro(id, builder and "harm" or "stealth,harm")
         -- Optional, player-operated secure macro. Never sequence-gate an opener
         -- on a creature having pockets, or change the user's global loot options.
         if opener ~= "/stopmacro" and HCOB_DB and HCOB_DB.roguePickPocket == true and IsKnown(921) then

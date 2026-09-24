@@ -544,4 +544,42 @@ learn(S.AMBUSH)
 names[921]=string.rep("x",250)
 expect(has(Rogue:BuildActionPanelMacro(S.AMBUSH),names[921]),false,"oversized optional line never truncates the opener")
 expect(has(Rogue:BuildMainMacro(),"/cast [nocombat,stealth,harm,nodead]"),false,"BASE is not a Pick Pocket macro")
+-- Leveling progression: learning Pick Pocket must not strand the player in
+-- Stealth before any weapon-compatible dedicated opener has been learned.
+names[921] = "Vol a la tire"
+for _, pickKnown in ipairs({false,true}) do
+    for _, enabled in ipairs({false,true}) do
+        reset(); combat=false; level=4; mainWeapon=2
+        learn(S.STEALTH)
+        if pickKnown then learn(921) end
+        E.HCOB_DB.roguePickPocket=enabled
+        expect(recommend(),S.STEALTH,"pre-pull can still recommend Stealth")
+        buffs[S.STEALTH]=30
+        expect(recommend(),S.SINISTER_STRIKE,"no learned opener falls back to trained builder")
+        local attackMacro=Rogue:BuildActionPanelMacro(S.SINISTER_STRIKE)
+        expect(has(attackMacro,"/cast [harm] " .. names[S.SINISTER_STRIKE]),true,"builder macro can actually break Stealth out of combat")
+        expect(has(attackMacro,names[921]),pickKnown and enabled,"optional Pick Pocket on early-level opener")
+        expect(has(attackMacro,"/castsequence"),false,"missing pockets cannot block early opener")
+        expect(has(attackMacro,"/startattack"),false,"no attack before Pick Pocket")
+        energy=20
+        expect(recommend(),nil,"unaffordable fallback waits for energy")
+        energy=100; Engine.SpellRange=function() return false end
+        expect(recommend(),nil,"out-of-range fallback cannot attack")
+        Engine.SpellRange=nil; hostile=false
+        expect(recommend(),nil,"no hostile target cannot invite an opener")
+    end
+end
+reset(); combat=false; buffs[S.STEALTH]=30; mainWeapon=2
+learn(S.AMBUSH)
+expect(recommend(),S.SINISTER_STRIKE,"Ambush with a non-dagger cannot strand Stealth")
+mainWeapon=1
+expect(recommend(),S.AMBUSH,"compatible learned Ambush retains priority")
+energy=49
+expect(recommend(),nil,"learned Ambush waits instead of breaking Stealth with cheap fallback")
+learn(S.GARROTE); energy=100; mainWeapon=2
+expect(recommend(),S.GARROTE,"learning Garrote naturally replaces fallback")
+reset(); combat=false; buffs[S.STEALTH]=30
+learn(S.HEMORRHAGE)
+expect(recommend(),S.HEMORRHAGE,"trained alternative builder is supported")
+expect(has(Rogue:BuildActionPanelMacro(S.HEMORRHAGE),"/cast [harm] "),true,"alternative builder macro can leave Stealth")
 print("Rogue leveling/talents/control regression: " .. checks .. " checks PASS")
