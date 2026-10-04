@@ -145,8 +145,8 @@ Publication authorized on 2026-10-04. Hunter range classification lets a
 positive shooting-range check beat Raptor Strike / Wing Clip melee reports,
 restoring Auto Shot recovery at range (regression from 1.29.16). Validation:
 57 Lua chunks, 44 Lua suites (62 Hunter checks, 4 added), 58 TOC references
-and 19 offline release-tool tests; 62 packaged files. Not verified in game
-before publication. Settings, learning and bindings are preserved.
+and 19 offline release-tool tests; 62 packaged files. Confirmed in game on
+2026-10-04. Settings, learning and bindings are preserved.
 
 Publish tag `v1.29.18`, title **HCOneButton v1.29.18**, using
 [`releases/1.29.18.md`](releases/1.29.18.md) as the ordinary Release body.
