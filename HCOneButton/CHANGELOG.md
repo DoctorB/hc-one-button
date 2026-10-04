@@ -2,7 +2,16 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.17`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.18`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.18 — 2026-10-04
+
+### Fixed — Hunter melee suggestion at shooting range
+
+- A positive Auto Shot (or ranged-probe) range check now wins over Raptor Strike / Wing Clip melee-range reports. The Advisor no longer requests ENABLE MELEE or Raptor Strike while the target is in shooting range, and RESUME AUTO SHOT is offered again. Regression introduced in `1.29.16`.
+- Any in-range learned melee spell marks the target close in the dead zone; a negative melee result still beats stale combat-log evidence.
+- Add 4 Hunter regressions (62 Hunter checks); all 44 Lua suites pass.
+- Version `1.29.18`, Interface `11509`; 57 Lua chunks, 58 TOC references and 19 offline release-tool tests. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.18.md`.
 
 ## 1.29.17 — 2026-09-24
 

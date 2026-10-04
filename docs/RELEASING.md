@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.17, the version-controlled public notes are in
-[`releases/1.29.17.md`](releases/1.29.17.md). Paste that document into
+For 1.29.18, the version-controlled public notes are in
+[`releases/1.29.18.md`](releases/1.29.18.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -139,7 +139,20 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.17 publication validation
+### 1.29.18 publication validation
+
+Publication authorized on 2026-10-04. Hunter range classification lets a
+positive shooting-range check beat Raptor Strike / Wing Clip melee reports,
+restoring Auto Shot recovery at range (regression from 1.29.16). Validation:
+57 Lua chunks, 44 Lua suites (62 Hunter checks, 4 added), 58 TOC references
+and 19 offline release-tool tests; 62 packaged files. Not verified in game
+before publication. Settings, learning and bindings are preserved.
+
+Publish tag `v1.29.18`, title **HCOneButton v1.29.18**, using
+[`releases/1.29.18.md`](releases/1.29.18.md) as the ordinary Release body.
+Verify CurseForge acceptance separately from moderation approval.
+
+### Archived 1.29.17 publication validation
 
 Publication authorized on 2026-09-24. Rogue opening fallback and optional
 Pick Pocket builder macros preserve dedicated opener priority, range/energy

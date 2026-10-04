@@ -21,3 +21,7 @@ Run `tests/run.ps1` and the offline Python release-tool suite. Verify root/packa
 - [WoWSims Classic Raptor Strike implementation](https://github.com/wowsims/classic/blob/master/sim/hunter/raptor_strike.go): next-melee-swing queue.
 - [WoWSims Classic Arcane Shot implementation](https://github.com/wowsims/classic/blob/master/sim/hunter/arcane_shot.go): instant shot with native cooldown/cost.
 - [Blizzard forum: Classic Hunter Auto Shot macro](https://us.forums.blizzard.com/en/wow/t/classic-hunter-auto-shot-macro/301555): ranged/melee attack-mode distinction.
+
+## 1.29.18 follow-up: melee suggestion at shooting range
+
+`TargetIsClose()` returned the first non-nil Wing Clip / Raptor Strike range result before any ranged evidence. A melee "in range" report at shooting distance (large combat reach, queued on-swing strike) therefore produced ENABLE MELEE / Raptor Strike and blocked `AutoShotNeedsRestart()`. A positive Auto Shot or ranged-probe result now wins; otherwise any in-range melee spell marks the target close, and a negative melee result still beats stale combat-log evidence. Four regressions cover the precedence and dead-zone transition.
