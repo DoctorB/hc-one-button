@@ -18,6 +18,14 @@ local macro = Class:BuildActionPanelMacro(S.RAPTOR_STRIKE)
 check(macro and macro:find("!RAPTOR_STRIKE", 1, true), "Raptor secure macro cannot cancel its queue")
 
 s = runtime.reset()
+s.ranges[S.RAPTOR_STRIKE], s.autoActive, s.meleeActive = true, false, false
+check(not H.TargetIsClose(), "positive Auto Shot range beats a melee range report")
+check(runtime.candidate(S.ATTACK) == nil, "shooting range must not request ENABLE MELEE")
+check(runtime.candidate(S.AUTO_SHOT) ~= nil, "shooting range still offers RESUME AUTO SHOT")
+s.ranges[S.AUTO_SHOT], s.ranges[S.ARCANE_SHOT] = false, false
+check(H.TargetIsClose(), "melee range applies once shots are out of range")
+
+s = runtime.reset()
 s.interact, H.lastMeleeAt = true, s.now
 s.ranges[S.AUTO_SHOT], s.ranges[S.ARCANE_SHOT] = false, false
 check(not H.TargetIsClose(), "negative melee spell range beats broad interaction/stale hit")

@@ -21,21 +21,26 @@ end
 function HCOB.Hunter.TargetIsClose()
     if not HostileLiveTarget() then return false end
 
+    -- A positive shot range (which already excludes the dead zone) wins over
+    -- melee evidence. Raptor Strike / Wing Clip can report "in range" at
+    -- shooting distance (large combat reach, queued on-swing strike); trusting
+    -- them first kept the Advisor on ENABLE MELEE and blocked RESUME AUTO SHOT.
+    if HCOB.Hunter.SpellRange(S.AUTO_SHOT) == true then return false end
+    local probe = HCOB.Hunter.RangedProbe()
+    if probe and HCOB.Hunter.SpellRange(probe) == true then return false end
+
     -- Current range APIs are authoritative and must beat stale combat-log
     -- evidence. This prevents a melee hit from keeping the target "close"
     -- for seconds after it has already run back into ranged distance.
+    local meleeKnown = nil
     for _, id in ipairs({S.WING_CLIP, S.RAPTOR_STRIKE}) do
         if IsKnown(id) then
             local meleeRange = HCOB.Hunter.SpellRange(id)
-            if meleeRange ~= nil then return meleeRange end
+            if meleeRange == true then return true end
+            if meleeRange == false then meleeKnown = false end
         end
     end
-
-    local probe = HCOB.Hunter.RangedProbe()
-    if probe then
-        local ranged = HCOB.Hunter.SpellRange(probe)
-        if ranged == true then return false end
-    end
+    if meleeKnown == false then return false end
 
     -- Combat-log fallback only. Keep it short: it is useful during API gaps,
     -- but must never override a fresh ranged result above.
