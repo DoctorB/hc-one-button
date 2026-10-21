@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.18, the version-controlled public notes are in
-[`releases/1.29.18.md`](releases/1.29.18.md). Paste that document into
+For 1.29.19, the version-controlled public notes are in
+[`releases/1.29.19.md`](releases/1.29.19.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -109,7 +109,8 @@ the curated public release text. Formatting these notes does not publish them.
 
 - `HCOneButton/` is the only root directory inside the ZIP.
 - The TOC, all its referenced files, README, CHANGELOG and LICENSE are included.
-  There are currently 62 files, including the Warrior DPR and group-healing modules. Future assets
+  There are currently 63 files, including the Warrior DPR and group-healing modules and the
+  `## IconTexture` file (`Media/icon.tga`, copied byte for byte). Other future assets
   must be explicitly supported in the packaging allowlist; the repository
   coverage test detects omissions.
 - Tests, workflows, local artifacts, development docs and unreferenced local
@@ -139,7 +140,19 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.18 publication validation
+### 1.29.19 publication validation
+
+Publication authorized on 2026-10-21. The TOC sets `## IconTexture` to
+`Media/icon.tga` (64x64 32-bit TGA from `docs/logo.png`, made by
+`scripts/make-icon.ps1`); the package ships it. Validation: 57 Lua chunks,
+44 Lua suites, 58 TOC references and 20 offline release-tool tests; 63 packaged
+files. Gameplay, settings, learning and bindings are unchanged.
+
+Publish tag `v1.29.19`, title **HCOneButton v1.29.19**, using
+[`releases/1.29.19.md`](releases/1.29.19.md) as the ordinary Release body.
+Verify CurseForge acceptance separately from moderation approval.
+
+### Archived 1.29.18 publication validation
 
 Publication authorized on 2026-10-04. Hunter range classification lets a
 positive shooting-range check beat Raptor Strike / Wing Clip melee reports,

@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.18`
+- **Current version:** `1.29.19`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.18` fixes a Hunter regression where the Advisor could request melee at shooting range and stop offering Auto Shot recovery.
+Version `1.29.19` adds the HCOneButton icon to the AddOns list.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -43,7 +43,7 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.18` restores **Hunter Auto Shot at shooting range**. When Auto Shot (or a ranged shot used as a range probe) reports the target in range, that result now wins over a melee-range report from Raptor Strike or Wing Clip. The Advisor no longer shows ENABLE MELEE or Raptor Strike while you can shoot, and RESUME AUTO SHOT is offered again after a melee exchange. Melee guidance still applies in the dead zone and in actual melee. The Rogue early-opener fix from `1.29.17` and the Hunter leveling improvements from `1.29.16` remain included.
+Version `1.29.19` shows the **HCOneButton icon in the AddOns list** at character selection instead of the question mark. Gameplay is unchanged. Version `1.29.18` restored **Hunter Auto Shot at shooting range**. When Auto Shot (or a ranged shot used as a range probe) reports the target in range, that result now wins over a melee-range report from Raptor Strike or Wing Clip. The Advisor no longer shows ENABLE MELEE or Raptor Strike while you can shoot, and RESUME AUTO SHOT is offered again after a melee exchange. Melee guidance still applies in the dead zone and in actual melee. The Rogue early-opener fix from `1.29.17` and the Hunter leveling improvements from `1.29.16` remain included.
 
 **Upgrade without resetting:** existing settings, Rage base, HUD positions, combat history, learning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, Action Panel slots and permanent bindings remain unchanged. Warrior modifier+BASE shortcuts now perform BASE; use the dedicated spell icons/bindings instead. Other classes and the independent party click-healing panel retain their existing behavior. Protected actions still require player input.
 
@@ -1316,13 +1316,13 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.18` passes the following automated checks:
+Version `1.29.19` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
 - **44/44 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
 - **173 Warrior DPR checks**, **66 mitigation checks** and **118 damage-timing checks** cover changing inputs/decisions, aura/range guards, live/final HUD values and preserved learning metrics;
 - **58/58 TOC references** resolved (`57 Lua + Bindings.xml`);
-- **19/19 offline Python release tests** pass, including inherited-runner-summary isolation and explicit validation/upload summaries;
+- **20/20 offline Python release tests** pass, including `IconTexture` packaging, inherited-runner-summary isolation and explicit validation/upload summaries;
 - **1,261 party-panel checks** cover all four healer classes, fixed-unit clicks, modifiers, learned-rank upgrades, persistence, independent movement, solo/party/raid visibility, combat-safe configuration and temporary hover-binding cleanup;
 - **198 group-healing checks** cover triage, mana/range/movement, incoming heals, maintained auras, optional advice, dedicated mouseover actions and isolation from self-survival tuning;
 - **250 wand checks** cover Priest/Mage/Warlock auto-repeat detection, real event dispatch, localized queries, missing/error API fallback, cooldown cycles, start/stop and range transitions, preserved efficiency scoring, healing/proc/cast/channel precedence and consistent BASE feedback;
@@ -1368,7 +1368,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.18.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.19.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 

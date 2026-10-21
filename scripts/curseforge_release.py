@@ -127,9 +127,23 @@ def local_changelog(root, version):
     return match[0].strip() + "\n"
 
 
+def toc_icon(root):
+    """The .tga named by ## IconTexture, relative to the addon folder, or None."""
+    toc = (root / "HCOneButton/HCOneButton.toc").read_text(encoding="utf-8-sig")
+    match = re.search(r"^## IconTexture:\s*([^\r\n]+?)\s*$", toc, re.MULTILINE)
+    if not match:
+        return None
+    prefix = "Interface\\AddOns\\HCOneButton\\"
+    require(match[1].startswith(prefix), "IconTexture must point inside the addon folder")
+    return match[1][len(prefix):].replace("\\", "/") + ".tga"
+
+
 def package_files(root, entries):
     # Explicit package allowlist: no tests, workflows, credentials or local ZIPs.
     names = ["HCOneButton.toc", "README.md", "CHANGELOG.md", "LICENSE"] + entries
+    icon = toc_icon(root)
+    if icon:
+        names.append(icon)
     require(len(names) == len(set(names)), "Duplicate package paths")
     result = {}
     addon = root / "HCOneButton"

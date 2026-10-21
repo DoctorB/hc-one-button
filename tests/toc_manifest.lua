@@ -57,6 +57,14 @@ assert(positions["Systems/TuningTelemetry.lua"] < positions["Systems/AdaptiveTun
 assert(positions["Systems/AdaptiveTuner.lua"] < positions["Systems/CombatLog.lua"], "adaptive learner must load before combat log")
 assert(entries[#entries] == "Bindings.xml", "Bindings.xml must remain the final TOC entry")
 
+assert(toc:find("## IconTexture: Interface\\AddOns\\HCOneButton\\Media\\icon", 1, true), "TOC icon missing")
+local icon = read("HCOneButton/Media/icon.tga")
+assert(#icon == 18 + 64 * 64 * 4 + 26, "icon must be a 64x64 32-bit TGA with a TGA 2.0 footer")
+assert(icon:byte(3) == 2 and icon:byte(17) == 32 and icon:byte(18) == 0x28,
+    "icon must be uncompressed true-colour, 8 alpha bits, top-left origin")
+assert(icon:byte(13) + icon:byte(14) * 256 == 64 and icon:byte(15) + icon:byte(16) * 256 == 64, "icon must be 64x64")
+assert(icon:sub(-18) == "TRUEVISION-XFILE.\0", "icon TGA 2.0 footer missing")
+
 local tocVersion = assert(toc:match("## Version:%s*([^\r\n]+)"), "TOC version missing")
 assert(toc:find("## SavedVariablesPerCharacter: HCOB_CharacterDB", 1, true),
     "anonymous per-character telemetry profile SavedVariable missing")

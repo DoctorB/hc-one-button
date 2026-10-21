@@ -93,6 +93,21 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(set(files), actual)
         self.assertTrue(version)
 
+    def test_toc_icon_is_packaged_and_required(self):
+        toc = self.root / "HCOneButton/HCOneButton.toc"
+        toc.write_text(toc.read_text(encoding="utf-8").replace(
+            "## Interface: 11509\n", "## Interface: 11509\n## IconTexture: Interface\\AddOns\\HCOneButton\\Media\\icon\n"),
+            encoding="utf-8")
+        icon = self.root / "HCOneButton/Media/icon.tga"
+        icon.parent.mkdir(parents=True)
+        icon.write_bytes(b"\x00\x00\x02tga")
+        manifest = self.prepare()
+        with zipfile.ZipFile(self.output / manifest["zip"]) as archive:
+            self.assertEqual(archive.read("HCOneButton/Media/icon.tga"), b"\x00\x00\x02tga")
+        icon.unlink()
+        with self.assertRaises(ValueError):
+            release.prepare(self.root, self.root / "second", self.event, "release")
+
     def test_license_allows_windows_newlines_without_changing_archive_bytes(self):
         (self.root / "HCOneButton/LICENSE").write_bytes(b"MIT\r\n")
         manifest = self.prepare()
