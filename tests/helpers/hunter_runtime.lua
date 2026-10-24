@@ -44,13 +44,27 @@ env.UnitExists = function(unit)
     if unit == "pet" then return state.pet end
     if unit == "target" then return state.hostile end
     if unit == "targettarget" then return state.targetOfTarget ~= nil end
+    if unit == "pettarget" then return state.pet and state.petTarget ~= nil end
     return unit == "player"
 end
 env.UnitIsDead = function(unit) return unit == "pet" and state.petDead or false end
 env.UnitIsDeadOrGhost = env.UnitIsDead
 env.UnitCanAttack = function() return state.hostile end
-env.UnitIsUnit = function(a, b) return a == "targettarget" and b == state.targetOfTarget end
-env.UnitHealthPct = function(unit) return unit == "pet" and state.petHP or state.hp, true end
+env.UnitIsUnit = function(a, b)
+    if a == "pettarget" then return state.petTarget == b end
+    return a == "targettarget" and b == state.targetOfTarget
+end
+env.UnitName = function(unit) return unit == "target" and state.targetName or nil end
+local PET_MODES = {[8]={"PET_MODE_AGGRESSIVE", "aggressive"}, [9]={"PET_MODE_DEFENSIVE", "defensive"}, [10]={"PET_MODE_PASSIVE", "passive"}}
+env.GetPetActionInfo = function(i)
+    local mode = PET_MODES[i]
+    if mode then return mode[1], "icon", true, state.petMode == mode[2] end
+    return "Bite", "icon", false, false
+end
+env.UnitHealthPct = function(unit)
+    if unit == "pet" then return state.petHP, true end
+    return unit == "target" and state.targetHP or state.hp, true
+end
 env.UnitPowerPct = function() return state.mana, true end
 env.UnitAffectingCombat = function() return state.inCombat end
 env.InCombatLockdown = env.UnitAffectingCombat
@@ -92,13 +106,14 @@ H.FeedMacro = function() return "/stopmacro" end
 local function reset()
     state = {now=100, known={}, usable={}, cooldowns={}, ranges={}, buffs={}, debuffs={}, petBuffs={},
         hostile=true, inCombat=true, level=6, targetLevel=6, targetHP=70, mana=100, hp=100,
-        pet=false, petHP=100, reserve=80, autoActive=true, meleeActive=true, enemies=1, guid="target-a"}
+        pet=false, petHP=100, petTarget="target", petMode="defensive", targetName="Defias Thug", reserve=80, autoActive=true, meleeActive=true, enemies=1, guid="target-a"}
     state.known[S.AUTO_SHOT], state.known[S.RAPTOR_STRIKE], state.known[S.ARCANE_SHOT] = true, true, true
     state.ranges[S.AUTO_SHOT], state.ranges[S.ARCANE_SHOT], state.ranges[S.RAPTOR_STRIKE] = true, true, false
     I.knownSpellNames = {}
     env.HCOB_DB = {combatLogging=false}
     H.ResetTargetState(true)
     H.lastAutoShotAt, H.lastMeleeAt, H.combatEnteredAt, H.autoRepeatActive = nil, nil, nil, false
+    H.petDeathObserved, H.fleeingGUID, H.fleeingUntil, H.travelStableSince = nil, nil, nil, nil
     Engine.ResetStabilization()
     env.IsAutoRepeatSpell = autoQuery
     return state

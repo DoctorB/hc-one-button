@@ -20,6 +20,7 @@ S = {
     PSYCHIC_SCREAM=8122, ICE_BLOCK=11958, FROST_NOVA=122, BLINK=1953,
     DEATH_COIL=6789, FEAR=5782, STONECLAW_TOTEM=5730, EARTHBIND_TOTEM=2484,
     NATURES_GRASP=16689, BARKSKIN=22812, DASH=1850,
+    CALL_PET=883, REVIVE_PET=982, MEND_PET=136,
 }
 
 function GetTime() return now end
@@ -139,6 +140,18 @@ expect(result.state, "prepare", "missing hunter pet")
 petExists, petHP = true, 55
 result = Engine.EvaluatePrePullReadiness({playerLevel=30, targetTough=false})
 expect(result.state, "recover", "low pet health")
+expect(result.id, nil, "pet fix needs a learned spell")
+IsKnown = function() return true end
+result = Engine.EvaluatePrePullReadiness({playerLevel=30, targetTough=false})
+expect(result.id, S.MEND_PET, "low pet health offers Mend Pet")
+petExists = false
+HCOneButton.Hunter.PetState = function() return "dead" end
+expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), S.REVIVE_PET, "dead hunter pet offers Revive Pet")
+HCOneButton.Hunter.PetState = function() return "missing" end
+expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), S.CALL_PET, "missing hunter pet offers Call Pet")
+PLAYER_CLASS = "WARLOCK"
+expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), nil, "Warlock pet advice stays text only")
+IsKnown, HCOneButton.Hunter.PetState = nil, nil
 PLAYER_CLASS, petExists, petHP = "MAGE", false, 100
 
 -- Missing stock escalates only for a tough target. Cooldowns and the Recently

@@ -79,6 +79,7 @@ function InitializeSavedVariables()
     Default("hunterAmmoCriticalMinutes", 8)
     Default("hunterAmmoLowMinutes", 20)
     Default("hunterTrainingPointNotice", 10)
+    Default("hunterCheetahReminder", true)
 
     -- Combat history remains account-wide for one bounded diagnostic store,
     -- while this anonymous identifier is persisted by WoW per character. New

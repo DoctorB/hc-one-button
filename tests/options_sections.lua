@@ -107,7 +107,7 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
     local _,quickY,_,quickH=rect(quick)
     assert(quickY+quickH<=368,"bag QoL overlaps class section")
     assert(panel.width == 700 and panel.height == 760,"Options window grew unexpectedly")
-    local rend=find(widgets,"Smart pre-pull Rend")
+    local rend=find(widgets,"Smart opener Rend")
     local sunder=find(widgets,"Situational Sunder")
     local heroic=find(widgets,"Heroic Strike base rage")
     local pick=find(widgets,"Pick Pocket with openers")
@@ -134,6 +134,20 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
         assert(restored.HCOB_DB.roguePickPocket == false and restored.pendingRebuild == true,"combat edit did not defer secure rebuild")
     else
         assert(not pick and not panel.rogueSection,"Rogue options leaked to another class")
+    end
+    local cheetah=find(widgets,"Cheetah travel reminder")
+    if class == "HUNTER" then
+        assert(panel.hunterSection and cheetah and cheetah.parent == panel.hunterSection,"Hunter option is not grouped")
+        assert(cheetah.checked,"Cheetah reminder must default ON")
+        local x,y,w,h=rect(cheetah)
+        local sx,sy,sw,sh=rect(panel.hunterSection)
+        assert(x>=sx and y>=sy and x+w<=sx+sw and y+h<=sy+sh,"Hunter checkbox escapes section")
+        cheetah:SetChecked(false); cheetah.scripts.OnClick(cheetah)
+        assert(env.HCOB_DB.hunterCheetahReminder == false,"Hunter setting not saved")
+        local _, restoredWidgets=runtime("HUNTER",env.HCOB_DB)
+        assert(not find(restoredWidgets,"Cheetah travel reminder").checked,"Hunter setting lost on reload")
+    else
+        assert(not cheetah and not panel.hunterSection,"Hunter options leaked to another class")
     end
     local center,report,bindings=find(widgets,"Center HUD"),find(widgets,"Report a problem..."),find(widgets,"Configure slot bindings...")
     if class == "WARRIOR" then
@@ -172,6 +186,9 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
         if class == "ROGUE" then
             local _,sy,_,sh=rect(panel.rogueSection)
             assert(y>=sy+sh+10,"utility buttons overlap Rogue section")
+        elseif class == "HUNTER" then
+            local _,sy,_,sh=rect(panel.hunterSection)
+            assert(y>=sy+sh+10,"utility buttons overlap Hunter section")
         elseif panel.groupHealingSection then
             local _,sy,_,sh=rect(panel.groupHealingSection)
             assert(y>=sy+sh+10,"utility buttons overlap Group healing section")
@@ -221,7 +238,7 @@ for _, class in ipairs({"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","MAGE","WA
     assert(not tuning.checked and not logger.checked and not meter.checked,"Options reopening did not refresh moved controls")
 end
 local _,reloadWidgets=runtime("WARRIOR",warriorDB)
-assert(find(reloadWidgets,"Smart pre-pull Rend").checked and find(reloadWidgets,"Situational Sunder").checked
+assert(find(reloadWidgets,"Smart opener Rend").checked and find(reloadWidgets,"Situational Sunder").checked
     and find(reloadWidgets,"Heroic Strike base rage").value == 52,"Warrior values did not survive reload")
 
 local resetEnv,resetWidgets=runtime("ROGUE",{roguePickPocket=true,bagQuickDelete=true})

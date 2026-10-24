@@ -258,7 +258,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    if IsKnown(S.REND) and (level <= 45 or (efficiency and efficiency[S.REND])) and not currentWarriorAutoRend and not HasMyTargetDebuff(S.REND) and IsUsable(S.REND)
+    if HCOB_DB.warriorAutoRend ~= false and IsKnown(S.REND) and (level <= 45 or (efficiency and efficiency[S.REND])) and not HasMyTargetDebuff(S.REND) and IsUsable(S.REND)
        and self:CanFundMaintenance(S.REND, rage) then
         local worthRend = tough or targetLevel <= 0 or targetLevel >= (level - 4)
         if level >= 36 then worthRend = tough and (not estimatedTTK or estimatedTTK >= 12) end
@@ -332,11 +332,41 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     if self.RankDamageCandidates then self:RankDamageCandidates(candidates, efficiency, rage) end
     local id, title, key, reason, kind = HCOB.Advisor.Engine.SelectCandidate(candidates)
     if id or title then return id, title, key, reason, kind end
+    if self:NeedsAutoAttackRestart(inCombat, hostile) then
+        return nil, "ATTACK STOPPED", "PRESS BASE ONCE",
+            "Restart auto-attack once; Rage comes from your swings", "action"
+    end
     if executePooling then
-        return nil, "POOL FOR EXECUTE", "KEEP AUTO ATTACKING",
+        return nil, "POOL FOR EXECUTE", "LET IT RUN",
             "Target approaching Execute range: preserve Rage below " .. EXECUTE_POOL_RELEASE_RAGE, "idle"
     end
     return nil
+end
+
+-- BASE only needs a press to start attacking. Ask for one when the client
+-- reports auto-attack off against an engaged target in melee reach, e.g.
+-- after tabbing to the next mob with too little Rage for any strike.
+function Class:NeedsAutoAttackRestart(inCombat, hostile)
+    local engine = HCOB.Advisor.Engine
+    if not inCombat or not hostile then return false end
+    -- Do not turn combat with one mob into an instruction to pull a fresh one.
+    if not UnitAffectingCombat or not UnitAffectingCombat("target") then return false end
+    if engine.PlayerRecoveryHold and engine.PlayerRecoveryHold() then return false end
+    if not MitigationInRange() then return false end
+    return AutoAttackActive() == false
+end
+
+-- Nothing to cast: auto-attack builds Rage by itself, BASE is not spammed.
+function Class:GetSettledRecommendation(inCombat, hostile)
+    if not hostile then
+        return nil, "NO ACTIVE TARGET", "SELECT TARGET", "Select a live hostile target; BASE starts the attack once", "idle"
+    end
+    if not inCombat then return nil end
+    local range = HCOB.Advisor.Engine.SpellRange
+    if range and range(S.HEROIC_STRIKE, "target") == false then
+        return nil, "OUT OF MELEE RANGE", "ADJUST DISTANCE", "Move into melee range; auto-attack resumes by itself", "idle"
+    end
+    return nil, "AUTO ATTACK", "LET IT RUN", "Auto-attack is building Rage; no manual spell needed yet", "idle"
 end
 
 
@@ -389,30 +419,12 @@ end
 -- the class owns its base action and modifier spell choices.
 function Class:BuildMainMacro()
         HCOB_DB.warriorHeroicSpam = false
-        -- SAFE BASE v1.11:
-        --   * /startattack always;
-        --   * Charge out of combat;
-        --   * Rend x1 only on targets worth applying a DoT to;
-        --   * Heroic Strike is NEVER part of BASE spam.
-        --
-        -- A secure macro cannot read rage and decide whether to queue HS.
-        -- HS therefore remains an Advisor decision and uses its dedicated slot
-        -- only when the adaptive rage threshold is actually reached.
+        -- BASE is a single press: /startattack, plus Charge out of combat.
+        -- A secure macro cannot read Rage, target lifetime or the DPR model,
+        -- so Heroic Strike and Rend stay Advisor decisions on their slots.
         local lines = NewLines()
         AddLine(lines, "/startattack [harm]", 1)
         AddLine(lines, CastLine(S.CHARGE, "nocombat,harm", false), 1)
-
-        local hasMajorSpender = IsKnown(S.MORTAL_STRIKE) or IsKnown(S.BLOODTHIRST)
-
-        currentWarriorAutoRend = false
-        if not hasMajorSpender and WarriorTargetWantsRend() then
-            local rend = SpellName(S.REND)
-            if rend then
-                AddLine(lines, "/castsequence [combat,harm] reset=target/combat " .. rend .. ", null", 2)
-                currentWarriorAutoRend = true
-            end
-        end
-
         return FitMacro(lines)
 end
 
@@ -425,8 +437,12 @@ end
 function Class:GetBaseActionInfo(spec)
     local inCombat = UnitAffectingCombat("player") and true or false
     if not inCombat and IsKnown(S.CHARGE) then
-        return S.CHARGE, currentWarriorAutoRend and "CHARGE -> REND x1" or "CHARGE -> AUTO"
+        return S.CHARGE, "CHARGE -> AUTO"
     end
-    return S.ATTACK, currentWarriorAutoRend and "AUTO + REND x1" or "AUTO ATTACK"
+    return S.ATTACK, "AUTO ATTACK"
+end
+
+function Class:GetBaseLabel()
+    return "BASE"
 end
 

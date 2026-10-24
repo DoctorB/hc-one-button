@@ -179,6 +179,20 @@ function IsQueuedMeleeSwingSpell(id)
     return ok and SafeBoolean(queued, false) or false
 end
 
+-- Query the client's melee attack toggle, never infer a stop from a long
+-- swing. Returns true/false, or nil when missing/failed/unreadable: unknown
+-- is not a request for another key.
+function AutoAttackActive()
+    local function ReadAttack(api)
+        if type(api) ~= "function" then return nil end
+        local ok, active = pcall(api, S.ATTACK)
+        if ok and CanAccessValue(active) and type(active) == "boolean" then return active end
+    end
+    local active = ReadAttack(IsCurrentSpell)
+    if active == nil then active = ReadAttack(C_Spell and C_Spell.IsCurrentSpell) end
+    return active
+end
+
 function MainhandSwingQueueOpen()
     if not GetTime or not MainhandSpeed then return true, nil, nil end
     local speed = MainhandSpeed()

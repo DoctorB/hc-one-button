@@ -119,6 +119,10 @@ Hunter.MeleeAutoActive = function() return true end
 Hunter.TravelStableSeconds = function() return 0 end
 Hunter.TargetOnPlayer = function() return false end
 Hunter.PetIsTanking = function() return true end
+Hunter.PetState = function() return Hunter.PetAlive() and "alive" or "missing" end
+Hunter.PetMode = function() return nil end
+Hunter.PetOffTarget = function() return false end
+Hunter.TargetFleeing = function() return false end
 
 local combatContext = {
     inCombat=true, hostile=true, spec=1,
@@ -181,20 +185,24 @@ for _, scenario in ipairs(scenarios) do
 end
 
 -- Contextual combat auras do not use the long-buff refresh boundary, but they
--- must still remain silent while active and outside combat.
+-- must still remain silent while active. Out of combat the Hunter asks only for
+-- the pre-pull aspect and pet recovery, and only before a pull.
 known, buffs, petBuffs = {[S.ASPECT_HAWK]=true}, {}, {}
 local HunterClass = environment.HCOneButton.Classes.HUNTER
-expect(HunterClass:GetRecommendation(false, true, 80, 1), nil, "HUNTER aspect out of combat")
+expect(HunterClass:GetRecommendation(false, false, 80, 1), nil, "HUNTER aspect without a pull")
+expect(HunterClass:GetRecommendation(false, true, 80, 1), S.ASPECT_HAWK, "HUNTER pre-pull combat aspect")
 expect(HunterClass:GetRecommendation(true, true, 80, 1), S.ASPECT_HAWK, "HUNTER missing combat aspect")
 buffs[S.ASPECT_HAWK] = 999
+expect(HunterClass:GetRecommendation(false, true, 80, 1), nil, "HUNTER active pre-pull aspect")
 expect(HunterClass:GetRecommendation(true, true, 80, 1), nil, "HUNTER active combat aspect")
 
 known, buffs, petBuffs = {[S.MEND_PET]=true}, {}, {}
 Hunter.PetAlive = function() return true end
 Hunter.PetHP = function() return 20 end
-expect(HunterClass:GetRecommendation(false, true, 80, 1), nil, "HUNTER Mend Pet out of combat")
+expect(HunterClass:GetRecommendation(false, true, 80, 1), S.MEND_PET, "HUNTER Mend Pet before the next pull")
 expect(HunterClass:GetRecommendation(true, true, 80, 1), S.MEND_PET, "HUNTER missing Mend Pet aura")
 petBuffs[S.MEND_PET] = 8
+expect(HunterClass:GetRecommendation(false, true, 80, 1), nil, "HUNTER active Mend Pet out of combat")
 expect(HunterClass:GetRecommendation(true, true, 80, 1), nil, "HUNTER active Mend Pet aura")
 
 known, buffs, petBuffs = {[S.SLICE_DICE]=true}, {}, {}

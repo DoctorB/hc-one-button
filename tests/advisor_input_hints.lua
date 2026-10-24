@@ -153,9 +153,27 @@ expect(env.advisorMode.text,"AUTO ACTIVE","Hunter automatic state unchanged")
 expect(env.advisorKey.text,"LET IT RUN","Hunter hold unchanged")
 env.SetDisplay(nil,"PULL READY","PRESS BASE","Pull","idle")
 expect(env.advisorKey.text,"PRESS BUTTON4","Hunter pull unchanged")
-env.PLAYER_CLASS = "WARRIOR"
+env.PLAYER_CLASS = "PALADIN"
 env.SetDisplay(nil,"BASE OK","KEEP SPAMMING","No priority","idle")
 expect(env.advisorKey.text,"SPAM BUTTON4","other classes' explicit BASE mode unchanged")
+
+-- Warrior BASE is a single press: auto-attack builds Rage by itself.
+env.PLAYER_CLASS = "WARRIOR"
+env.SetDisplay(nil,"AUTO ATTACK","LET IT RUN","Building Rage","idle")
+expect(env.advisorMode.text,"AUTO ACTIVE","Warrior idle combat is an automatic state")
+expect(env.advisorKey.text,"LET IT RUN","Warrior idle combat does not ask for spam")
+env.SetDisplay(nil,"PULL READY","PRESS BASE","Pull","idle")
+expect(env.advisorKey.text,"PRESS BUTTON4 ONCE","Warrior pull is one press")
+env.SetDisplay(nil,"BASE OK","KEEP SPAMMING","","idle")
+expect(env.advisorKey.text:find("SPAM"),nil,"legacy fallback cannot display Warrior spam")
+env.SetDisplay(nil,"POOL FOR EXECUTE","LET IT RUN","Pool","idle")
+expect(env.advisorKey.text,"LET IT RUN","Execute pooling waits without spam")
+showRestart()
+expect(env.advisorKey.text,"PRESS BUTTON4 ONCE","Warrior restart names the bound key once")
+expect(env.advisor.restartNotice.shown,true,"Warrior restart shows the large notice")
+expect(highlight,nil,"Warrior restart highlights no slot")
+env.SetDisplay(nil,"AUTO ATTACK","LET IT RUN","Building Rage","idle")
+expect(env.advisor.restartNotice.shown,false,"resumed attack withdraws the Warrior notice")
 
 env.HCOB_DB.showAdvisor = false
 showRestart()
@@ -274,6 +292,9 @@ expect(env.advisorTitle.text,"ADVISOR OFF","disabled Advisor is identified")
 expect(env.advisorKey.text,"MANUAL CONTROL","disabled Rogue Advisor cannot infer input readiness")
 expect(notice.shown,false,"disabled Advisor has no restart alarm")
 env.PLAYER_CLASS="WARRIOR"
+env.UpdateDisplayMinimal("Smart HUD disabled")
+expect(env.advisorKey.text,"MANUAL CONTROL","disabled Warrior Advisor does not ask for spam")
+env.PLAYER_CLASS="PALADIN"
 env.SetDisplay(nil,"BASE OK","KEEP SPAMMING","","idle")
 expect(env.advisorKey.text,"SPAM BUTTON4","other class BASE contract unchanged")
 -- Wand starts are single inputs; active/wait states are not BASE spam.

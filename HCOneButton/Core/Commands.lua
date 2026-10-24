@@ -71,12 +71,12 @@ SlashCmdList.HCOB = function(msg)
         else print("|cffffcc00HCOB:|r /hcob diagpixel on|off") end
     elseif cmd == "hsspam" then
         HCOB_DB.warriorHeroicSpam = false
-        print("|cffffcc00HCOB:|r Heroic Strike was removed from BASE spam in v1.11: use the Advisor (ALT+SHIFT) when you reach the rage threshold.")
+        print("|cffffcc00HCOB:|r Heroic Strike was removed from BASE spam in v1.11: use the Advisor and the Heroic Strike slot when you reach the rage threshold.")
     elseif cmd == "rendspam" then
         if arg == "on" or arg == "off" then
             HCOB_DB.warriorAutoRend = (arg == "on")
             BuildMacros(); UpdateDisplay()
-            print("|cff00ff98HCOB:|r Smart pre-pull Rend " .. string.upper(arg) .. ".")
+            print("|cff00ff98HCOB:|r Smart opener Rend " .. string.upper(arg) .. " (Advisor suggestion; BASE never casts Rend).")
         else print("|cffffcc00HCOB:|r /hcob rendspam on|off") end
     elseif cmd == "sunder" then
         if PLAYER_CLASS ~= "WARRIOR" then
@@ -203,7 +203,7 @@ SlashCmdList.HCOB = function(msg)
         local macro=btn:GetAttribute("macrotext1") or ""
         print("|cff00ff98HCOB v"..VERSION..":|r "..tostring(localizedClass).." L"..PlayerLevel().." spec="..tostring(sn).."("..si..") macro="..#macro.."/"..MACRO_LIMIT)
         local tuner = HCOB.Systems and HCOB.Systems.AdaptiveTuner
-        print("SmartHUD="..tostring(HCOB_DB.smartDisplay ~= false).." safeMode="..tostring(runtimeSmartDisabled).." combatLogSafe="..tostring(runtimeCombatLogDisabled).." telemetrySafe="..tostring(runtimeTelemetryDisabled).." adaptive="..tostring(tuner and tuner.IsEnabled and tuner.IsEnabled() or false).." errors="..#runtimeErrors.." heroicBase=false heroicKnown="..tostring(IsKnown(S.HEROIC_STRIKE)).." hsRage="..tostring(HCOB_DB.warriorHeroicRage or 35).." autoRend="..tostring(currentWarriorAutoRend).." sunderAdaptive="..tostring(HCOB_DB.warriorSunderBase ~= false).." dpsMeter="..tostring(HCOB_DB.showDPSMeter ~= false).." hcDanger="..tostring(HCOB_DB.hcDangerAdvisor ~= false).." prePull="..tostring(HCOB_DB.prePullSafety ~= false).." survivalStrip="..tostring(HCOB_DB.showConsumables ~= false))
+        print("SmartHUD="..tostring(HCOB_DB.smartDisplay ~= false).." safeMode="..tostring(runtimeSmartDisabled).." combatLogSafe="..tostring(runtimeCombatLogDisabled).." telemetrySafe="..tostring(runtimeTelemetryDisabled).." adaptive="..tostring(tuner and tuner.IsEnabled and tuner.IsEnabled() or false).." errors="..#runtimeErrors.." heroicBase=false heroicKnown="..tostring(IsKnown(S.HEROIC_STRIKE)).." hsRage="..tostring(HCOB_DB.warriorHeroicRage or 35).." openerRend="..tostring(HCOB_DB.warriorAutoRend ~= false).." sunderAdaptive="..tostring(HCOB_DB.warriorSunderBase ~= false).." dpsMeter="..tostring(HCOB_DB.showDPSMeter ~= false).." hcDanger="..tostring(HCOB_DB.hcDangerAdvisor ~= false).." prePull="..tostring(HCOB_DB.prePullSafety ~= false).." survivalStrip="..tostring(HCOB_DB.showConsumables ~= false))
         PrintKeys()
     else
         print("|cff00ff98HC One Button v"..VERSION.."|r - all Classic Era classes")

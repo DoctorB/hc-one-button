@@ -172,17 +172,7 @@ function Class:NeedsAutoAttackRestart(inCombat, hostile)
         if AuraByName("target", SpellName(id), "HARMFUL", false) then return false end
     end
     if not engine.SpellRange or engine.SpellRange(Builder(), "target") ~= true then return false end
-
-    -- Query the client's attack toggle, never infer a stop from a long swing.
-    -- Missing/failed/unreadable data is unknown, not a request for another key.
-    local function ReadAttack(api)
-        if type(api) ~= "function" then return nil end
-        local ok, active = pcall(api, S.ATTACK)
-        if ok and CanAccessValue(active) and type(active) == "boolean" then return active end
-    end
-    local active = ReadAttack(IsCurrentSpell)
-    if active == nil then active = ReadAttack(C_Spell and C_Spell.IsCurrentSpell) end
-    return active == false
+    return AutoAttackActive() == false
 end
 
 function Class:GetRecommendation(inCombat, hostile, targetHP, spec)

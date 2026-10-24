@@ -363,7 +363,7 @@ btn:SetScript("OnEnter", function(self)
         and "WAND: start Shoot once, then let it run. Follow the Advisor for other spells."
         or (IsWandAutoRepeatActive and IsWandAutoRepeatActive())
         and "Wand active: let Shoot run. Follow the Advisor for other spells."
-        or PLAYER_CLASS == "ROGUE"
+        or (PLAYER_CLASS == "ROGUE" or PLAYER_CLASS == "WARRIOR")
         and "BASE: start attacking once. Advisor: situational spell to cast manually."
         or "SPAM: safe base action. Advisor: situational spell to cast manually.", 0.3, 1, 0.3, true)
     local class = HCOB.Classes and HCOB.Classes[PLAYER_CLASS]

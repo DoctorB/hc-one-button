@@ -6,8 +6,14 @@ setfenv(1, E)
 
 local Engine = HCOB.Advisor.Engine
 
-local function AddIssue(issues, priority, state, key, text)
-    issues[#issues + 1] = {priority=priority, state=state, key=key, text=text}
+local function AddIssue(issues, priority, state, key, text, id)
+    issues[#issues + 1] = {priority=priority, state=state, key=key, text=text, id=id}
+end
+
+-- Hunter pet issues carry the spell that fixes them, so the Advisor shows a
+-- castable action instead of text only.
+local function PetFixSpell(id)
+    if PLAYER_CLASS == "HUNTER" and IsKnown and IsKnown(id) then return id end
 end
 
 local function JoinIssues(issues)
@@ -88,12 +94,14 @@ function Engine.EvaluatePrePullReadiness(context)
     if (PLAYER_CLASS == "HUNTER" or PLAYER_CLASS == "WARLOCK") and level >= 10 then
         local petExists = UnitExists("pet") and not UnitIsDead("pet")
         if not petExists then
-            AddIssue(issues, 66, "prepare", "SUMMON / REVIVE PET", "No living pet is available for the pull")
+            local hunterPet = PLAYER_CLASS == "HUNTER" and HCOB.Hunter and HCOB.Hunter.PetState and HCOB.Hunter.PetState()
+            local fix = hunterPet == "dead" and PetFixSpell(S.REVIVE_PET) or (hunterPet == "missing" and PetFixSpell(S.CALL_PET) or nil)
+            AddIssue(issues, 66, "prepare", "SUMMON / REVIVE PET", "No living pet is available for the pull", fix)
         else
             local petHP, petReadable = UnitHealthPct("pet")
             petHP = tonumber(petHP) or 0
             if petReadable and petHP < 70 then
-                AddIssue(issues, 88, "recover", "HEAL PET", string.format("Pet health %.0f%%: recover before pulling", petHP))
+                AddIssue(issues, 88, "recover", "HEAL PET", string.format("Pet health %.0f%%: recover before pulling", petHP), PetFixSpell(S.MEND_PET))
             elseif petReadable and petHP < 90 then
                 AddIssue(issues, 64, "prepare", "MEND / FEED PET", string.format("Pet health %.0f%%: prepare it first", petHP))
             end
@@ -125,7 +133,7 @@ function Engine.EvaluatePrePullReadiness(context)
         local lead = issues[1]
         local titles = {recover="RECOVER FIRST", highrisk="HIGH RISK", prepare="PREPARE"}
         local result = {
-            ready=false, state=lead.state, title=titles[lead.state] or "PREPARE",
+            ready=false, state=lead.state, title=titles[lead.state] or "PREPARE", id=lead.id,
             key=lead.key or "WAIT / RECOVER", reason=JoinIssues(issues), issues=issues,
             healingStocked=stocked, healingReady=healingReady,
         }
@@ -150,6 +158,6 @@ end
 function Engine.PrePullRecommendation(context)
     local readiness = Engine.EvaluatePrePullReadiness(context)
     if readiness.ready then return nil end
-    return nil, readiness.title, readiness.key, readiness.reason,
+    return readiness.id, readiness.title, readiness.key, readiness.reason,
         readiness.state == "highrisk" and "danger" or "caution"
 end

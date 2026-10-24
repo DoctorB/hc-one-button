@@ -67,20 +67,6 @@ function SequenceLine(condition, reset, ids)
     return "/castsequence " .. cond .. "reset=" .. reset .. " " .. table.concat(names, ",")
 end
 
-currentWarriorAutoRend = false
-
-function WarriorTargetWantsRend()
-    if HCOB_DB.warriorAutoRend == false or not IsKnown(S.REND) then return false end
-    if not HostileLiveTarget() then return false end
-    local playerLevel = PlayerLevel()
-    local targetLevel = SafeUnitLevel("target", -1) or -1
-    local classification = SafeUnitClassification("target", "normal") or "normal"
-    local tough = classification == "elite" or classification == "rareelite" or classification == "worldboss"
-    if tough then return true end
-    -- At low level Rend is worth the GCD mainly when the target is expected to
-    -- live for a while.  Skip it on trivial mobs two or more levels below us.
-    return targetLevel <= 0 or targetLevel >= (playerLevel - 1)
-end
 
 
 
@@ -227,7 +213,7 @@ function PrintPlan()
     print("|cff00ff98HCOB:|r " .. (localizedClass or PLAYER_CLASS) .. " L" .. PlayerLevel() .. " - " .. tostring(specName) .. " (tree " .. specIndex .. ")")
     local baseId = BaseActionInfo()
     local wandBase = baseId == S.SHOOT and IsWandUser and IsWandUser()
-    print((PLAYER_CLASS == "ROGUE" or wandBase) and "|cffffcc00BASE macro (player input):|r" or "|cffffcc00BASE SPAM macro:|r")
+    print((PLAYER_CLASS == "ROGUE" or PLAYER_CLASS == "WARRIOR" or wandBase) and "|cffffcc00BASE macro (player input):|r" or "|cffffcc00BASE SPAM macro:|r")
     print(btn:GetAttribute("macrotext1") or "")
     local class = ActiveClassModuleForMacros()
     if class and class.baseIgnoresModifiers then

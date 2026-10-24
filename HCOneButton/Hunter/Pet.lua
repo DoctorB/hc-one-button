@@ -23,6 +23,58 @@ function HCOB.Hunter.PetHP()
     return hp
 end
 
+-- "alive", "dead" or "missing". A dead pet keeps its unit only briefly and
+-- then disappears; remember the death so the advice stays Revive Pet instead
+-- of turning into Call Pet, which the client would refuse.
+function HCOB.Hunter.PetState()
+    if UnitExists("pet") then
+        if UnitIsDeadOrGhost and UnitIsDeadOrGhost("pet") then
+            HCOB.Hunter.petDeathObserved = true
+            return "dead"
+        end
+        HCOB.Hunter.petDeathObserved = false
+        return "alive"
+    end
+    return HCOB.Hunter.petDeathObserved and "dead" or "missing"
+end
+
+-- Active pet stance read from the pet action bar tokens; nil when unreadable.
+local PET_MODE_TOKENS = {PET_MODE_PASSIVE="passive", PET_MODE_DEFENSIVE="defensive", PET_MODE_AGGRESSIVE="aggressive"}
+function HCOB.Hunter.PetMode()
+    if not GetPetActionInfo or not HCOB.Hunter.PetAlive() then return nil end
+    for i = 1, 10 do
+        local ok, name, _, isToken, isActive = pcall(GetPetActionInfo, i)
+        local mode = ok and isToken and PET_MODE_TOKENS[name]
+        if mode and SafeBoolean(isActive, false) then return mode end
+    end
+    return nil
+end
+
+function HCOB.Hunter.PetOffTarget()
+    if not HCOB.Hunter.PetAlive() or not HostileLiveTarget() then return false end
+    if not UnitExists("pettarget") then return true end
+    return not SafeUnitIsUnit("pettarget", "target")
+end
+
+-- Fleeing humanoids announce it with "%s attempts to run away in fear!". The
+-- English text is matched directly; on other locales any emote from the
+-- current target at low health is treated the same way.
+local FLEE_WINDOW = 8
+function HCOB.Hunter.NoteMonsterEmote(text, sender)
+    if not HostileLiveTarget() or type(sender) ~= "string" or not UnitName then return end
+    if UnitName("target") ~= sender then return end
+    local english = type(text) == "string" and text:find("run away in fear", 1, true)
+    local hp, readable = UnitHealthPct("target")
+    if not english and not (readable and hp <= 35) then return end
+    HCOB.Hunter.fleeingGUID = SafeUnitGUID("target")
+    HCOB.Hunter.fleeingUntil = GetTime() + FLEE_WINDOW
+end
+
+function HCOB.Hunter.TargetFleeing()
+    if not HCOB.Hunter.fleeingGUID or not HostileLiveTarget() then return false end
+    return HCOB.Hunter.fleeingGUID == SafeUnitGUID("target") and (HCOB.Hunter.fleeingUntil or 0) > GetTime()
+end
+
 function HCOB.Hunter.PetIsTanking()
     if not HCOB.Hunter.PetAlive() or not UnitExists("targettarget") or not UnitIsUnit then return false end
     local ok, same = pcall(UnitIsUnit, "targettarget", "pet")

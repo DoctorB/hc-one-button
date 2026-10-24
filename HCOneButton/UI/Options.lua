@@ -212,7 +212,7 @@ function CreateOptionsPanel()
         local heading = warrior:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         heading:SetPoint("TOPLEFT", 12, -12)
         heading:SetText("Warrior - Combat policy")
-        add(CreateCheckBox(warrior, "Smart pre-pull Rend", "Out of combat, if the target is equal/near-equal level or elite, prepare one Rend on the opener. Skip trivial mobs.", function() return HCOB_DB.warriorAutoRend ~= false end, function(v) HCOB_DB.warriorAutoRend = v; BuildMacros(); UpdateDisplay() end, 10, -30))
+        add(CreateCheckBox(warrior, "Smart opener Rend", "Early in a fight the Advisor suggests one Rend when the target lives long enough for its ticks (damage-per-Rage model when available). BASE never casts Rend.", function() return HCOB_DB.warriorAutoRend ~= false end, function(v) HCOB_DB.warriorAutoRend = v; BuildMacros(); UpdateDisplay() end, 10, -30))
         add(CreateCheckBox(warrior, "Situational Sunder", "Sunder remains in the Advisor against durable targets; it is not spammed at low levels.", function() return HCOB_DB.warriorSunderBase ~= false end, function(v) HCOB_DB.warriorSunderBase = v; BuildMacros(); UpdateDisplay() end, 10, -57))
         local rageSlider = CreateSlider(warrior, "Heroic Strike base rage", 20, 70, 1, function() return HCOB_DB.warriorHeroicRage or 35 end, function(v) HCOB_DB.warriorHeroicRage = v; UpdateDisplay() end, 37, -110, "20", "70", "%d base")
         rageSlider:SetScript("OnEnter", function(self)
@@ -253,6 +253,34 @@ function CreateOptionsPanel()
         description:SetJustifyH("LEFT")
         description:SetText("Manual secure openers only.\nCheck Auto Loot and its modifier key.\nLoot timing and resisted attempts can affect the opening.")
         panel.rogueSection = rogue
+    elseif PLAYER_CLASS == "HUNTER" then
+        local hunter = CreateFrame("Frame", nil, panel)
+        hunter:SetPoint("TOPLEFT", 24, -378)
+        hunter:SetSize(294, 142)
+        local background = hunter:CreateTexture(nil, "BACKGROUND")
+        background:SetAllPoints()
+        background:SetColorTexture(0.040, 0.055, 0.025, 0.90)
+        local accent = hunter:CreateTexture(nil, "BORDER")
+        accent:SetPoint("TOPLEFT", 0, 0)
+        accent:SetPoint("BOTTOMLEFT", 0, 0)
+        accent:SetWidth(3)
+        accent:SetColorTexture(0.67, 0.83, 0.45, 0.90)
+        local heading = hunter:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        heading:SetPoint("TOPLEFT", 12, -12)
+        heading:SetText("Hunter - Travel")
+        add(CreateCheckBox(hunter, "Cheetah travel reminder", "Out of combat, without a hostile target, suggest Aspect of the Cheetah after 8 seconds of running on foot outdoors. Any hit dazes you: selecting a hostile target switches the advice to the combat aspect.", function()
+            return HCOB_DB.hunterCheetahReminder ~= false
+        end, function(v)
+            HCOB_DB.hunterCheetahReminder = v
+            UpdateDisplay()
+        end, 10, -30))
+        local description = hunter:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        description:SetPoint("TOPLEFT", 14, -65)
+        description:SetWidth(265)
+        description:SetHeight(62)
+        description:SetJustifyH("LEFT")
+        description:SetText("Reminder only, never cast for you.\nSwitch to Hawk before pulling.")
+        panel.hunterSection = hunter
     elseif PLAYER_CLASS == "PRIEST" or PLAYER_CLASS == "PALADIN" or PLAYER_CLASS == "SHAMAN" or PLAYER_CLASS == "DRUID" then
         local group = CreateFrame("Frame", nil, panel)
         group:SetPoint("TOPLEFT",24,-378)
@@ -323,7 +351,7 @@ function CreateOptionsPanel()
 
     local centerBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     centerBtn:SetSize(125, 25)
-    centerBtn:SetPoint("TOPLEFT", 24, (panel.warriorSection or panel.rogueSection or panel.groupHealingSection) and -534 or -388)
+    centerBtn:SetPoint("TOPLEFT", 24, (panel.warriorSection or panel.rogueSection or panel.hunterSection or panel.groupHealingSection) and -534 or -388)
     centerBtn:SetText("Center HUD")
     centerBtn:SetScript("OnClick", Center)
 
@@ -363,6 +391,7 @@ function CreateOptionsPanel()
         HCOB_DB.actionSlotKeys = nil
         HCOB_DB.prePullSafety = true
         HCOB_DB.roguePickPocket = false
+        HCOB_DB.hunterCheetahReminder = true
         HCOB_DB.bagQuickDelete = false
         if HCOB.UI.BagQuickDelete then HCOB.UI.BagQuickDelete.Sync() end
         HCOB_DB.showConsumables = true

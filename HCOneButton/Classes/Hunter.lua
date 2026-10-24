@@ -33,12 +33,48 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
+    -- Pet recovery between pulls. The pre-pull gate speaks only while a hostile
+    -- target is selected; these keep the advice actionable right after a fight.
+    local petState = HCOB.Hunter.PetState()
+    local onTaxi = UnitOnTaxi and UnitOnTaxi("player")
+    if not inCombat and not onTaxi and not (UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")) then
+        if petState == "dead" and IsKnown(S.REVIVE_PET) and IsUsable(S.REVIVE_PET) then
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.REVIVE_PET, "REVIVE PET", "CAST MANUALLY", "Your pet died: revive it before the next pull", 124, "pet", "caution")
+        elseif petState == "missing" and IsKnown(S.CALL_PET) and IsUsable(S.CALL_PET) then
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.CALL_PET, "CALL PET", "CAST MANUALLY", "No pet summoned: if the client reports a dead pet, use Revive Pet", 121, "pet", "caution")
+        elseif petAlive then
+            if HCOB.Hunter.PetMode() == "passive" then
+                HCOB.Advisor.Engine.AddCandidate(candidates, nil, "PET PASSIVE", "PET BAR: DEFENSIVE", "Still passive after Feign Death: a passive pet will not protect you from adds", 119, "pet", "caution")
+            end
+            local restingPetHP = HCOB.Hunter.PetHP()
+            if restingPetHP and restingPetHP < 70 and IsKnown(S.MEND_PET) and IsUsable(S.MEND_PET) and not StablePetBuff(S.MEND_PET) then
+                HCOB.Advisor.Engine.AddCandidate(candidates, S.MEND_PET, "MEND PET", "CAST MANUALLY", string.format("Pet %.0f%%: heal it before the next pull", restingPetHP), 97, "survival")
+            end
+        end
+    end
+
+    local activeAspect = HCOB.Hunter.ActiveAspect()
+    local travel = HCOB.Hunter.TravelStableSeconds(inCombat, hostile)
     if not hostile then
-        HCOB.Hunter.TravelStableSeconds(inCombat, hostile)
+        -- Reminder only: any hit dazes the Hunter, so a hostile target turns
+        -- this into the pre-pull combat aspect below.
+        if travel >= 8 and not onTaxi and HCOB_DB.hunterCheetahReminder ~= false and activeAspect ~= S.ASPECT_CHEETAH
+           and IsKnown(S.ASPECT_CHEETAH) and CooldownReady(S.ASPECT_CHEETAH) and IsUsable(S.ASPECT_CHEETAH) then
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.ASPECT_CHEETAH, "TRAVEL: CHEETAH", "CAST MANUALLY", "Long run on foot: any hit dazes you, switch to Hawk before pulling", 40, "aspect", "idle")
+        end
         return HCOB.Advisor.Engine.SelectCandidate(candidates)
     end
 
-    HCOB.Hunter.TravelStableSeconds(inCombat, hostile)
+    -- In combat an aspect costs a global cooldown; set it while choosing the pull.
+    if not inCombat then
+        local combatAspect = IsKnown(S.ASPECT_HAWK) and S.ASPECT_HAWK or (IsKnown(S.ASPECT_MONKEY) and S.ASPECT_MONKEY or nil)
+        if combatAspect and activeAspect ~= combatAspect and CooldownReady(combatAspect) and IsUsable(combatAspect) then
+            local hawk = combatAspect == S.ASPECT_HAWK
+            HCOB.Advisor.Engine.AddCandidate(candidates, combatAspect, hawk and "PRE-PULL: HAWK" or "PRE-PULL: MONKEY", hawk and "SHIFT" or "CAST MANUALLY",
+                "Set the combat aspect now: in combat it costs a global cooldown", 73, "aspect")
+        end
+    end
+
     local manaPct = HCOB.Hunter.ManaPct()
     local petHP = HCOB.Hunter.PetHP()
     local close = HCOB.Hunter.TargetIsClose()
@@ -57,7 +93,6 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     local context = string.format("reserve %.0f %s", reserve, reserveLabel)
     if estimatedTTK and estimatedTTK < math.huge then context = context .. string.format(" | TTK ~%.0fs", estimatedTTK) end
 
-    local activeAspect = HCOB.Hunter.ActiveAspect()
     local rangedStable = HCOB.Hunter.RangedStableSeconds(close, canShoot)
     local threat = HCOB.Hunter.ThreatSnapshot and HCOB.Hunter.ThreatSnapshot() or {state="unknown"}
     local threatPenalty = HCOB.Hunter.ThreatPenalty and HCOB.Hunter.ThreatPenalty(threat) or 0
@@ -72,7 +107,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
             HCOB.Advisor.Engine.AddCandidate(candidates, emergencyAspect, emergencyAspect == S.ASPECT_MONKEY and "DROP CHEETAH -> MONKEY" or "DROP CHEETAH -> HAWK", "CAST MANUALLY", "Cheetah is unsafe in combat: remove the daze risk immediately", 125, "survival")
         end
     elseif inCombat and canShoot and rangedStable >= 2.0 and IsKnown(S.ASPECT_HAWK) and CooldownReady(S.ASPECT_HAWK) and IsUsable(S.ASPECT_HAWK) and activeAspect ~= S.ASPECT_HAWK then
-        HCOB.Advisor.Engine.AddCandidate(candidates, S.ASPECT_HAWK, "ASPECT OF THE HAWK", "CAST MANUALLY", "Ranged position has been stable for 2s: return to the damage aspect", 74, "aspect")
+        HCOB.Advisor.Engine.AddCandidate(candidates, S.ASPECT_HAWK, "ASPECT OF THE HAWK", "SHIFT", "Ranged position has been stable for 2s: return to the damage aspect", 74, "aspect")
     end
 
     -- Attack-mode recovery.  Do not assume Classic will seamlessly swap ranged
@@ -82,6 +117,33 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         HCOB.Advisor.Engine.AddCandidate(candidates, S.ATTACK, "ENABLE MELEE", "PRESS BASE", "Target is in melee but Auto Attack is not active", 98, "attackmode")
     elseif inCombat and canShoot and HCOB.Hunter.AutoShotNeedsRestart() then
         HCOB.Advisor.Engine.AddCandidate(candidates, S.AUTO_SHOT, "RESUME AUTO SHOT", "PRESS BASE", "Target is back at range: restart the ranged cycle", 102, "attackmode")
+    end
+
+    -- Chain pulls: after a target change the pet keeps its old target or idles.
+    -- Multi-pulls take the dedicated route before reaching this point.
+    if inCombat and petAlive and elapsed >= 1.5 and CountActiveEnemies() <= 1 and HCOB.Hunter.PetOffTarget()
+       and (HCOB.Hunter.AutoShotActive() or HCOB.Hunter.MeleeAutoActive()) then
+        HCOB.Advisor.Engine.AddCandidate(candidates, nil, "PET OFF TARGET", "PRESS BASE", "Your pet is not attacking your target: BASE sends it in", 95, "pet", "caution")
+    end
+
+    -- A fleeing mob comes back with friends. Slow it first, otherwise finish it.
+    if inCombat and HCOB.Hunter.TargetFleeing() then
+        if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and HCOB.Hunter.CanCastRanged(S.CONCUSSIVE_SHOT)
+           and not HasMyTargetDebuff(S.CONCUSSIVE_SHOT) then
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.CONCUSSIVE_SHOT, "FLEEING: CONCUSSIVE", "CTRL+SHIFT", "The target is running for help: slow it before it brings adds", 116, "control")
+        elseif IsKnown(S.ARCANE_SHOT) and CooldownReady(S.ARCANE_SHOT) and HCOB.Hunter.CanCastRanged(S.ARCANE_SHOT) then
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.ARCANE_SHOT, "FLEEING: ARCANE", IsKnown(S.AIMED_SHOT) and "CAST MANUALLY" or "ALT+SHIFT", "Finish it before it reaches other enemies", 112, "finisher")
+        end
+    end
+
+    -- Without the pet tank every hit lands on the Hunter.
+    if inCombat and petState == "dead" and targetHP > 25 then
+        if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and HCOB.Hunter.CanCastRanged(S.CONCUSSIVE_SHOT)
+           and not HasMyTargetDebuff(S.CONCUSSIVE_SHOT) then
+            HCOB.Advisor.Engine.AddCandidate(candidates, S.CONCUSSIVE_SHOT, "PET DEAD: CONCUSSIVE", "CTRL+SHIFT", "No pet tank: slow the target and keep it at range", 94, "survival")
+        else
+            HCOB.Advisor.Engine.AddCandidate(candidates, nil, "PET DEAD", "KEEP DISTANCE", "No pet tank: finish only if the fight stays safe", 84, "threat", "caution")
+        end
     end
 
     -- Predictive threat management. Do not wait for the mob to physically turn

@@ -429,7 +429,7 @@ function Recommend()
         HCOB.Advisor.Engine.advisoryRiskActive = true
         -- Keep the selected spell/binding and its tuning snapshot. Color and
         -- explanatory text communicate risk without imposing an escape action.
-        if not id and (not title or title == "BASE OK") then title = riskWarning.title end
+        if not id and (not title or title == "BASE OK" or title == "AUTO ATTACK") then title = riskWarning.title end
         return id, title, key, riskWarning.text .. " | " .. (reason or "Choose whether to continue or disengage"), riskWarning.kind
     end
 
@@ -520,12 +520,12 @@ function Recommend()
             return nil, "HIGH RISK", "EVALUATE PULL", "Target is +" .. diff .. " levels above you", "danger"
         end
 
-        local _, prepTitle, prepKey, prepReason, prepKind = HCOB.Advisor.Engine.PrePullRecommendation({
+        local prepId, prepTitle, prepKey, prepReason, prepKind = HCOB.Advisor.Engine.PrePullRecommendation({
             playerLevel=playerLevel, targetLevel=targetLevel, classification=classification,
             targetTough=classification == "elite" or classification == "rareelite" or classification == "worldboss" or targetLevel >= playerLevel + 1,
         })
         if prepTitle then
-            return nil, prepTitle, prepKey, prepReason, prepKind
+            return prepId, prepTitle, prepKey, prepReason, prepKind
         end
     end
 
@@ -552,6 +552,10 @@ function Recommend()
             readiness and readiness.summary or "Recovery checks passed", "idle"
     end
 
+    if class and class.GetSettledRecommendation then
+        local sid, stitle, skey, sreason, skind = class:GetSettledRecommendation(inCombat, hostile)
+        if stitle then return WithRisk(sid, stitle, skey, sreason, skind or "idle") end
+    end
     if PLAYER_CLASS == "ROGUE" or (IsWandUser and IsWandUser() and HasWandEquipped()) then
         return nil, "NO ACTIVE TARGET", "SELECT TARGET", "Select a live hostile target; no attack input is needed yet", "idle"
     end

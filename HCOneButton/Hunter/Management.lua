@@ -108,9 +108,10 @@ function H.PrintManagementStatus()
 end
 
 local f = CreateFrame("Frame")
-local events = {"PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "PLAYER_EQUIPMENT_CHANGED", "UNIT_INVENTORY_CHANGED", "UNIT_PET", "PET_BAR_UPDATE", "SPELLS_CHANGED", "PLAYER_LEVEL_UP"}
+local events = {"PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "PLAYER_EQUIPMENT_CHANGED", "UNIT_INVENTORY_CHANGED", "UNIT_PET", "PET_BAR_UPDATE", "SPELLS_CHANGED", "PLAYER_LEVEL_UP", "CHAT_MSG_MONSTER_EMOTE"}
 for _, e in ipairs(events) do pcall(f.RegisterEvent, f, e) end
-f:SetScript("OnEvent", function(_, event, unit)
+f:SetScript("OnEvent", function(_, event, unit, sender)
     if select(2, UnitClass("player")) ~= "HUNTER" then return end
+    if event == "CHAT_MSG_MONSTER_EMOTE" then pcall(H.NoteMonsterEmote, unit, sender); return end
     if event ~= "UNIT_INVENTORY_CHANGED" or unit == "player" then H.InvalidateManagement() end
 end)

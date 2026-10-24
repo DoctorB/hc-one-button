@@ -25,3 +25,24 @@ Run `tests/run.ps1` and the offline Python release-tool suite. Verify root/packa
 ## 1.29.18 follow-up: melee suggestion at shooting range
 
 `TargetIsClose()` returned the first non-nil Wing Clip / Raptor Strike range result before any ranged evidence. A melee "in range" report at shooting distance (large combat reach, queued on-swing strike) therefore produced ENABLE MELEE / Raptor Strike and blocked `AutoShotNeedsRestart()`. A positive Auto Shot or ranged-probe result now wins; otherwise any in-range melee spell marks the target close, and a negative melee result still beats stale combat-log evidence. Four regressions cover the precedence and dead-zone transition.
+
+## 1.29.20 pet, aspect and travel follow-up
+
+- `PetState()` returns alive/dead/missing and remembers an observed death, so a
+  dead pet whose unit has vanished still asks for Revive Pet, not Call Pet.
+  Out of combat (not on a taxi, not dead): Revive Pet 124, Call Pet 121, passive
+  pet warning 119, Mend Pet below 70% 97. The pre-pull gate returns the matching
+  learned fix spell (Hunter only; Warlock pet advice stays text).
+- Pre-pull combat aspect (Hawk, else Monkey) with a hostile target out of combat,
+  score 73. Cheetah travel reminder: no hostile target, eight seconds moving on
+  foot outdoors, `hunterCheetahReminder` (default ON, reset restores it), score 40,
+  idle display.
+- In combat: pet off target after 1.5s on a single enemy while the Hunter attacks
+  (`PRESS BASE`, which runs `/petattack`); dead pet above 25% target HP asks for
+  Concussive Shot or warns; a target flee emote (English text, or any target emote
+  at <=35% HP) opens an eight-second window for Concussive, then Arcane Shot.
+- Revive Pet and Call Pet have no slot: the Hunter layout already fills the
+  20-slot pixel protocol. Concussive keeps the existing `CTRL+SHIFT` hint, whose
+  macro tries Scatter Shot first.
+- `tests/hunter_pet_safety.lua`: 41 checks. Options layout checks that utility
+  buttons clear the new Hunter section. Simulated client only; in-game check pending.

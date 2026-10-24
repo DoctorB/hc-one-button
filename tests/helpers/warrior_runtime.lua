@@ -30,7 +30,10 @@ env.GetSpellCooldown = function(id)
     if state.cooldowns[id] then return state.now, state.cooldowns[id], 1 end
     return 0, 0, 1
 end
-env.IsCurrentSpell = function(name) return name == names[state.queued] end
+env.IsCurrentSpell = function(name)
+    if name == S.ATTACK then return state.attacking end
+    return name == names[state.queued]
+end
 env.CanAccessValue = function() return true end
 env.SafeBoolean = function(value, fallback)
     if value == nil then return fallback end
@@ -82,7 +85,7 @@ local function reset()
     state = {
         now=103, speed=3.5, hp=100, targetHP=70, targetLevel=6,
         rage=50, level=6, enemies=1, inCombat=true, shout=true, known={}, learnedNames={}, usable={}, debuffs={}, cooldowns={},
-        guid="target-a", inRange=true,
+        guid="target-a", inRange=true, attacking=true,
     }
     for _, id in ipairs({S.HEROIC_STRIKE, S.BATTLE_SHOUT, S.REND, S.CHARGE, S.THUNDER_CLAP}) do
         state.known[id] = true

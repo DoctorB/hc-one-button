@@ -54,12 +54,18 @@ advisorTitle:SetHeight(18)
 advisorTitle:SetJustifyH("LEFT")
 advisorTitle:SetText("ADVISOR")
 
+-- Rogue and Warrior BASE starts attacking once; auto-attack then runs by
+-- itself, so their hints never ask to spam it.
+function SinglePressBase()
+    return PLAYER_CLASS == "ROGUE" or PLAYER_CLASS == "WARRIOR"
+end
+
 advisorKey = advisor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 advisorKey:SetPoint("TOPLEFT", advisorTitle, "BOTTOMLEFT", 0, -1)
 advisorKey:SetWidth(202)
 advisorKey:SetHeight(15)
 advisorKey:SetJustifyH("LEFT")
-advisorKey:SetText((PLAYER_CLASS == "ROGUE" or (IsWandUser and IsWandUser() and HasWandEquipped())) and "SELECT TARGET" or "SPAM BASE")
+advisorKey:SetText((SinglePressBase() or (IsWandUser and IsWandUser() and HasWandEquipped())) and "SELECT TARGET" or "SPAM BASE")
 
 advisorReason = advisor:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
 advisorReason:SetPoint("TOPLEFT", advisorKey, "BOTTOMLEFT", 0, -1)
@@ -319,13 +325,13 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         advisor:SetAlpha(0.86)
         if advisorIcon.SetDesaturated then advisorIcon:SetDesaturated(false) end
     elseif baseAction then
-        advisorMode:SetText(baseOnce and "RESUME" or (title == "PULL READY" and "PULL READY" or (PLAYER_CLASS == "HUNTER" and "PULL" or (PLAYER_CLASS == "ROGUE" and "READY" or "BASE SPAM"))))
+        advisorMode:SetText(baseOnce and "RESUME" or (title == "PULL READY" and "PULL READY" or (PLAYER_CLASS == "HUNTER" and "PULL" or (SinglePressBase() and "READY" or "BASE SPAM"))))
         advisorMode:SetTextColor(0.75, 1, 0.75)
         advisorBanner:SetColorTexture(0.04, 0.35, 0.10, 0.96)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
         HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
-        advisorKey:SetText((baseOnce or PLAYER_CLASS == "ROGUE") and baseOnceHint or ((PLAYER_CLASS == "HUNTER" and "PRESS " or "SPAM ") .. baseKey))
+        advisorKey:SetText((baseOnce or SinglePressBase()) and baseOnceHint or ((PLAYER_CLASS == "HUNTER" and "PRESS " or "SPAM ") .. baseKey))
         advisorKey:SetTextColor(0.65, 1, 0.65)
         advisorTitle:SetTextColor(1, 0.82, 0)
         advisor:SetAlpha(baseOnce and 1.0 or 0.92)
@@ -337,7 +343,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
         HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
-        advisorKey:SetText(PLAYER_CLASS == "ROGUE" and (spellId and ("PRESS " .. baseKey) or "WAIT") or ("SPAM " .. baseKey))
+        advisorKey:SetText(SinglePressBase() and (spellId and ("PRESS " .. baseKey) or "WAIT") or ("SPAM " .. baseKey))
         advisorKey:SetTextColor(0.65, 0.75, 0.8)
         advisorTitle:SetTextColor(0.75, 0.75, 0.75)
         advisor:SetAlpha(0.66)
@@ -460,7 +466,7 @@ function UpdateDisplayMinimal(reason)
     enemyText:SetText("")
     UpdateStatusBars(hpReadable and hp or 0)
     UpdateBaseVisual()
-    local manualControl = PLAYER_CLASS == "ROGUE" or (IsWandUser and IsWandUser() and HasWandEquipped())
+    local manualControl = SinglePressBase() or (IsWandUser and IsWandUser() and HasWandEquipped())
     SetDisplay(nil, "ADVISOR OFF", manualControl and "MANUAL CONTROL" or "BASE SPAM OK", reason or "Smart HUD disabled", "idle")
     if HCOB.UI.SurvivalStrip then
         HCOB.UI.SurvivalStrip.Highlight(nil)
