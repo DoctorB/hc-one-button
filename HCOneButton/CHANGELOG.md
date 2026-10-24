@@ -2,7 +2,26 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.19`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.20`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.20 — 2026-10-24
+
+### Improved — Warrior single-press BASE
+
+- Warrior BASE is `/startattack` plus Charge out of combat and is never labeled spam. Idle combat shows `AUTO ATTACK / LET IT RUN`, a known out-of-reach target `OUT OF MELEE RANGE / ADJUST DISTANCE`, no target `SELECT TARGET`, Execute pooling `POOL FOR EXECUTE / LET IT RUN`; pulls ask for one press. Tooltip, `/hcob plan`, BASE label and the disabled-Advisor state follow the same rule.
+- New Warrior attack-stopped request: when the client reports auto-attack off against a target already in combat and confirmed in Heroic Strike reach, with no funded spell and no cast/channel hold, the shared amber `ATTACK STOPPED / PRESS <BASE binding> ONCE` notice and sound appear. Unknown attack state or reach never requests a press; a funded strike wins. The attack-state read is shared with the Rogue check (`AutoAttackActive`).
+- BASE no longer contains the Rend `/castsequence`, which only fired on a second in-combat press and hid the Advisor's Rend. The Advisor now owns the opener Rend on slot `01` (lifetime/DPR rules, seven-second window). The option is renamed **Smart opener Rend** and governs that suggestion; OFF removes it. Saved value and default (ON) are unchanged.
+
+### New — Hunter pet, aspect and travel guidance
+
+- Between pulls: Revive Pet (also after the dead pet's unit disappears), Call Pet, Mend Pet below `70%`, and a warning for a pet still passive after Feign Death. The pre-pull gate carries the matching fix spell.
+- Combat aspect (Hawk, or Monkey before Hawk) requested while choosing a pull, before it costs a global cooldown in combat.
+- In combat: pet off target (BASE sends it in), pet dead (Concussive Shot or keep-distance warning), and fleeing targets (Concussive, then Arcane Shot) detected from the target's emote.
+- Optional **Cheetah travel reminder** after eight seconds on foot outdoors without a hostile target, in the new **Options → Hunter - Travel** section (default ON, restored by Reset defaults). Utility buttons sit below the new section.
+
+### Validation
+
+- Version `1.29.20`, Interface `11509`; 57 Lua chunks, 46 Lua suites (new: 50 Warrior single-press checks, 41 Hunter pet/travel checks; 172 Advisor hint checks), 58 TOC references and 20 offline release-tool tests. No settings, bindings, slots, history or learning reset. Public notes: `docs/releases/1.29.20.md`.
 
 ## 1.29.19 — 2026-10-21
 

@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.19`
+- **Current version:** `1.29.20`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.19` adds the HCOneButton icon to the AddOns list.
+Version `1.29.20` makes Warrior BASE a single press and adds Hunter pet and travel guidance.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -43,7 +43,9 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
-Version `1.29.19` shows the **HCOneButton icon in the AddOns list** at character selection instead of the question mark. Gameplay is unchanged. Version `1.29.18` restored **Hunter Auto Shot at shooting range**. When Auto Shot (or a ranged shot used as a range probe) reports the target in range, that result now wins over a melee-range report from Raptor Strike or Wing Clip. The Advisor no longer shows ENABLE MELEE or Raptor Strike while you can shoot, and RESUME AUTO SHOT is offered again after a melee exchange. Melee guidance still applies in the dead zone and in actual melee. The Rogue early-opener fix from `1.29.17` and the Hunter leveling improvements from `1.29.16` remain included.
+Version `1.29.20` makes **Warrior BASE a single press**. Press BASE to pull (Charge and start attacking); auto-attack then builds Rage by itself, and the HUD shows `AUTO ATTACK / LET IT RUN` instead of asking you to spam it. If the client reports auto-attack stopped against an engaged target in reach, for example after tabbing to the next mob with too little Rage for any strike, the large amber `ATTACK STOPPED / PRESS <BASE binding> ONCE` notice appears, as it already does for Rogues. BASE no longer contains a Rend cast sequence: the Advisor suggests the opener Rend on its own slot, using the target's expected lifetime and the damage-per-Rage model. The option is now **Smart opener Rend**. **Hunters** get between-pull pet guidance (Revive Pet, Call Pet, Mend Pet, pet still passive after Feign Death), the combat aspect before the pull, warnings when the pet is off target or dead, Concussive Shot on fleeing targets and an optional **Cheetah travel reminder**.
+
+Version `1.29.19` shows the **HCOneButton icon in the AddOns list** at character selection instead of the question mark. Version `1.29.18` restored **Hunter Auto Shot at shooting range**. When Auto Shot (or a ranged shot used as a range probe) reports the target in range, that result now wins over a melee-range report from Raptor Strike or Wing Clip. The Advisor no longer shows ENABLE MELEE or Raptor Strike while you can shoot, and RESUME AUTO SHOT is offered again after a melee exchange. Melee guidance still applies in the dead zone and in actual melee. The Rogue early-opener fix from `1.29.17` and the Hunter leveling improvements from `1.29.16` remain included.
 
 **Upgrade without resetting:** existing settings, Rage base, HUD positions, combat history, learning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, Action Panel slots and permanent bindings remain unchanged. Warrior modifier+BASE shortcuts now perform BASE; use the dedicated spell icons/bindings instead. Other classes and the independent party click-healing panel retain their existing behavior. Protected actions still require player input.
 
@@ -66,6 +68,10 @@ The next-swing window is normally **0.80–1.10 seconds**, capped at 65% of the 
 **Example:** at level 6, with Battle Shout active and Rend already applied, 25 Rage is enough to propose Heroic Strike near the next swing with the standard base. A caution warning no longer replaces it with PREPARE ESCAPE. You decide whether to continue; critical health still activates emergency guidance.
 
 **Consistent BASE inputs:** Warrior BASE keeps the same action with SHIFT, CTRL, ALT or their combinations held. It no longer casts Battle Shout or another spell through a modifier shortcut. Use the dedicated Action Panel icons or their unchanged slot bindings for those spells; other classes keep their existing BASE modifier behavior. The BASE tooltip and `/hcob plan` explain this distinction.
+
+**Single-press BASE:** Warrior BASE is `/startattack` plus Charge out of combat. There is nothing to spam: once auto-attack runs, further presses do nothing, and every melee ability the Advisor suggests starts attacking by itself. Press BASE to pull, then follow the Advisor. With nothing funded the HUD shows `AUTO ATTACK / LET IT RUN`; a known out-of-reach target shows `OUT OF MELEE RANGE / ADJUST DISTANCE`; no target in combat shows `SELECT TARGET`; Execute pooling shows `POOL FOR EXECUTE / LET IT RUN`. When the client reports auto-attack off (`IsCurrentSpell(6603)` false) against a target already in combat and confirmed in Heroic Strike reach, with no funded spell and no cast/channel hold, the Advisor shows the large amber `ATTACK STOPPED / PRESS <BASE binding> ONCE` notice with its alert sound. Unknown attack state or reach never becomes a restart request, and a funded strike always wins over the notice. Risk warnings keep decorating these states.
+
+**Opener Rend:** BASE no longer carries a Rend `/castsequence`. The Advisor suggests Rend on its slot (`01`) in the first seven seconds when the target lives long enough for its ticks, using the damage-per-Rage comparison when it applies. **Smart opener Rend** (`/hcob rendspam on|off`) controls that suggestion; it defaults ON. With it OFF the Advisor no longer suggests Rend.
 
 Once Heroic Strike or Cleave is queued, the Advisor reserves its cost before suggesting Battle Shout, Rend, Sunder Armor, Thunder Clap or Demoralizing Shout. These maintenance spells remain available when both costs are covered; a stale maintenance hint is cleared immediately if a newly queued attack consumes its budget. Cost lookup uses the learned localized spell and current client talent discounts, with conservative undiscounted costs if unavailable. Core attacks, procs, critical emergencies and interrupts retain their priorities. This changes neither the saved Heroic Strike threshold nor the swing window; it prevents avoidable spending from starving an already selected attack. Manual actions can still spend Rage, and no cast is guaranteed by a recommendation.
 
@@ -381,7 +387,7 @@ For Warrior, preventive warnings now accompany normal offensive scoring instead 
 
 ### Coherent standalone windows
 
-Options separates general appearance/behavior, combat data and learning, and Fixed Action Panel bindings. Only Warrior characters see `Warrior - Combat policy`, grouping `Smart pre-pull Rend`, `Situational Sunder` and the `Heroic Strike base rage` slider and its threshold explanation. Rogue characters see a separate Rogue-only `Rogue - Stealth openers` section for Pick Pocket. Other classes show neither section nor reserve its space. Utility buttons sit below the visible class section and remain separate from the explanatory footer; hidden class settings are preserved.
+Options separates general appearance/behavior, combat data and learning, and Fixed Action Panel bindings. Only Warrior characters see `Warrior - Combat policy`, grouping `Smart opener Rend`, `Situational Sunder` and the `Heroic Strike base rage` slider and its threshold explanation. Rogue characters see a separate Rogue-only `Rogue - Stealth openers` section for Pick Pocket, and Hunter characters a `Hunter - Travel` section for the Cheetah travel reminder. Other classes show none of these sections nor reserve their space. Utility buttons sit below the visible class section and remain separate from the explanatory footer; hidden class settings are preserved.
 
 HCOneButton uses a small internal window manager for its standalone configuration/report dialogs. Options, the Adaptive Tuning inspector, Fixed Action Panel binding configuration and the feedback/report window never stack on top of one another. A child window opened from Options replaces it temporarily and returns to Options when closed through its Back button, standard frame X or Escape. If combat starts, configuration children close without trying to reopen Options during lockdown.
 
@@ -764,6 +770,13 @@ The fixed Hunter Action Panel uses:
 
 Feign Death's secure action also prepares pet passive/follow before the spell.
 
+### Pet, aspect and travel guidance
+
+- **Between pulls:** a dead pet asks for **Revive Pet**, also after the dead pet's unit disappears; a dismissed pet asks for **Call Pet**. A pet below `70%` asks for **Mend Pet** when Mend Pet is not already running. A pet still **passive** after Feign Death is reported (`PET PASSIVE / PET BAR: DEFENSIVE`). The pre-pull gate offers the same fix spells while a hostile target is selected. Revive Pet and Call Pet have no Action Panel slot (the 20-slot layout is full): cast them from your action bar.
+- **Before the pull:** with a hostile target selected out of combat, the Advisor asks for Aspect of the Hawk (Monkey before Hawk is learned), because in combat the switch costs a global cooldown.
+- **In combat:** `PET OFF TARGET / PRESS BASE` when the pet is not attacking your target on a single-target fight (BASE sends the pet in); `PET DEAD` with Concussive Shot or a keep-distance warning when the pet died; `FLEEING: CONCUSSIVE` and then `FLEEING: ARCANE` when the target runs for help. Fleeing is detected from the target's emote (English text, or any emote from the target at `35%` HP or less on other locales) and lasts eight seconds.
+- **Cheetah travel reminder:** out of combat, without a hostile target, after eight seconds of running on foot outdoors, a low-priority `TRAVEL: CHEETAH` reminder appears. It is never cast for you; selecting a hostile target switches the advice to the combat aspect. Turn it off in **Options → Hunter - Travel**.
+
 ### Hunter Auto Shot philosophy
 
 Hunter BASE is designed to **start the pull/Auto Shot**, not to spam Auto Shot continuously.
@@ -1144,7 +1157,7 @@ Both aliases are supported:
 | Command | Description |
 |---|---|
 | `/hcob hsrage N` | Set the saved Heroic Strike base (`20`–`70` Rage). Before MS/BT/Whirlwind: subtract `10`, floor `20`; near a kill without Execute: subtract another `5`, floor `20`. Cleave adds `5`. Risk warnings add no surcharge; learned Execute pooling still applies. |
-| `/hcob rendspam on\|off` | Enable/disable intelligent pre-pull Rend preparation. |
+| `/hcob rendspam on\|off` | Enable/disable the Advisor's opener Rend suggestion (Smart opener Rend). BASE never casts Rend. |
 | `/hcob sunder on\|off` | Enable/disable Warrior base Sunder behavior where applicable. |
 | `/hcob hsspam` | Compatibility command; Heroic Strike BASE spam remains intentionally disabled. |
 
@@ -1316,10 +1329,12 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.19` passes the following automated checks:
+Version `1.29.20` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
-- **44/44 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
+- **46/46 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
+- **50 Warrior single-press checks** cover the BASE macro (no Rend sequence for any target or option), attack-stopped detection (stopped/active/unreadable state, reach unknown/out, unengaged target, cast hold, modern API fallback), funded-strike precedence, idle/no-target/Execute-pooling hints, risk decoration and the Advisor opener Rend with its option and window;
+- **41 Hunter pet/travel checks** cover Revive versus Call Pet after the pet's unit disappears, Mend Pet between pulls, the passive-pet warning, pet death in combat, fleeing detection (English and localized emotes, other units, expiry, target change), pet off target, the pre-pull aspect and the Cheetah reminder with its option;
 - **173 Warrior DPR checks**, **66 mitigation checks** and **118 damage-timing checks** cover changing inputs/decisions, aura/range guards, live/final HUD values and preserved learning metrics;
 - **58/58 TOC references** resolved (`57 Lua + Bindings.xml`);
 - **20/20 offline Python release tests** pass, including `IconTexture` packaging, inherited-runner-summary isolation and explicit validation/upload summaries;
@@ -1334,7 +1349,7 @@ Version `1.29.19` passes the following automated checks:
 - SavedVariables lifecycle validation: account-wide and per-character bootstrap tables are replaced by the TOC-loaded globals at `ADDON_LOADED`, existing values are preserved and missing defaults are filled on the persistent table;
 - malformed SavedVariables recovery, including invalid roots, settings, binding maps and combat-log structures;
 - malformed adaptive action collections fail closed in the inspector, status command and offensive-bias lookup without crashing;
-- Options layout tests instantiate all nine classes and verify Warrior/Rogue/healer-specific grouping, setting persistence/reload/reset, deferred secure updates, slider-label spacing and CTA/footer separation; inspector tests verify the visible baseline legend and its reserved space;
+- Options layout tests instantiate all nine classes and verify Warrior/Rogue/Hunter/healer-specific grouping, setting persistence/reload/reset, deferred secure updates, slider-label spacing and CTA/footer separation; inspector tests verify the visible baseline legend and its reserved space;
 - fresh-install binding-path verification: auto-bind defaults to enabled and is applied during `PLAYER_LOGIN`;
 - all nine deterministic class layouts remain within the 20-slot limit, without duplicate action IDs or missing spell constants;
 - Advisor stability/range regression coverage: transient normal recommendations are discarded, sustained changes commit after confirmation, safety escalation remains immediate, global cooldown does not force a swap, localized learned-spell range overrides incomplete rank-1 metadata, explicit ranged BASE contracts remain protected, and friendly/melee actions are excluded from ranged warnings;
@@ -1352,7 +1367,7 @@ Version `1.29.19` passes the following automated checks:
 - consumable/readiness coverage verifies level-safe best-item selection, improved Healthstone variants, combat/OOC healing priorities, low HP/mana/energy and pet gates, tough-target stock/healing/escape cooldown warnings, `Recently Bandaged`, unavailable-item highlight suppression, secure deferred assignment and universal melee `PULL READY` integration;
 - active-cast coverage verifies that channels, helpful casts and non-instant offensive casts clear the next recommendation until the current action ends, after which rotation guidance resumes;
 - 81 target-cast checks cover live casts/channels, Classic shifted API signatures, delay/expiry, stop versus stale API data, old same-spell stop events, target changes, bounded combat-event fallback and shared interrupt/control contracts across all nine classes;
-- 224 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 162 Advisor checks cover group-healing prompts, wand start/active/wait/disabled-HUD feedback, the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
+- 224 Rogue checks include dagger versus non-dagger/empty-hand equipment, learned openers, talent-aware costs, range/immunity, optional localized Pick Pocket macros and length limits, low skill/coating advice, API failures, caching and existing leveling decisions; 172 Advisor checks cover group-healing prompts, Warrior single-press hints, wand start/active/wait/disabled-HUD feedback, the gear badge, preserved action text, passive opener/disabled-Advisor hints and restart display/audio;
 - 113 participation checks cover all nine classes, observed-opponent recovery, unknown/API-failed levels, elite classification, pet/healing/control participation, late-tag boundaries, runtime-identity cleanup and the full logger lifecycle. Excluded fights remain in history and older records are untouched;
 - Paladin survival-policy coverage verifies the `25%` immediate Divine Shield boundary, conditional `26–35%` pressure gates, six-second lethal forecast, Lay on Hands priority and preservation of Divine Shield during moderate trends or healthy multi-pulls;
 - 491 Warrior offensive-leveling checks cover learned-kit budgets, level/target differences, saved custom bases, warning-versus-critical boundaries, multi-pull damage, native usability, learned ranks, active auras, Execute pooling, suggestion confirmation and 60 swing timing combinations (minimum simulated visible lead `0.45s`);
@@ -1368,7 +1383,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.19.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.20.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 
