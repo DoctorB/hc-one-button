@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.20`
+- **Current version:** `1.29.21`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.20` makes Warrior BASE a single press and adds Hunter pet and travel guidance.
+Version `1.29.21` makes Warlock BASE a single press and improves Warlock leveling and pet guidance.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -43,11 +43,13 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 
 ## Current release
 
+Version `1.29.21` makes **Warlock BASE a single press**: BASE starts the wand (in every talent tree) and commands the pet, and never casts Shadow Bolt, so the Advisor and its fixed slots (and the Diagnostic Pixel) decide every spell. Without a wand BASE only sends the pet. A `PET NOT ATTACKING / PRESS <BASE binding> ONCE` notice appears when the pet is idle on a single-mob fight. Warlock leveling also improves: casting continues next to a mob your pet holds, Drain Soul collects Soul Shards, Shadowburn keeps two in reserve, **Health Funnel** (new Warlock slot `16`) keeps a tanking pet alive, a Shadow Bolt opener is suggested before the pull, Spell Lock is skipped while on cooldown, and the pre-pull check points at Summon Voidwalker/Imp or Health Funnel. See the Warlock section below.
+
 Version `1.29.20` makes **Warrior BASE a single press**. Press BASE to pull (Charge and start attacking); auto-attack then builds Rage by itself, and the HUD shows `AUTO ATTACK / LET IT RUN` instead of asking you to spam it. If the client reports auto-attack stopped against an engaged target in reach, for example after tabbing to the next mob with too little Rage for any strike, the large amber `ATTACK STOPPED / PRESS <BASE binding> ONCE` notice appears, as it already does for Rogues. BASE no longer contains a Rend cast sequence: the Advisor suggests the opener Rend on its own slot, using the target's expected lifetime and the damage-per-Rage model. The option is now **Smart opener Rend**. **Hunters** get between-pull pet guidance (Revive Pet, Call Pet, Mend Pet, pet still passive after Feign Death), the combat aspect before the pull, warnings when the pet is off target or dead, Concussive Shot on fleeing targets and an optional **Cheetah travel reminder**.
 
 Version `1.29.19` shows the **HCOneButton icon in the AddOns list** at character selection instead of the question mark. Version `1.29.18` restored **Hunter Auto Shot at shooting range**. When Auto Shot (or a ranged shot used as a range probe) reports the target in range, that result now wins over a melee-range report from Raptor Strike or Wing Clip. The Advisor no longer shows ENABLE MELEE or Raptor Strike while you can shoot, and RESUME AUTO SHOT is offered again after a melee exchange. Melee guidance still applies in the dead zone and in actual melee. The Rogue early-opener fix from `1.29.17` and the Hunter leveling improvements from `1.29.16` remain included.
 
-**Upgrade without resetting:** existing settings, Rage base, HUD positions, combat history, learning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, Action Panel slots and permanent bindings remain unchanged. Warrior modifier+BASE shortcuts now perform BASE; use the dedicated spell icons/bindings instead. Other classes and the independent party click-healing panel retain their existing behavior. Protected actions still require player input.
+**Upgrade without resetting:** existing settings, Rage base, HUD positions, combat history, learning data and ON/OFF preferences are preserved. Learner revision `4`, adaptive schema `2`, existing Action Panel slots and permanent bindings remain unchanged; Warlocks gain slot `16` (Health Funnel) at the end of their layout. Warrior modifier+BASE shortcuts now perform BASE; use the dedicated spell icons/bindings instead. Other classes and the independent party click-healing panel retain their existing behavior. Protected actions still require player input.
 
 ## Warrior leveling flow
 
@@ -77,7 +79,7 @@ Once Heroic Strike or Cleave is queued, the Advisor reserves its cost before sug
 
 ## Wand combat flow
 
-For **Priest, Mage and Warlock**, a Shoot recommendation asks for a **single click/press** to start the wand. Once the client reports auto-repeat active, the Advisor displays **WAND ACTIVE / LET IT RUN** with no repeated Shoot highlight. BASE feedback agrees, including when a Mage or Destruction Warlock has a normal spell assigned to BASE.
+For **Priest, Mage and Warlock**, a Shoot recommendation asks for a **single click/press** to start the wand. Once the client reports auto-repeat active, the Advisor displays **WAND ACTIVE / LET IT RUN** with no repeated Shoot highlight. BASE feedback agrees, including when a Mage has a normal spell assigned to BASE.
 
 Wanding is not a cast/channel hold: healing, control, procs and offensive spells can still take priority. Follow their normal secure button/key when recommended. During a real cast, channel or bandage, the existing **LET IT FINISH** protection remains. The addon does not automatically interrupt Shoot or another cast, and native cooldowns and spell requirements still apply.
 
@@ -673,8 +675,11 @@ The following class layouts are deterministic. Unknown spells keep their slot. E
 | 13 | Shoot |
 | 14 | Drain Soul |
 | 15 | Curse of Weakness |
+| 16 | Health Funnel |
 
-Warlock BASE uses the equipped wand outside Destruction when available, otherwise Shadow Bolt. Its pet command requires the player to be in combat: the first valid ranged cast begins the pull and a following BASE press engages the pet. Pressing BASE on an out-of-range target while out of combat does not send the pet.
+Warlock BASE is a **single press**: it starts the equipped wand in every talent tree and never casts Shadow Bolt, so repeated presses cannot override the Advisor. Without a wand BASE only commands the pet; Shadow Bolt and every other spell come from the Advisor and their fixed Action Panel slots (and therefore from the Diagnostic Pixel). Its pet command requires the player to be in combat: the first valid ranged cast begins the pull and a following BASE press engages the pet. Pressing BASE on an out-of-range target while out of combat does not send the pet.
+
+Within about 10 yards of a mob your pet is holding, Shadow Bolt, Immolate, wand and Drain Soul stay available; they are skipped only when the mob is on you or loose. Out of combat with a hostile target the Advisor suggests a Shadow Bolt opener (Corruption on low mana, Life Tap first when mana is low and HP is high). A tanking pet at 40% health or less gets Health Funnel while your own HP can pay for it. Drain Soul finishes low-health targets until you hold five Soul Shards, and Shadowburn keeps two shards in reserve unless the fight is dangerous. Without a wand, Shadow Bolt remains the filler on a low-health target; when nothing is worth casting the Advisor shows `LET DOTS AND PET WORK`, and before a pull without an affordable opener it shows `NO OPENER READY`, never a BASE request. In combat, if your pet is not attacking your target for more than a second while you fight a single mob, the Advisor shows `PET NOT ATTACKING` with the amber `PRESS <BASE key> ONCE` notice. Spell Lock is offered only when it is off cooldown, and a missing or hurt pet before a pull points at Summon Voidwalker (Summon Imp without shards) or Health Funnel.
 
 </details>
 
@@ -1329,10 +1334,11 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.20` passes the following automated checks:
+Version `1.29.21` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
-- **46/46 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
+- **47/47 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
+- **101 Warlock checks** cover pet-held versus exposed proximity, Drain Soul versus the finishing wand, the Shadowburn shard reserve, Health Funnel versus Drain Life and Death Coil, the no-wand filler and wait states, openers, Spell Lock cooldown, pet recovery spells, the single-press BASE in all trees with and without a wand, and the pet-off-target notice with its grace period;
 - **50 Warrior single-press checks** cover the BASE macro (no Rend sequence for any target or option), attack-stopped detection (stopped/active/unreadable state, reach unknown/out, unengaged target, cast hold, modern API fallback), funded-strike precedence, idle/no-target/Execute-pooling hints, risk decoration and the Advisor opener Rend with its option and window;
 - **41 Hunter pet/travel checks** cover Revive versus Call Pet after the pet's unit disappears, Mend Pet between pulls, the passive-pet warning, pet death in combat, fleeing detection (English and localized emotes, other units, expiry, target change), pet off target, the pre-pull aspect and the Cheetah reminder with its option;
 - **173 Warrior DPR checks**, **66 mitigation checks** and **118 damage-timing checks** cover changing inputs/decisions, aura/range guards, live/final HUD values and preserved learning metrics;
@@ -1383,7 +1389,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.20.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.21.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 

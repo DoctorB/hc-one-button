@@ -2,7 +2,30 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.20`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.21`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.21 — 2026-10-28
+
+### Improved — Warlock single-press BASE
+
+- Warlock BASE is `/petattack [combat,harm]` plus `/cast [harm] !Shoot` in every talent tree when a wand is equipped (Destruction no longer uses Shadow Bolt); without a wand it only commands the pet. Shadow Bolt and every other spell come from the Advisor and its fixed slots, so repeated BASE input can no longer override its choice or delay the slot a pixel reader presses. The BASE button shows a pet-attack icon when it has no spell; Doctor no longer reports that state as a missing BASE spell.
+- New `PET NOT ATTACKING / PRESS <BASE binding> ONCE` caution (amber restart notice, no spell) after one continuous second with the living pet off the target, the mob not on the pet and a single active enemy.
+- Without a wand: `LET DOTS AND PET WORK / WAIT / RECOVER` in combat and `NO OPENER READY / WAIT / RECOVER` before a pull replace the generic BASE requests.
+
+### Improved — Warlock leveling
+
+- Casting continues within ~10 yards of a mob the pet holds: Shadow Bolt, Immolate, wand and Drain Soul are skipped only when the mob is on the player or loose.
+- Drain Soul outranks the finishing wand below five Soul Shards; Shadowburn keeps two shards unless survival reserve is below 45.
+- Health Funnel (new spell, Warlock Action Panel slot `16`) for a tanking pet at 40% HP or less while the warlock can pay for it; Drain Life keeps the critical-pet trigger only without Health Funnel.
+- Without a wand Shadow Bolt stays available at 30% mana and through the low-HP tail.
+- Out-of-combat Shadow Bolt opener (Corruption on low mana; Life Tap first when mana is low and HP high).
+- Spell Lock is skipped while the pet action is on cooldown.
+- Pre-pull readiness offers Summon Voidwalker (Summon Imp without shards) for a missing pet and Health Funnel for a hurt one.
+
+### Validation
+
+- Version `1.29.21`, Interface `11509`; 57 Lua chunks, 47 Lua suites (new: 101 Warlock checks), 58 TOC references. No settings, bindings, history or learning reset; existing slots unchanged. Public notes: `docs/releases/1.29.21.md`. Review: `docs/WARLOCK_LEVELING_REVIEW.md`. Not yet checked in game.
+
 
 ## 1.29.20 — 2026-10-24
 
