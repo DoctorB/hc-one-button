@@ -11,12 +11,17 @@ local Engine = HCOB.Advisor.Engine
 local API = HCOB.Core.ClassAPI
 local S = HCOB.Data.Spells
 local SOUL_SHARD_ITEM = 6265
+-- Drain Soul farms up to the cap. Shadowburn keeps the reserve for a
+-- Voidwalker resummon/Healthstone unless the fight itself is the danger.
+local SHARD_CAP = 5
+local SHARD_RESERVE = 2
 
 local function SoulShardCount()
     if not GetItemCount then return 0 end
     local ok, n = pcall(GetItemCount, SOUL_SHARD_ITEM)
     return ok and (SafeNumber(n, 0) or 0) or 0
 end
+Class.SoulShardCount = SoulShardCount
 
 local function PetHasSpell(id)
     local wanted = API.SpellName(id)
@@ -24,9 +29,23 @@ local function PetHasSpell(id)
     for i = 1, 10 do
         local ok, name = pcall(GetPetActionInfo, i)
         name = ok and SafeString(name, nil) or nil
-        if name and name == wanted then return true end
+        if name and name == wanted then
+            -- A Spell Lock on cooldown is not an interrupt; let the caller
+            -- fall through instead of advertising a dead button.
+            if not GetPetActionCooldown then return true end
+            local cdOk, start, duration = pcall(GetPetActionCooldown, i)
+            start, duration = cdOk and SafeNumber(start, 0) or 0, cdOk and SafeNumber(duration, 0) or 0
+            return not (start > 0 and duration > 1.5 and start + duration > GetTime())
+        end
     end
     return false
+end
+
+local function PetOffTarget()
+    if not UnitExists("pettarget") then return true end
+    if not UnitIsUnit then return false end
+    local ok, same = pcall(UnitIsUnit, "pettarget", "target")
+    return ok and not SafeBoolean(same, false)
 end
 
 local function ContextText(ctx)
@@ -47,8 +66,18 @@ end
 function Class:GetCandidates(ctx)
     local candidates = {}
     if not ctx.inCombat then
-        if ctx.hostile and ctx.player.mana <= 45 and ctx.player.hp >= 82 and API.IsKnown(S.LIFE_TAP) and API.IsUsable(S.LIFE_TAP) then
+        Class.petOffSince = nil
+        if not ctx.hostile then return candidates end
+        if ctx.player.mana <= 45 and ctx.player.hp >= 82 and API.IsKnown(S.LIFE_TAP) and API.IsUsable(S.LIFE_TAP) then
             Engine.AddCandidate(candidates, S.LIFE_TAP, "LIFE TAP", "ALT+CTRL", "Pre-pull resource conversion while HP is safely high", 72, "resource")
+        elseif ctx.player.mana >= 35 and API.IsKnown(S.SHADOW_BOLT) and API.IsUsable(S.SHADOW_BOLT) then
+            -- A wand BASE would open with one weak tick. The cast starts
+            -- combat; the following BASE press then sends the pet.
+            Engine.AddCandidate(candidates, S.SHADOW_BOLT, "SHADOW BOLT OPENER", "CAST MANUALLY",
+                "Open from maximum range, then press BASE to send the pet", 70, "opener")
+        elseif API.IsKnown(S.CORRUPTION) and API.IsUsable(S.CORRUPTION) then
+            Engine.AddCandidate(candidates, S.CORRUPTION, "CORRUPTION OPENER", "CAST MANUALLY",
+                "Low-cost DoT opener, then press BASE to send the pet", 66, "opener")
         end
         return candidates
     end
@@ -64,9 +93,28 @@ function Class:GetCandidates(ctx)
     local playerTanking = ctx.target.onPlayer
     local petTanking = ctx.pet.tanking
     local petHP = ctx.pet.hp or 0
+    -- Standing within ~10 yards of a mob the pet holds is safe casting
+    -- range. Only a mob on the player (or one the pet does not hold) makes
+    -- proximity a reason to skip cast-time damage.
+    local exposed = close and (playerTanking or not petTanking)
+    local hasWand = API.HasWandEquipped() and API.IsKnown(S.SHOOT)
     local context = ContextText(ctx)
 
-    local armor = API.IsKnown(S.DEMON_ARMOR) and S.DEMON_ARMOR or S.DEMON_SKIN
+    -- BASE sends the pet only in combat, so a pull opened with a cast or a
+    -- target switch leaves it idle until the next press. With several mobs
+    -- the pet may tank one while the warlock DoTs another: no notice then.
+    -- The one-second wait keeps a quick tab-target check silent.
+    if ctx.pet.alive and not petTanking and CountActiveEnemies() <= 1 and PetOffTarget() then
+        Class.petOffSince = Class.petOffSince or GetTime()
+        if GetTime() - Class.petOffSince >= 1 then
+            Engine.AddCandidate(candidates, nil, "PET NOT ATTACKING", "PRESS BASE ONCE",
+                "Your pet is not on your target: one BASE press sends it in | " .. context, 96, "pet", "caution")
+        end
+    else
+        Class.petOffSince = nil
+    end
+
+    local armor =API.IsKnown(S.DEMON_ARMOR) and S.DEMON_ARMOR or S.DEMON_SKIN
     if armor and API.IsKnown(armor) and API.IsUsable(armor) then
         local hasArmor, armorRemaining = API.StablePlayerBuff(armor)
         if not hasArmor or armorRemaining <= 10 then
@@ -106,21 +154,34 @@ function Class:GetCandidates(ctx)
             "Pressure is high: Fear only toward a verified clear escape path | " .. context, 103, "survival")
     end
 
-    if (hp <= 66 or (ctx.pet.alive and petHP <= 24) or (playerTanking and reserve <= 55))
+    -- Losing the tanking pet turns the fight onto the player. While the
+    -- warlock's own HP can pay for it, feed the pet instead of Drain Life,
+    -- which heals only the player.
+    local funnel = petTanking and petHP <= 40 and hp >= 55 and not playerTanking and targetHP > 20
+        and reserve >= 45 and API.IsKnown(S.HEALTH_FUNNEL) and API.IsUsable(S.HEALTH_FUNNEL)
+    if funnel then
+        Engine.AddCandidate(candidates, S.HEALTH_FUNNEL, "HEALTH FUNNEL", "CAST MANUALLY",
+            "Keep the tanking pet alive with your spare HP | " .. context,
+            88 + math.max(0, 40 - petHP) * 0.4, "sustain")
+    end
+
+    local petCritical = ctx.pet.alive and petHP <= 24 and not funnel
+    if (hp <= 66 or petCritical or (playerTanking and reserve <= 55))
        and targetHP > 16 and mana >= 18 and API.IsKnown(S.DRAIN_LIFE) and API.IsUsable(S.DRAIN_LIFE) then
         local score = 80 + math.max(0, 66 - hp) * 0.48
         if playerTanking then score = score + 7 end
         if reserve < 45 then score = score + 8 end
-        if ctx.pet.alive and petHP <= 24 then score = score + 4 end
+        if petCritical then score = score + 4 end
         Engine.AddCandidate(candidates, S.DRAIN_LIFE, "DRAIN LIFE", "ALT",
             "Turn mana into HP while maintaining damage | " .. context, score, "sustain")
     end
 
-    if targetHP <= 24 and API.IsKnown(S.SHADOWBURN) and API.CooldownReady(S.SHADOWBURN)
-       and API.IsUsable(S.SHADOWBURN) then
+    local shards = SoulShardCount()
+    if targetHP <= 24 and (shards > SHARD_RESERVE or reserve < 45) and API.IsKnown(S.SHADOWBURN)
+       and API.CooldownReady(S.SHADOWBURN) and API.IsUsable(S.SHADOWBURN) then
         local score = 91 + (targetHP <= 14 and 8 or 0) - (reserve < 38 and 8 or 0)
         Engine.AddCandidate(candidates, S.SHADOWBURN, "SHADOWBURN", "ALT+SHIFT",
-            "Fast finisher if a Soul Shard is available | " .. context, score, "finisher")
+            "Fast finisher with spare Soul Shards (" .. shards .. ") | " .. context, score, "finisher")
     end
 
     local corruption = API.HasMyTargetDebuff(S.CORRUPTION)
@@ -148,7 +209,7 @@ function Class:GetCandidates(ctx)
 
     local immolate = API.HasMyTargetDebuff(S.IMMOLATE)
     if API.IsKnown(S.IMMOLATE) and API.IsUsable(S.IMMOLATE) and not immolate
-       and mana >= 46 and targetHP >= 55 and reserve >= 48 and not close then
+       and mana >= 46 and targetHP >= 55 and reserve >= 48 and not exposed then
         local longEnough = not ttk or ttk >= 11
         if longEnough then
             Engine.AddCandidate(candidates, S.IMMOLATE, "IMMOLATE", "CAST MANUALLY",
@@ -167,7 +228,7 @@ function Class:GetCandidates(ctx)
         end
     end
 
-    if API.HasWandEquipped() and API.IsKnown(S.SHOOT) and not close then
+    if hasWand and not exposed then
         if targetHP <= 38 or mana <= 34 or (petTanking and mana <= 55) then
             local score = 73 + (targetHP <= 22 and 11 or 0) + (mana <= 22 and 5 or 0) + (petTanking and 4 or 0)
             Engine.AddCandidate(candidates, S.SHOOT, "WAND / CONSERVE", "CAST MANUALLY",
@@ -175,15 +236,18 @@ function Class:GetCandidates(ctx)
         end
     end
 
-    local shards = SoulShardCount()
+    -- The shard is granted only if the target dies during the channel, so
+    -- this must outrank the finishing wand (up to 93) to ever be used.
     if API.IsKnown(S.DRAIN_SOUL) and API.IsUsable(S.DRAIN_SOUL) and targetHP <= 12
-       and reserve >= 50 and not close and shards < 5 then
+       and reserve >= 50 and not exposed and shards < SHARD_CAP then
         Engine.AddCandidate(candidates, S.DRAIN_SOUL, "DRAIN SOUL", "CAST MANUALLY",
-            "Safe execute window for Soul Shard generation (" .. shards .. "/5 reserve) | " .. context, 82, "resource")
+            "Finish with Drain Soul to gain a Soul Shard (" .. shards .. "/" .. SHARD_CAP .. ") | " .. context, 95, "resource")
     end
 
-    if API.IsKnown(S.SHADOW_BOLT) and API.IsUsable(S.SHADOW_BOLT) and mana >= 42 and reserve >= 52
-       and targetHP >= 28 and not close and not shadowTrance then
+    -- Without a wand Shadow Bolt is the only filler: keep it through the
+    -- low-HP tail and on less mana, since Life Tap refills it.
+    if API.IsKnown(S.SHADOW_BOLT) and API.IsUsable(S.SHADOW_BOLT) and mana >= (hasWand and 42 or 30)
+       and reserve >= 52 and (targetHP >= 28 or not hasWand) and not exposed and not shadowTrance then
         local score = ctx.spec == 3 and 72 or 58
         if petTanking and mana >= 65 then score = score + 3 end
         if ttk and ttk < 5 then score = score - 12 end
@@ -192,6 +256,28 @@ function Class:GetCandidates(ctx)
     end
 
     return candidates
+end
+
+function Class:GetIdleRecommendation(inCombat, hostile)
+    -- Without a wand BASE only commands the pet, so it can neither pull nor
+    -- deal damage. Never fall through to a generic BASE request.
+    if not hostile or (API.HasWandEquipped() and API.IsKnown(S.SHOOT)) then return end
+    if inCombat then
+        return nil, "LET DOTS AND PET WORK", "WAIT / RECOVER",
+            "Wait for mana, Life Tap health or a safe casting window", "idle"
+    end
+    return nil, "NO OPENER READY", "WAIT / RECOVER",
+        "Recover mana for the Shadow Bolt opener; BASE does not pull without a wand", "idle"
+end
+
+-- Pre-pull readiness asks the class which spell fixes a missing or hurt pet.
+function Class:GetPetRecoverySpell(issue)
+    if issue == "missing" then
+        if SoulShardCount() > 0 and API.IsKnown(S.SUMMON_VOIDWALKER) then return S.SUMMON_VOIDWALKER end
+        if API.IsKnown(S.SUMMON_IMP) then return S.SUMMON_IMP end
+    elseif issue == "hurt" and API.IsKnown(S.HEALTH_FUNNEL) then
+        return S.HEALTH_FUNNEL
+    end
 end
 
 function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
@@ -269,11 +355,11 @@ function Class:BuildMainMacro()
         -- pull. The first valid ranged cast starts combat; a following BASE
         -- press then sends the pet.
         AddLine(lines, "/petattack [combat,harm]", 1)
-        local spec = TalentSpec()
-        if HasWandEquipped() and IsKnown(S.SHOOT) and spec ~= 3 then
+        -- BASE is a single press: pet plus auto-repeat wand. Every cast-time
+        -- spell, Shadow Bolt included, comes from the Advisor's fixed slots
+        -- so repeated BASE input can never override its choice.
+        if HasWandEquipped() and IsKnown(S.SHOOT) then
             AddLine(lines, "/cast [harm] !" .. SpellName(S.SHOOT), 1)
-        else
-            AddLine(lines, CastLine(S.SHADOW_BOLT, "harm", false), 1)
         end
         return FitMacro(lines)
 end
@@ -291,12 +377,20 @@ function Class:BuildModifierMacros()
 end
 
 function Class:GetBaseActionInfo(spec)
-    if HasWandEquipped() and IsKnown(S.SHOOT) and spec ~= 3 then return S.SHOOT, "PET + WAND" end
-    return S.SHADOW_BOLT, "PET + SHADOW BOLT"
+    if HasWandEquipped() and IsKnown(S.SHOOT) then return S.SHOOT, "PET + WAND" end
+    return nil, "PET ATTACK"
+end
+
+function Class:GetBaseLabel()
+    return "BASE"
+end
+
+function Class:GetBaseIcon()
+    return "Interface\\Icons\\Ability_GhoulFrenzy"
 end
 
 function Class:IsRangedBaseAction(id)
     local baseId = self:GetBaseActionInfo(TalentSpec())
-    return id == baseId
+    return baseId ~= nil and id == baseId
 end
 

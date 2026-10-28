@@ -149,7 +149,7 @@ end
 function UpdateBaseVisual()
     local class = ActiveClassModuleForMacros()
     local id, desc = BaseActionInfo()
-    icon:SetTexture(SpellIcon(id))
+    icon:SetTexture(SpellIcon(id, class and class.GetBaseIcon and class:GetBaseIcon() or nil))
     local wandBase = id == S.SHOOT and IsWandUser and IsWandUser()
     local wanding = IsWandAutoRepeatActive and IsWandAutoRepeatActive()
     label:SetText(wandBase and "WAND" or (wanding and "BASE" or (class and class.GetBaseLabel and class:GetBaseLabel() or "BASE SPAM")))

@@ -29,7 +29,7 @@ local defaultKeys = evaluate(extractTable(source, "HCOB.UI.ActionPanel.defaultSl
 
 local expectedCounts = {
     WARRIOR=20, PALADIN=14, HUNTER=20, ROGUE=18, PRIEST=16,
-    MAGE=19, WARLOCK=15, DRUID=20, SHAMAN=15,
+    MAGE=19, WARLOCK=16, DRUID=20, SHAMAN=15,
 }
 
 local knownSpellIds = {}

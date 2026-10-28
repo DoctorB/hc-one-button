@@ -352,7 +352,9 @@ function F.GenerateDoctorReport()
 
     local baseName, baseNameProblem = DoctorValue(SpellName, baseId, "Unknown")
     local resolvedId, learnedRank = DoctorSpellResolution(baseId, baseName)
-    if not baseId then Warn("BASE spell ID unavailable") end
+    -- A class may declare a spell-less BASE (Warlock without a wand only
+    -- commands the pet); only a missing description means a broken contract.
+    if not baseId and not baseDescription then Warn("BASE spell ID unavailable") end
 
     local engine = HCOB.Advisor and HCOB.Advisor.Engine
     local forceRanged = false

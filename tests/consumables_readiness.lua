@@ -150,7 +150,17 @@ expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), S.RE
 HCOneButton.Hunter.PetState = function() return "missing" end
 expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), S.CALL_PET, "missing hunter pet offers Call Pet")
 PLAYER_CLASS = "WARLOCK"
-expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), nil, "Warlock pet advice stays text only")
+expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), nil, "Warlock pet advice without class hook stays text only")
+-- The Warlock class module decides the demon/Health Funnel fix; Hunter
+-- spells are never offered to a Warlock even when every spell is known.
+local warlockIssue
+HCOneButton.Classes.WARLOCK = {GetPetRecoverySpell=function(_, issue) warlockIssue = issue; return issue == "missing" and 697 or 755 end}
+expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), 697, "missing warlock pet offers the class summon")
+expect(warlockIssue, "missing", "warlock missing-pet issue")
+petExists, petHP = true, 55
+expect((Engine.PrePullRecommendation({playerLevel=30, targetTough=false})), 755, "hurt warlock pet offers the class heal")
+expect(warlockIssue, "hurt", "warlock hurt-pet issue")
+HCOneButton.Classes.WARLOCK, petExists, petHP = nil, false, 100
 IsKnown, HCOneButton.Hunter.PetState = nil, nil
 PLAYER_CLASS, petExists, petHP = "MAGE", false, 100
 

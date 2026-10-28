@@ -10,10 +10,13 @@ local function AddIssue(issues, priority, state, key, text, id)
     issues[#issues + 1] = {priority=priority, state=state, key=key, text=text, id=id}
 end
 
--- Hunter pet issues carry the spell that fixes them, so the Advisor shows a
--- castable action instead of text only.
-local function PetFixSpell(id)
+-- Pet issues carry the spell that fixes them, so the Advisor shows a
+-- castable action instead of text only. Warlocks ask their class module,
+-- which knows the demon and Soul Shard state.
+local function PetFixSpell(id, warlockIssue)
     if PLAYER_CLASS == "HUNTER" and IsKnown and IsKnown(id) then return id end
+    local class = PLAYER_CLASS == "WARLOCK" and HCOB.Classes and HCOB.Classes.WARLOCK
+    if class and class.GetPetRecoverySpell then return class:GetPetRecoverySpell(warlockIssue) end
 end
 
 local function JoinIssues(issues)
@@ -96,12 +99,13 @@ function Engine.EvaluatePrePullReadiness(context)
         if not petExists then
             local hunterPet = PLAYER_CLASS == "HUNTER" and HCOB.Hunter and HCOB.Hunter.PetState and HCOB.Hunter.PetState()
             local fix = hunterPet == "dead" and PetFixSpell(S.REVIVE_PET) or (hunterPet == "missing" and PetFixSpell(S.CALL_PET) or nil)
+            if PLAYER_CLASS == "WARLOCK" then fix = PetFixSpell(nil, "missing") end
             AddIssue(issues, 66, "prepare", "SUMMON / REVIVE PET", "No living pet is available for the pull", fix)
         else
             local petHP, petReadable = UnitHealthPct("pet")
             petHP = tonumber(petHP) or 0
             if petReadable and petHP < 70 then
-                AddIssue(issues, 88, "recover", "HEAL PET", string.format("Pet health %.0f%%: recover before pulling", petHP), PetFixSpell(S.MEND_PET))
+                AddIssue(issues, 88, "recover", "HEAL PET", string.format("Pet health %.0f%%: recover before pulling", petHP), PetFixSpell(S.MEND_PET, "hurt"))
             elseif petReadable and petHP < 90 then
                 AddIssue(issues, 64, "prepare", "MEND / FEED PET", string.format("Pet health %.0f%%: prepare it first", petHP))
             end

@@ -100,7 +100,6 @@ end
 local rangedScenarios = {
     {token="HUNTER", spec=2, wanted=S.AUTO_SHOT},
     {token="MAGE", spec=3, wanted=S.FROSTBOLT},
-    {token="WARLOCK", spec=1, wanted=S.SHADOW_BOLT},
     {token="PRIEST", spec=1, wanted=S.SMITE},
     {token="SHAMAN", spec=1, wanted=S.LIGHTNING_BOLT},
     {token="DRUID", spec=1, wanted=S.WRATH},
@@ -125,6 +124,24 @@ currentSpec, currentFormID = 2, 1
 local druidBase = classes.DRUID:GetBaseActionInfo(currentSpec)
 assert(druidBase == S.CLAW and classes.DRUID:IsRangedBaseAction(druidBase) == false,
     "Cat Druid BASE must remain melee")
+
+-- Warlock BASE is single-press: pet plus wand, never a cast-time spell.
+-- Without a wand it only commands the pet and declares no ranged spell.
+for _, spec in ipairs({1, 2, 3}) do
+    currentSpec, wandEquipped = spec, true
+    local wandBase = classes.WARLOCK:GetBaseActionInfo(currentSpec)
+    assert(wandBase == S.SHOOT and classes.WARLOCK:IsRangedBaseAction(S.SHOOT) == true,
+        "Warlock tree " .. spec .. " BASE must be the wand")
+    local wandMacro = classes.WARLOCK:BuildMainMacro()
+    assert(wandMacro:find("!" .. environment.SpellName(S.SHOOT), 1, true), "Warlock wand BASE missing")
+    assert(not wandMacro:find(environment.SpellName(S.SHADOW_BOLT), 1, true), "Shadow Bolt returned to wand BASE")
+    wandEquipped = false
+    local petBase, petDescription = classes.WARLOCK:GetBaseActionInfo(currentSpec)
+    assert(petBase == nil and petDescription == "PET ATTACK", "Warlock no-wand BASE must be pet-only")
+    assert(classes.WARLOCK:IsRangedBaseAction(nil) == false, "pet-only BASE is not ranged")
+    assert(classes.WARLOCK:IsRangedBaseAction(S.SHADOW_BOLT) == false, "Shadow Bolt is no longer BASE")
+    assert(classes.WARLOCK:BuildMainMacro() == "/petattack [combat,harm]", "Warlock no-wand BASE must only command the pet")
+end
 
 -- Macro safety invariants that must never regress.
 currentSpec, currentFormID, wandEquipped = 1, 0, false

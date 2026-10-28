@@ -109,7 +109,8 @@ for _, class in ipairs({"PRIEST","MAGE","WARLOCK"}) do
     end
     -- No class candidate: active wand is the fallback even for Mage nuke BASE
     -- and Destruction Warlock, without changing their actual BASE macro.
-    ctx.player.mana,ctx.target.hp,ctx.target.close=0,90,true
+    -- A close mob the pet does not hold keeps every class candidate out.
+    ctx.player.mana,ctx.target.hp,ctx.target.close,ctx.pet.tanking=0,90,true,false
     id,title,key=recommend()
     expect(id,nil,class.." empty candidate fallback has no action")
     expect(title,"WAND ACTIVE",class.." fallback recognizes active wand")
@@ -128,7 +129,7 @@ for _, class in ipairs({"PRIEST","MAGE","WARLOCK"}) do
     id,title,key=recommend(); now=now+0.21; id,title,key=recommend()
     expect(id,nil,class.." absent target not executable")
     expect(key,"SELECT TARGET",class.." absent target no spam")
-    hostile=true; ctx.target.close=false; ctx.player.mana=30; ctx.target.hp=20
+    hostile=true; ctx.target.close=false; ctx.pet.tanking=true; ctx.player.mana=30; ctx.target.hp=20
     range=true; active=true; recommend(); now=now+0.21; recommend()
     active=false; e.HandleWandEvent("STOP_AUTOREPEAT_SPELL")
     id,title=recommend()
