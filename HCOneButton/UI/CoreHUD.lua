@@ -390,6 +390,13 @@ btn:SetScript("OnEnter", function(self)
 end)
 btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 btn:HookScript("PostClick", function(self, mouseButton, down)
+    -- Classes whose Advisor waits for the decision to pull learn about the
+    -- BASE press here, in or out of combat.
+    local class = mouseButton == "LeftButton" and ActiveClassModule and ActiveClassModule()
+    if class and class.OnBaseInput then
+        local inputOK, inputError = pcall(class.OnBaseInput, class)
+        if not inputOK then RecordRuntimeError("BaseInput", inputError) end
+    end
     if currentFight and mouseButton == "LeftButton" then
         currentFight.baseClicks = (tonumber(currentFight.baseClicks) or 0) + 1
         if RecordTuningBaseInput then

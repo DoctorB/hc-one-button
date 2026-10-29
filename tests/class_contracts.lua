@@ -140,14 +140,14 @@ for _, spec in ipairs({1, 2, 3}) do
     assert(petBase == nil and petDescription == "PET ATTACK", "Warlock no-wand BASE must be pet-only")
     assert(classes.WARLOCK:IsRangedBaseAction(nil) == false, "pet-only BASE is not ranged")
     assert(classes.WARLOCK:IsRangedBaseAction(S.SHADOW_BOLT) == false, "Shadow Bolt is no longer BASE")
-    assert(classes.WARLOCK:BuildMainMacro() == "/petattack [combat,harm]", "Warlock no-wand BASE must only command the pet")
+    assert(classes.WARLOCK:BuildMainMacro() == "/petattack [harm]", "Warlock no-wand BASE must only command the pet")
 end
 
 -- Macro safety invariants that must never regress.
 currentSpec, currentFormID, wandEquipped = 1, 0, false
 local warlockMacro = classes.WARLOCK:BuildMainMacro()
-assert(warlockMacro:find("/petattack [combat,harm]", 1, true), "Warlock pet attack is not combat-gated")
-assert(not warlockMacro:find("/petattack [harm]", 1, true), "Warlock unsafe pet pull returned")
+assert(warlockMacro:find("/petattack [harm]", 1, true), "Warlock BASE does not send the pet")
+assert(not warlockMacro:find("[combat,harm]", 1, true), "Warlock pet attack is combat-gated again")
 
 currentCombat = true
 local warriorMacro = classes.WARRIOR:BuildMainMacro()

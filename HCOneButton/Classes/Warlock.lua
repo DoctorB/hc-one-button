@@ -48,6 +48,19 @@ local function PetOffTarget()
     return ok and not SafeBoolean(same, false)
 end
 
+-- Targeting alone never pulls: the opener is an Action Panel slot, which the
+-- pixel reader presses as soon as it shows. A BASE press on this target, or
+-- the pet already attacking it, is the decision to engage.
+local function Engaged()
+    if UnitExists("pet") and not PetOffTarget() then return true end
+    local guid = SafeUnitGUID("target")
+    return guid ~= nil and guid == Class.engagedGUID
+end
+
+function Class:OnBaseInput()
+    if HostileLiveTarget() then Class.engagedGUID = SafeUnitGUID("target") end
+end
+
 local function ContextText(ctx)
     local text = string.format(
         "HP %.0f%% | mana %.0f%% | reserve %.0f %s",
@@ -70,17 +83,21 @@ function Class:GetCandidates(ctx)
         if not ctx.hostile then return candidates end
         if ctx.player.mana <= 45 and ctx.player.hp >= 82 and API.IsKnown(S.LIFE_TAP) and API.IsUsable(S.LIFE_TAP) then
             Engine.AddCandidate(candidates, S.LIFE_TAP, "LIFE TAP", "ALT+CTRL", "Pre-pull resource conversion while HP is safely high", 72, "resource")
+        elseif not Engaged() then
+            return candidates
         elseif ctx.player.mana >= 35 and API.IsKnown(S.SHADOW_BOLT) and API.IsUsable(S.SHADOW_BOLT) then
-            -- A wand BASE would open with one weak tick. The cast starts
-            -- combat; the following BASE press then sends the pet.
+            -- A wand tick alone is a weak opener; BASE already sent the pet.
             Engine.AddCandidate(candidates, S.SHADOW_BOLT, "SHADOW BOLT OPENER", "CAST MANUALLY",
-                "Open from maximum range, then press BASE to send the pet", 70, "opener")
+                "The pet is engaging: open from maximum range", 70, "opener")
         elseif API.IsKnown(S.CORRUPTION) and API.IsUsable(S.CORRUPTION) then
             Engine.AddCandidate(candidates, S.CORRUPTION, "CORRUPTION OPENER", "CAST MANUALLY",
-                "Low-cost DoT opener, then press BASE to send the pet", 66, "opener")
+                "The pet is engaging: low-cost DoT opener", 66, "opener")
         end
         return candidates
     end
+    -- The engagement mark only gates the out-of-combat opener; the next
+    -- pull needs a new BASE press.
+    Class.engagedGUID = nil
     if not ctx.hostile then return candidates end
 
     local hp = ctx.player.hp
@@ -100,8 +117,8 @@ function Class:GetCandidates(ctx)
     local hasWand = API.HasWandEquipped() and API.IsKnown(S.SHOOT)
     local context = ContextText(ctx)
 
-    -- BASE sends the pet only in combat, so a pull opened with a cast or a
-    -- target switch leaves it idle until the next press. With several mobs
+    -- A target switch in combat leaves the pet on its old mob until the next
+    -- BASE press. With several mobs
     -- the pet may tank one while the warlock DoTs another: no notice then.
     -- The one-second wait keeps a quick tab-target check silent.
     if ctx.pet.alive and not petTanking and CountActiveEnemies() <= 1 and PetOffTarget() then
@@ -259,15 +276,24 @@ function Class:GetCandidates(ctx)
 end
 
 function Class:GetIdleRecommendation(inCombat, hostile)
-    -- Without a wand BASE only commands the pet, so it can neither pull nor
-    -- deal damage. Never fall through to a generic BASE request.
-    if not hostile or (API.HasWandEquipped() and API.IsKnown(S.SHOOT)) then return end
+    if not hostile then return end
+    -- No spell before the pull, so the pixel stays black (a wand PULL READY
+    -- would show Shoot) until the player presses BASE.
+    if not inCombat and not Engaged() then
+        local readiness = Engine.lastPrePullReadiness
+        local summary = readiness and readiness.ready and readiness.summary
+        return nil, "PULL READY", "PRESS BASE",
+            "BASE sends the pet and starts the rotation" .. (summary and (" | " .. summary) or ""), "idle"
+    end
+    -- Without a wand BASE only commands the pet and deals no damage itself.
+    -- Never fall through to a generic BASE request.
+    if API.HasWandEquipped() and API.IsKnown(S.SHOOT) then return end
     if inCombat then
         return nil, "LET DOTS AND PET WORK", "WAIT / RECOVER",
             "Wait for mana, Life Tap health or a safe casting window", "idle"
     end
     return nil, "NO OPENER READY", "WAIT / RECOVER",
-        "Recover mana for the Shadow Bolt opener; BASE does not pull without a wand", "idle"
+        "The pet is engaging; recover mana for the Shadow Bolt opener", "idle"
 end
 
 -- Pre-pull readiness asks the class which spell fixes a missing or hurt pet.
@@ -351,10 +377,9 @@ end
 -- the class owns its base action and modifier spell choices.
 function Class:BuildMainMacro()
         local lines = NewLines()
-        -- Never let the pet turn an out-of-range opener into an accidental
-        -- pull. The first valid ranged cast starts combat; a following BASE
-        -- press then sends the pet.
-        AddLine(lines, "/petattack [combat,harm]", 1)
+        -- BASE is the decision to pull: like the Hunter, the pet attacks at
+        -- once, in or out of combat. Targeting alone sends nothing.
+        AddLine(lines, "/petattack [harm]", 1)
         -- BASE is a single press: pet plus auto-repeat wand. Every cast-time
         -- spell, Shadow Bolt included, comes from the Advisor's fixed slots
         -- so repeated BASE input can never override its choice.

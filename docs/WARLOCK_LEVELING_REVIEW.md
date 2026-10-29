@@ -97,3 +97,34 @@ These are simulated-client tests, not DPS measurements.
   `PRESS <key> ONCE` notice appears; one press sends the pet and clears it.
 - Pet tanking an add while you DoT another mob: no pet notice.
 - Felhunter: Spell Lock disappears from interrupt advice while on cooldown.
+
+## Follow-up: BASE is the decision to pull
+
+Date: 2026-10-29. Owner feedback on 1.29.21: selecting a target must not pull;
+the rotation starts only after BASE, and the pet must attack at once on that
+press, as for the Hunter. Not released yet.
+
+- Cause: out of combat the Advisor showed the Shadow Bolt/Corruption opener (an
+  Action Panel slot) as soon as a hostile target was selected, so the pixel
+  reader cast it; BASE was `/petattack [combat,harm]` and did not send the pet
+  before combat. A wand user also got `PULL READY` with Shoot, another slot.
+- BASE is now `/petattack [harm]` (plus `!Shoot` with a wand), as for the Hunter.
+- Out of combat, the opener is offered only once the player has engaged: a BASE
+  press on this target (recorded by the new optional `OnBaseInput` class hook
+  from the BASE `PostClick`, by target GUID) or the pet already on the target.
+  Before that the Advisor shows `PULL READY / PRESS BASE` without a spell, so
+  the pixel stays black. Pre-pull Life Tap is still offered since it does not
+  pull. Entering combat clears the mark; the next pull needs a new press.
+- `tests/warlock_leveling.lua` (128 checks) covers the fresh target with and
+  without a wand, Life Tap before the pull, the BASE press starting the opener,
+  a new target needing a new press, engaging without a pet, non-hostile presses
+  and the reset at combat start. `tests/class_contracts.lua` and
+  `tests/advisor_stability_range.lua` now require the ungated pet attack.
+  47/47 harnesses pass.
+
+In-game checks to do:
+
+- Target a mob out of combat: nothing is cast, the panel shows `PULL READY`.
+- Press BASE: the pet runs in at once and Shadow Bolt (or Corruption) appears.
+- With a wand: BASE sends the pet and starts Shoot; no Shoot before the press.
+- After the kill, target the next mob: again nothing until BASE.

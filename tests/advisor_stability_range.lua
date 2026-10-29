@@ -162,8 +162,8 @@ expect(key, "PRESS BASE", "forced base pull key while ready")
 local warlockFile = assert(io.open("HCOneButton/Classes/Warlock.lua", "rb"))
 local warlockSource = warlockFile:read("*a")
 warlockFile:close()
-assert(warlockSource:find('/petattack [combat,harm]', 1, true), "Warlock petattack must require combat")
-assert(not warlockSource:find('AddLine(lines, "/petattack [harm]"', 1, true), "unsafe Warlock petattack returned")
+assert(warlockSource:find('AddLine(lines, "/petattack [harm]"', 1, true), "Warlock BASE must send the pet at once")
+assert(not warlockSource:find('/petattack [combat,harm]', 1, true), "combat-gated Warlock pet attack returned")
 
 -- A transient normal recommendation never reaches the display.
 rangeState = true

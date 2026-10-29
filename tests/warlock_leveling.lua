@@ -4,7 +4,7 @@ local e=setmetatable({}, {__index=_G}); e._G=e
 e.HCOneButton={Internal=e,Data={},Core={},Classes={},Systems={},UI={},Advisor={Engine={}}}
 e.PLAYER_CLASS="WARLOCK"; e.MACRO_LIMIT=255
 local known,usable,cooldown,buffs,debuffs,ctx
-local wand,shards,petSpells,petCooldown,petTarget,enemies
+local wand,shards,petSpells,petCooldown,petTarget,enemies,targetGUID
 local now=100
 e.GetTime=function() return now end
 e.IsKnown=function(id) return known[id]==true end
@@ -28,6 +28,8 @@ e.UnitExists=function(unit)
 end
 e.UnitIsUnit=function(a,b) return a=="pettarget" and b=="target" and petTarget=="target" end
 e.SafeBoolean=function(v,fallback) if v==nil then return fallback end return v==true end
+e.SafeUnitGUID=function(unit) return unit=="target" and targetGUID or nil end
+e.HostileLiveTarget=function() return ctx.hostile and targetGUID~=nil end
 e.CountActiveEnemies=function() return enemies end
 e.GetItemCount=function(id) return id==6265 and shards or 0 end
 e.GetPetActionInfo=function(slot) return petSpells[slot] end
@@ -58,8 +60,8 @@ local function reset()
     ctx={inCombat=true,hostile=true,spec=1,player={hp=100,mana=80,level=20,grouped=false},
         target={hp=70,close=false,onPlayer=false},combat={reserve=80},
         pet={alive=true,hp=100,tanking=true}}
-    wand,shards,petTarget,enemies=true,3,"target",1
-    warlock.petOffSince=nil
+    wand,shards,petTarget,enemies,targetGUID=true,3,"target",1,"Creature-mob-1"
+    warlock.petOffSince,warlock.engagedGUID=nil,nil
     engine.ResetStabilization()
 end
 local function choose()
@@ -145,7 +147,8 @@ expect(warlock:GetIdleRecommendation(true,true),nil,"wand users keep the shared 
 wand=false
 expect(warlock:GetIdleRecommendation(false,true),nil,"idle wait is combat only")
 
--- Out-of-combat opener instead of a wand tick; Life Tap first when low.
+-- Out-of-combat opener (pet already sent by BASE) instead of a wand tick;
+-- Life Tap first when low.
 reset();ctx.inCombat=false
 expect(choose(),s.SHADOW_BOLT,"Shadow Bolt opener")
 local opener=candidate(s.SHADOW_BOLT)
@@ -160,6 +163,42 @@ ctx.hostile=false
 expect(#warlock:GetCandidates(ctx),0,"no opener without a hostile target")
 ctx.hostile=true;known[s.SHADOW_BOLT]=nil;known[s.CORRUPTION]=nil;ctx.player.mana=80;ctx.player.hp=100
 expect(#warlock:GetCandidates(ctx),0,"no unlearned opener")
+
+-- Targeting alone never pulls: no opener slot for the pixel reader until a
+-- BASE press on this target (or the pet already attacking it).
+for _,hasWand in ipairs({true,false}) do
+    reset();ctx.inCombat=false;petTarget=nil;wand=hasWand
+    expect(candidate(s.SHADOW_BOLT),nil,"no opener on a fresh target, wand "..tostring(hasWand))
+    expect(candidate(s.CORRUPTION),nil,"no DoT opener on a fresh target, wand "..tostring(hasWand))
+    local pullId,pullTitle,pullKey=warlock:GetIdleRecommendation(false,true)
+    expect(pullId,nil,"PULL READY has no spell, wand "..tostring(hasWand))
+    expect(pullTitle,"PULL READY","fresh target waits for the pull, wand "..tostring(hasWand))
+    expect(pullKey,"PRESS BASE","fresh target asks for BASE, wand "..tostring(hasWand))
+    expect(choose(),nil,"fresh target selects nothing, wand "..tostring(hasWand))
+    ctx.player.mana=40
+    expect(choose(),s.LIFE_TAP,"pre-pull Life Tap does not pull, wand "..tostring(hasWand))
+    ctx.player.mana=80
+    warlock:OnBaseInput()
+    expect(choose(),s.SHADOW_BOLT,"BASE press starts the opener, wand "..tostring(hasWand))
+    local _,engagedTitle=warlock:GetIdleRecommendation(false,true)
+    if hasWand then
+        expect(engagedTitle,nil,"engaged wand user keeps the shared wand fallback")
+    else
+        expect(engagedTitle,"NO OPENER READY","engaged no-wand idle waits for mana")
+    end
+    targetGUID="Creature-mob-2"
+    expect(candidate(s.SHADOW_BOLT),nil,"a new target needs a new BASE press, wand "..tostring(hasWand))
+end
+reset();ctx.inCombat=false;petTarget=nil;ctx.pet.alive=false
+warlock:OnBaseInput()
+expect(choose(),s.SHADOW_BOLT,"BASE press engages even without a pet")
+ctx.hostile=false;targetGUID="Creature-mob-3";warlock:OnBaseInput()
+expect(warlock.engagedGUID,"Creature-mob-1","BASE on a non-hostile target does not engage")
+reset();ctx.inCombat=false;petTarget=nil;warlock:OnBaseInput()
+ctx.inCombat=true;warlock:GetCandidates(ctx)
+expect(warlock.engagedGUID,nil,"combat clears the engagement mark")
+ctx.inCombat=false
+expect(candidate(s.SHADOW_BOLT),nil,"after combat the next pull needs BASE again")
 
 -- Spell Lock is offered only when the Felhunter can actually cast it.
 reset()
@@ -187,12 +226,13 @@ expect(warlock:GetPetRecoverySpell("hurt"),nil,"unlearned Health Funnel stays te
 for _,spec in ipairs({1,2,3}) do
     reset();ctx.spec=spec
     local macro=warlock:BuildMainMacro()
-    expect(macro:find("/petattack [combat,harm]",1,true)~=nil,true,"pet attack stays combat-gated, tree "..spec)
+    expect(macro:find("/petattack [harm]",1,true)~=nil,true,"BASE sends the pet at once, tree "..spec)
+    expect(macro:find("combat",1,true),nil,"pet attack is not combat-gated, tree "..spec)
     expect(macro:find("!"..e.SpellName(s.SHOOT),1,true)~=nil,true,"wand BASE in tree "..spec)
     expect(macro:find(e.SpellName(s.SHADOW_BOLT),1,true),nil,"no Shadow Bolt in BASE, tree "..spec)
     expect((warlock:GetBaseActionInfo(spec)),s.SHOOT,"wand base action, tree "..spec)
     wand=false
-    expect(warlock:BuildMainMacro(),"/petattack [combat,harm]","no-wand BASE only commands the pet, tree "..spec)
+    expect(warlock:BuildMainMacro(),"/petattack [harm]","no-wand BASE only commands the pet, tree "..spec)
     local baseId,description=warlock:GetBaseActionInfo(spec)
     expect(baseId,nil,"no-wand BASE has no spell")
     expect(description,"PET ATTACK","no-wand BASE description")
@@ -201,11 +241,11 @@ end
 reset();wand=false
 local idleId,idleTitle,idleKey=warlock:GetIdleRecommendation(false,true)
 expect(idleId,nil,"no-wand pull wait has no action")
-expect(idleTitle,"NO OPENER READY","no-wand BASE cannot pull")
-expect(idleKey,"WAIT / RECOVER","no-wand pull wait never asks for BASE")
+expect(idleTitle,"NO OPENER READY","engaged no-wand pull waits for mana")
+expect(idleKey,"WAIT / RECOVER","engaged no-wand pull wait never asks for BASE")
 expect(warlock:GetIdleRecommendation(false,false),nil,"no idle without a hostile target")
 wand=true
-expect(warlock:GetIdleRecommendation(false,true),nil,"wand BASE keeps PULL READY")
+expect(warlock:GetIdleRecommendation(false,true),nil,"engaged wand user keeps the shared wand fallback")
 
 -- Pet not on the target: one BASE press after a one-second grace.
 local function petNotice()
