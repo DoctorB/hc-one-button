@@ -2,7 +2,15 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.21`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.22`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.22 — 2026-10-29
+
+### Fixed — Warlock pull starts with BASE
+
+- Selecting a hostile target no longer pulls. Out of combat the Shadow Bolt/Corruption opener (an Action Panel slot, and therefore the Diagnostic Pixel) appears only after a BASE press on that target or while the pet is already attacking it; before that the Advisor shows `PULL READY / PRESS BASE` without a spell, also with a wand equipped. Pre-pull Life Tap is still suggested. Entering combat clears the mark, so each pull needs a new BASE press.
+- Warlock BASE is `/petattack [harm]` (plus `!Shoot` with a wand), like the Hunter: the pet attacks at once, in or out of combat. The previous combat gate left the pet idle until a second press.
+- Classes can receive the BASE press through the optional `OnBaseInput` hook.
 
 ## 1.29.21 — 2026-10-28
 

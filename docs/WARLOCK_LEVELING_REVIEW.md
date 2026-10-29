@@ -102,7 +102,7 @@ These are simulated-client tests, not DPS measurements.
 
 Date: 2026-10-29. Owner feedback on 1.29.21: selecting a target must not pull;
 the rotation starts only after BASE, and the pet must attack at once on that
-press, as for the Hunter. Not released yet.
+press, as for the Hunter. Released in 1.29.22 (2026-10-29) without an in-game check.
 
 - Cause: out of combat the Advisor showed the Shadow Bolt/Corruption opener (an
   Action Panel slot) as soon as a hostile target was selected, so the pixel
