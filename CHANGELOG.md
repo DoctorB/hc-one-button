@@ -2,7 +2,14 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.23`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.24`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.24 — 2026-10-29
+
+### Released — Flat dark HUD theme, checked in game
+
+- Republishes the `1.29.23` UI update (flat dark theme, recommended Action Panel slot with ring, pulse, larger icon and dimmed neighbours, short key labels, Advisor accent stripe) after its in-game check. The code is unchanged apart from the version number.
+- The `1.29.21` and `1.29.22` Warlock changes have also been checked in game.
 
 ## 1.29.23 — 2026-10-29
 

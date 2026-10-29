@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.23`
+- **Current version:** `1.29.24`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.23` gives the HUD a flat dark look and makes the recommended Action Panel slot stand out.
+Version `1.29.24` publishes the flat dark HUD theme and the stronger Action Panel highlight with their in-game check.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -42,6 +42,8 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ---
 
 ## Current release
+
+Version `1.29.24` republishes the `1.29.23` UI update after its in-game check; the code is unchanged apart from the version number. The `1.29.21` and `1.29.22` Warlock changes have also been checked in game.
 
 Version `1.29.23` gives the HUD a **flat dark theme**: cropped icons on flat slots with a thin frame in the state color (BASE, Advisor, Action Panel, Survival Strip) and a neutral 1px frame around the panels. The **recommended Action Panel slot** now gets a gold ring, a smooth pulsing glow with a flash when the suggestion changes and a slightly larger icon, while the other slots dim; every slot prints its short key binding (`S4`, `CS1`). The Advisor shows a left accent stripe and an icon frame in the state color, with the glow around the icon only. Layout, sizes, saved positions, slots, bindings and the Diagnostic Pixel are unchanged.
 
@@ -1339,7 +1341,7 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.23` passes the following automated checks:
+Version `1.29.24` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
 - **48/48 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
@@ -1395,7 +1397,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.23.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.24.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 
