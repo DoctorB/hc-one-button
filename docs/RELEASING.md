@@ -149,8 +149,10 @@ a ring, a per-frame pulse with a change flash and a larger icon while others
 dim, and every slot prints its short binding. Layout, slots, bindings and the
 Diagnostic Pixel are unchanged. Validation: 57 Lua chunks, 48 Lua suites
 (31 new Action Panel highlight checks), 58 TOC references; the offline Python
-release tests run in the workflow. **In-game validation is pending** for the
-new UI and for the 1.29.21/1.29.22 Warlock changes; the public notes say so.
+release tests run in the workflow. The owner confirmed the new UI in game and
+the 1.29.21/1.29.22 Warlock checks on 2026-10-29, after publication; the
+repository notes and GitHub Release body were corrected, the CurseForge file
+changelog is edited by hand.
 
 Publish tag `v1.29.23`, title **HCOneButton v1.29.23**, using
 [`releases/1.29.23.md`](releases/1.29.23.md) as the ordinary Release body.
@@ -163,8 +165,8 @@ longer shows the opener; it appears only after a BASE press on that target or
 with the pet already on it (`PULL READY / PRESS BASE` without a spell before
 that). BASE is `/petattack [harm]` like the Hunter. Validation: 57 Lua chunks,
 47 Lua suites (128 Warlock checks), 58 TOC references; the offline Python
-release tests run in the workflow. **In-game validation is pending**; the
-public notes say so. See
+release tests run in the workflow. Published with in-game validation pending;
+the owner confirmed all Warlock checks in game on 2026-10-29. See
 [WARLOCK_LEVELING_REVIEW.md](WARLOCK_LEVELING_REVIEW.md).
 
 Publish tag `v1.29.22`, title **HCOneButton v1.29.22**, using
@@ -180,8 +182,8 @@ leveling: casting next to a pet-held mob, Drain Soul shard farming, Shadowburn
 shard reserve, Health Funnel (new slot 16), Shadow Bolt opener, Spell Lock
 cooldown and pet recovery spells in pre-pull readiness. Validation: 57 Lua
 chunks, 47 Lua suites (101 Warlock checks), 58 TOC references; the offline
-Python release tests run in the workflow. **In-game validation is pending**;
-the public notes say so. See
+Python release tests run in the workflow. Published with in-game validation
+pending; the owner confirmed all Warlock checks in game on 2026-10-29. See
 [WARLOCK_LEVELING_REVIEW.md](WARLOCK_LEVELING_REVIEW.md).
 
 Publish tag `v1.29.21`, title **HCOneButton v1.29.21**, using

@@ -2,7 +2,7 @@
 
 Date: 2026-10-28. Request: check the Warlock policy and improve it where needed.
 Scope: class policy, single-press BASE, pre-pull pet readiness, one Action Panel slot, focused
-regression tests and documentation. Released in 1.29.21 (2026-10-28) without an in-game check.
+regression tests and documentation. Released in 1.29.21 (2026-10-28) without an in-game check; confirmed in game on 2026-10-29.
 
 ## Baseline findings
 
@@ -83,17 +83,21 @@ the Advisor rather than from BASE spam, as for the Warrior single-press BASE.
 
 These are simulated-client tests, not DPS measurements.
 
-## In-game checks to do
+## In-game checks
+
+The owner reported all checks passed in game on 2026-10-29 (with 1.29.22/1.29.23).
+The two pull items marked superseded were replaced by the 1.29.22 pull flow below.
+
 
 - Voidwalker tanking with the warlock 5–10 yards away: Shadow Bolt/wand still
   suggested; mob switching to the warlock: they disappear.
 - Low-health target with fewer than five shards: Drain Soul, and a shard gained.
 - Pet at 30–40% while tanking: Health Funnel, and Drain Life not suggested.
 - No wand, low mana: `LET DOTS AND PET WORK` rather than a BASE request.
-- Before a pull: Shadow Bolt opener, then BASE sends the pet after combat starts.
+- Superseded by 1.29.22: before a pull, Shadow Bolt opener, then BASE sends the pet after combat starts.
 - BASE pressed repeatedly never casts Shadow Bolt; Destruction with a wand starts
   the wand; without a wand BASE only sends the pet.
-- Opening with a cast and not pressing BASE: after about a second the amber
+- Superseded by 1.29.22 (the opener now follows BASE): opening with a cast and not pressing BASE: after about a second the amber
   `PRESS <key> ONCE` notice appears; one press sends the pet and clears it.
 - Pet tanking an add while you DoT another mob: no pet notice.
 - Felhunter: Spell Lock disappears from interrupt advice while on cooldown.
@@ -102,7 +106,7 @@ These are simulated-client tests, not DPS measurements.
 
 Date: 2026-10-29. Owner feedback on 1.29.21: selecting a target must not pull;
 the rotation starts only after BASE, and the pet must attack at once on that
-press, as for the Hunter. Released in 1.29.22 (2026-10-29) without an in-game check.
+press, as for the Hunter. Released in 1.29.22 (2026-10-29) without an in-game check; confirmed in game on 2026-10-29.
 
 - Cause: out of combat the Advisor showed the Shadow Bolt/Corruption opener (an
   Action Panel slot) as soon as a hostile target was selected, so the pixel
@@ -122,7 +126,7 @@ press, as for the Hunter. Released in 1.29.22 (2026-10-29) without an in-game ch
   `tests/advisor_stability_range.lua` now require the ungated pet attack.
   47/47 harnesses pass.
 
-In-game checks to do:
+In-game checks (all passed in game on 2026-10-29, owner report):
 
 - Target a mob out of combat: nothing is cast, the panel shows `PULL READY`.
 - Press BASE: the pet runs in at once and Shadow Bolt (or Corruption) appears.
