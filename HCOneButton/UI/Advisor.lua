@@ -17,29 +17,46 @@ advisorBG:SetColorTexture(0, 0, 0, 0)
 
 -- Border is owned by HCOB_CoreShell in the unified HUD.
 
+advisorIcon = advisor:CreateTexture(nil, "ARTWORK")
+advisorIcon:SetSize(58, 58)
+advisorIcon:SetPoint("LEFT", advisor, "LEFT", 9, 0)
+advisorIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+if advisorIcon.SetTexCoord then advisorIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+-- Flat frame behind the cropped icon; SetAdvisorAccent tints it by state.
+advisor.iconBorder = advisor:CreateTexture(nil, "BACKGROUND", nil, 2)
+advisor.iconBorder:SetPoint("TOPLEFT", advisorIcon, "TOPLEFT", -2, 2)
+advisor.iconBorder:SetPoint("BOTTOMRIGHT", advisorIcon, "BOTTOMRIGHT", 2, -2)
+advisor.iconBorder:SetColorTexture(1, 1, 1, 1)
+advisor.iconBorder:SetVertexColor(0.20, 0.23, 0.27, 0.95)
+
+-- Soft glow around the recommended icon only, not stretched over the panel.
 advisorGlow = advisor:CreateTexture(nil, "OVERLAY")
-advisorGlow:SetPoint("TOPLEFT", -6, 6)
-advisorGlow:SetPoint("BOTTOMRIGHT", 6, -6)
+advisorGlow:SetPoint("TOPLEFT", advisorIcon, "TOPLEFT", -13, 13)
+advisorGlow:SetPoint("BOTTOMRIGHT", advisorIcon, "BOTTOMRIGHT", 13, -13)
 advisorGlow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
 advisorGlow:SetBlendMode("ADD")
 advisorGlow:SetAlpha(0.72)
 advisorGlow:Hide()
 
-advisorIcon = advisor:CreateTexture(nil, "ARTWORK")
-advisorIcon:SetSize(58, 58)
-advisorIcon:SetPoint("LEFT", advisor, "LEFT", 9, 0)
-advisorIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-advisor.iconBorder = advisor:CreateTexture(nil, "OVERLAY")
-advisor.iconBorder:SetPoint("TOPLEFT", advisorIcon, "TOPLEFT", -3, 3)
-advisor.iconBorder:SetPoint("BOTTOMRIGHT", advisorIcon, "BOTTOMRIGHT", 3, -3)
-advisor.iconBorder:SetTexture("Interface\\Buttons\\UI-Quickslot2")
-advisor.iconBorder:SetVertexColor(0.42, 0.48, 0.52, 0.95)
+-- State accent: a thin stripe on the left edge in the badge color.
+advisor.accent = advisor:CreateTexture(nil, "ARTWORK")
+advisor.accent:SetPoint("TOPLEFT", advisor, "TOPLEFT", 0, -4)
+advisor.accent:SetPoint("BOTTOMLEFT", advisor, "BOTTOMLEFT", 0, 4)
+advisor.accent:SetWidth(3)
 
 -- Badge piccolo: MANUALE / HCOB / BASE / DANGER / OK.
 advisorBanner = advisor:CreateTexture(nil, "ARTWORK")
 advisorBanner:SetPoint("TOPLEFT", advisorIcon, "TOPRIGHT", 9, 0)
 advisorBanner:SetSize(92, 17)
-advisorBanner:SetColorTexture(0.18, 0.18, 0.18, 0.98)
+
+-- One state color for the badge, the left stripe and the icon frame.
+function SetAdvisorAccent(r, g, b, a)
+    advisorBanner:SetColorTexture(r, g, b, a)
+    advisor.accent:SetColorTexture(r, g, b, 1)
+    -- The badge colors are dark; lift them so the thin icon frame reads.
+    advisor.iconBorder:SetVertexColor(math.min(1, r * 1.5 + 0.08), math.min(1, g * 1.5 + 0.08), math.min(1, b * 1.5 + 0.08), 1)
+end
+SetAdvisorAccent(0.18, 0.18, 0.18, 0.98)
 
 advisorMode = advisor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 advisorMode:SetPoint("CENTER", advisorBanner, "CENTER", 0, 0)
@@ -243,15 +260,15 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     local baseAction = (baseOnce or actionHint == "PRESS BASE" or actionHint == "KEEP SPAMMING" or actionHint == "BASE SPAM OK")
     local modifier = (actionHint == "SHIFT" or actionHint == "CTRL" or actionHint == "ALT" or actionHint == "CTRL+SHIFT" or actionHint == "ALT+SHIFT" or actionHint == "ALT+CTRL" or actionHint == "CTRL+ALT+SHIFT")
 
-    -- v1.27.2: CoreShell border is alert-only. Only CAUTION/DANGER (including
-    -- critical recommendations represented as danger) render the outer frame.
+    -- The CoreShell keeps a neutral 1px frame; only CAUTION/DANGER (including
+    -- critical recommendations represented as danger) color it.
     -- DANGER/CAUTION take precedence over input type. In v1.9 a warning
     -- Hamstring with ALT could appear blue like a normal "HCOB NOW":
     -- which was visually ambiguous exactly when clarity was needed.
     if kind == "danger" then
         advisorMode:SetText("HC DANGER")
         advisorMode:SetTextColor(1, 0.88, 0.88)
-        advisorBanner:SetColorTexture(0.72, 0.015, 0.015, 1.0)
+        SetAdvisorAccent(0.72, 0.015, 0.015, 1.0)
         advisorBG:SetColorTexture(0.13, 0.008, 0.008, 0.98)
         HCOB_SetRectBorderColor(HCOB_CoreShell, 1, 0.12, 0.08, 1)
         HCOB_SetRectBorderColor(dpsMeter, 1, 0.12, 0.08, 0.95)
@@ -271,7 +288,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     elseif kind == "caution" then
         advisorMode:SetText("HC CAUTION")
         advisorMode:SetTextColor(1, 0.92, 0.65)
-        advisorBanner:SetColorTexture(0.62, 0.30, 0.015, 1.0)
+        SetAdvisorAccent(0.62, 0.30, 0.015, 1.0)
         advisorBG:SetColorTexture(0.075, 0.045, 0.008, 0.97)
         HCOB_SetRectBorderColor(HCOB_CoreShell, 1, 0.62, 0.10, 0.98)
         HCOB_SetRectBorderColor(dpsMeter, 1, 0.62, 0.10, 0.90)
@@ -291,9 +308,9 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     elseif manual then
         advisorMode:SetText(clickable and "CLICK NOW" or "MANUAL NOW")
         advisorMode:SetTextColor(1, 0.90, 0.20)
-        advisorBanner:SetColorTexture(0.62, 0.07, 0.02, 0.98)
+        SetAdvisorAccent(0.62, 0.07, 0.02, 0.98)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
-        HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
+        HCOB_SetRectBorderColor(HCOB_CoreShell, 0.20, 0.23, 0.27, 0.95)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
         advisorKey:SetText(clickable and "CLICK HIGHLIGHTED ICON" or "PRESS FROM ACTION BAR")
         advisorKey:SetTextColor(1, 0.92, 0.25)
@@ -303,9 +320,9 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     elseif modifier then
         advisorMode:SetText("HCOB NOW")
         advisorMode:SetTextColor(0.85, 0.95, 1)
-        advisorBanner:SetColorTexture(0.04, 0.28, 0.52, 0.98)
+        SetAdvisorAccent(0.04, 0.28, 0.52, 0.98)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
-        HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
+        HCOB_SetRectBorderColor(HCOB_CoreShell, 0.20, 0.23, 0.27, 0.95)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
         advisorKey:SetText(clickable and "CLICK HIGHLIGHTED ICON" or (actionHint .. " + " .. baseKey))
         advisorKey:SetTextColor(0.65, 0.90, 1)
@@ -315,9 +332,9 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     elseif holdAction or passiveHint then
         advisorMode:SetText(passiveHint and (actionHint == "WAIT FOR ENERGY" and "ENERGY WAIT" or actionHint) or "AUTO ACTIVE")
         advisorMode:SetTextColor(0.72, 0.92, 1)
-        advisorBanner:SetColorTexture(0.04, 0.24, 0.38, 0.96)
+        SetAdvisorAccent(0.04, 0.24, 0.38, 0.96)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
-        HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
+        HCOB_SetRectBorderColor(HCOB_CoreShell, 0.20, 0.23, 0.27, 0.95)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
         advisorKey:SetText(actionHint)
         advisorKey:SetTextColor(0.70, 0.90, 1)
@@ -327,9 +344,9 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     elseif baseAction then
         advisorMode:SetText(baseOnce and "RESUME" or (title == "PULL READY" and "PULL READY" or (PLAYER_CLASS == "HUNTER" and "PULL" or (SinglePressBase() and "READY" or "BASE SPAM"))))
         advisorMode:SetTextColor(0.75, 1, 0.75)
-        advisorBanner:SetColorTexture(0.04, 0.35, 0.10, 0.96)
+        SetAdvisorAccent(0.04, 0.35, 0.10, 0.96)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
-        HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
+        HCOB_SetRectBorderColor(HCOB_CoreShell, 0.20, 0.23, 0.27, 0.95)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
         advisorKey:SetText((baseOnce or SinglePressBase()) and baseOnceHint or ((PLAYER_CLASS == "HUNTER" and "PRESS " or "SPAM ") .. baseKey))
         advisorKey:SetTextColor(0.65, 1, 0.65)
@@ -339,9 +356,9 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
     else
         advisorMode:SetText("OK")
         advisorMode:SetTextColor(0.65, 0.75, 0.80)
-        advisorBanner:SetColorTexture(0.12, 0.14, 0.16, 0.94)
+        SetAdvisorAccent(0.12, 0.14, 0.16, 0.94)
         advisorBG:SetColorTexture(0.018, 0.018, 0.022, 0.95)
-        HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
+        HCOB_SetRectBorderColor(HCOB_CoreShell, 0.20, 0.23, 0.27, 0.95)
         HCOB_SetRectBorderColor(dpsMeter, 0.35, 0.35, 0.35, 0.85)
         advisorKey:SetText(SinglePressBase() and (spellId and ("PRESS " .. baseKey) or "WAIT") or ("SPAM " .. baseKey))
         advisorKey:SetTextColor(0.65, 0.75, 0.8)
@@ -359,7 +376,7 @@ function SetDisplay(spellId, title, keyHint, reason, kind)
         local correct = UnitIsUnit and UnitIsUnit("mouseover",group.unit)
         advisorMode:SetText("GROUP HEAL")
         advisorMode:SetTextColor(0.72,1,0.88)
-        advisorBanner:SetColorTexture(0.02,0.35,0.24,1)
+        SetAdvisorAccent(0.02,0.35,0.24,1)
         advisorBG:SetColorTexture(0.01,0.06,0.04,0.98)
         HCOB_SetRectBorderColor(HCOB_CoreShell,0.15,0.9,0.6,0.95)
         HCOB_SetRectBorderColor(dpsMeter,0.15,0.9,0.6,0.90)

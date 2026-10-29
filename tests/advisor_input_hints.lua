@@ -381,4 +381,12 @@ env.group=true -- unrelated globals must not be treated as a live group suggesti
 env.UpdateDisplayCore(true)
 expect(env.currentFight.advisorDangerSamples,1,"danger sample is independent of unrelated global group")
 expect(env.advisorGlow.vertexColor[1],1,"telemetry cannot overwrite danger presentation with group colors")
+-- One state color drives the badge, the left accent stripe and the icon frame.
+env.SetDisplay(nil,"FIGHT WORSENING","ALL MODS","Create distance","danger")
+expect(env.advisor.accent.color[1],0.72,"danger accent stripe uses the badge color")
+expect(env.advisor.accent.color[4],1,"accent stripe is opaque")
+expect(env.advisor.iconBorder.vertexColor[1]>env.advisor.iconBorder.vertexColor[2],true,"danger icon frame is red")
+env.SetDisplay(nil,"OUT OF RANGE","MOVE CLOSER","Move","caution")
+expect(env.advisor.accent.color[1],0.62,"caution accent stripe uses the badge color")
+
 print("Advisor one-press/wait hints regression: " .. checks .. " checks PASS")

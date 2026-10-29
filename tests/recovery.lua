@@ -60,6 +60,9 @@ local function runtime(class)
     e.SafeBoolean=function(v,d) if v==nil then return d end; return v==true end
     e.Clamp=function(v,lo,hi) return math.max(lo,math.min(hi,v)) end
     e.HCOB_MakeRectBorder=function() end
+    e.HCOB_MakeIconSlot=function(frame)
+        return frame:CreateTexture(),frame:CreateTexture(),frame:CreateTexture()
+    end
     e.hcobUseKeyDown=true
     local methods={}
     local function widget(kind,name,parent)

@@ -705,24 +705,70 @@ function HCOB.UI.ActionPanel.InRange(id)
     return HCOB.Advisor.Engine.SpellRange(id, "target")
 end
 
+-- Short binding label: SHIFT-4 -> S4, CTRL-SHIFT-1 -> CS1, BUTTON4 -> M4.
+local shortKeys = {}
+function HCOB.UI.ActionPanel.ShortKey(key)
+    if type(key) ~= "string" or key == "" then return "" end
+    local short = shortKeys[key]
+    if not short then
+        short = key:upper():gsub("CTRL%-", "C"):gsub("SHIFT%-", "S"):gsub("ALT%-", "A")
+            :gsub("MOUSEWHEELUP", "MWU"):gsub("MOUSEWHEELDOWN", "MWD"):gsub("BUTTON", "M"):gsub("NUMPAD", "N")
+        shortKeys[key] = short
+    end
+    return short
+end
+
+-- The recommended slot grows over its own frame edge (never into the gap
+-- next to it) and gets a ring plus a pulsing glow.
+local function SetIconInset(b, inset)
+    if not b.icon.ClearAllPoints or b.iconInset == inset then return end
+    b.iconInset = inset
+    b.icon:ClearAllPoints()
+    b.icon:SetPoint("TOPLEFT", inset, -inset)
+    b.icon:SetPoint("BOTTOMRIGHT", -inset, inset)
+end
+
 function HCOB.UI.ActionPanel.Highlight(id)
+    local accent = HCOB_THEME and HCOB_THEME.accent or {1, 0.76, 0.08}
+    local active = nil
     for _, b in ipairs(HCOB.UI.ActionPanel.buttons) do
         if b then
+            local was = b.recommended
             b.recommended = (id and b.actionId == id and b.known == true) and true or false
             if b.recommended then
-                b.glow:SetVertexColor(1,0.82,0.10)
+                active = b
+                if not was then b.recommendedSince = GetTime() end
+                b.glow:SetVertexColor(accent[1], accent[2], accent[3])
                 b.glow:Show()
+                HCOB_SetRing(b.ring, true, accent[1], accent[2], accent[3], 1)
+                SetIconInset(b, 0)
                 if b.recommendedBG then b.recommendedBG:Show() end
             else
                 b.glow:Hide()
+                HCOB_SetRing(b.ring, false)
+                SetIconInset(b, 2)
                 if b.recommendedBG then b.recommendedBG:Hide() end
             end
         end
     end
+    HCOB.UI.ActionPanel.recommendedButton = active
+end
+
+-- Smooth pulse driven every frame by the (non-secure) panel, not by the
+-- Advisor refresh rate. A short brighter flash marks a new recommendation.
+function HCOB.UI.ActionPanel.Pulse()
+    local b = HCOB.UI.ActionPanel.recommendedButton
+    if not b or not b.recommended then return end
+    local now = GetTime()
+    local wave = 0.5 + 0.5 * math.sin(now * 5)
+    local fresh = math.max(0, 1 - (now - (b.recommendedSince or 0)) / 0.35)
+    b.glow:SetAlpha(math.min(1, 0.45 + 0.45 * wave + 0.5 * fresh))
+    local ringAlpha = 0.75 + 0.25 * wave
+    for i = 1, 4 do b.ring[i]:SetAlpha(ringAlpha) end
 end
 
 function HCOB.UI.ActionPanel.UpdateStates()
-    local now = GetTime()
+    local focused = HCOB.UI.ActionPanel.recommendedButton ~= nil
     for _, b in ipairs(HCOB.UI.ActionPanel.buttons) do
         if b and b.configured and b.actionId then
             local known = IsKnown(b.actionId) or b.actionId == S.SPELL_LOCK
@@ -743,15 +789,25 @@ function HCOB.UI.ActionPanel.UpdateStates()
             if b.rangeText then b.rangeText:SetText(inRange == false and "R" or "") end
 
             if b.icon.SetDesaturated then b.icon:SetDesaturated(not usable) end
+            -- While a slot is recommended the others step back.
+            local focus = (focused and not b.recommended) and 0.55 or 1.0
             if not known then
                 b.icon:SetAlpha(0.18)
             else
-                b.icon:SetAlpha(usable and 1.0 or 0.42)
+                b.icon:SetAlpha((usable and 1.0 or 0.42) * focus)
+            end
+            if b.keyText then
+                b.keyText:SetText(known and HCOB.UI.ActionPanel.ShortKey(b.bindingKey
+                    or HCOB.UI.ActionPanel.GetSlotKey(b.slotIndex)) or "")
+                if b.recommended then
+                    b.keyText:SetTextColor(1, 0.86, 0.30)
+                else
+                    b.keyText:SetTextColor(0.78, 0.80, 0.84, focus)
+                end
             end
 
             if b.recommended and known then
                 b.border:SetVertexColor(1,0.72,0.08,1)
-                b.glow:SetAlpha(0.62 + 0.30 * math.abs(math.sin(now * 4.5)))
             elseif not known then
                 b.border:SetVertexColor(0.16,0.16,0.18,0.72)
             elseif inRange == false then
@@ -800,11 +856,12 @@ function HCOB.UI.ActionPanel.CreateFrames()
     HCOB.UI.ActionPanel.frame:SetPoint("TOP", HCOB_CoreShell, "BOTTOM", 0, -4)
     HCOB.UI.ActionPanel.frame:SetFrameStrata("HIGH")
     HCOB.UI.ActionPanel.frame:EnableMouse(false)
+    HCOB.UI.ActionPanel.frame:SetScript("OnUpdate", function() HCOB.UI.ActionPanel.Pulse() end)
 
     HCOB.UI.ActionPanel.bg = HCOB.UI.ActionPanel.frame:CreateTexture(nil, "BACKGROUND")
     HCOB.UI.ActionPanel.bg:SetAllPoints()
-    HCOB.UI.ActionPanel.bg:SetColorTexture(0.012,0.014,0.018,0.96)
-    HCOB_MakeRectBorder(HCOB.UI.ActionPanel.frame, 0.28,0.38,0.48,0.88)
+    HCOB.UI.ActionPanel.bg:SetColorTexture(0.012, 0.014, 0.018, 0.96)
+    HCOB_MakeRectBorder(HCOB.UI.ActionPanel.frame, 0.20, 0.23, 0.27, 0.95)
     for i=1,HCOB.UI.ActionPanel.maxButtons do
         local b = CreateFrame("Button", "HCOneButtonAdvisorAction"..i, UIParent, "SecureActionButtonTemplate")
         b:SetSize(HCOB.UI.ActionPanel.buttonSize,HCOB.UI.ActionPanel.buttonSize)
@@ -817,13 +874,9 @@ function HCOB.UI.ActionPanel.CreateFrames()
         b:RegisterForClicks("AnyDown", "AnyUp")
         b:SetAttribute("useOnKeyDown", hcobUseKeyDown)
 
-        b.bg = b:CreateTexture(nil,"BACKGROUND")
-        b.bg:SetAllPoints()
-        b.bg:SetColorTexture(0.025,0.028,0.034,0.99)
-        b.icon = b:CreateTexture(nil,"ARTWORK")
-        b.icon:SetPoint("TOPLEFT",3,-3)
-        b.icon:SetPoint("BOTTOMRIGHT",-3,3)
-        b.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+        -- b.border is the flat frame behind the cropped icon; UpdateStates
+        -- tints it by state as before.
+        b.border, b.bg, b.icon = HCOB_MakeIconSlot(b, 1, 2)
 
         b.recommendedBG = b:CreateTexture(nil,"ARTWORK")
         b.recommendedBG:SetAllPoints(b.icon)
@@ -849,17 +902,21 @@ function HCOB.UI.ActionPanel.CreateFrames()
         b.rangeText:SetTextColor(1,0.18,0.12)
         b.rangeText:SetText("")
 
-        b.border = b:CreateTexture(nil,"OVERLAY")
-        b.border:SetAllPoints()
-        b.border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
-        b.border:SetVertexColor(0.42,0.48,0.52,0.95)
+        -- Binding printed on the icon, as on Blizzard action bars.
+        b.keyText = b:CreateFontString(nil,"OVERLAY","NumberFontNormalSmallGray")
+        b.keyText:SetPoint("TOPRIGHT",-2,-2)
+        b.keyText:SetJustifyH("RIGHT")
+        b.keyText:SetText("")
+
         b.glow = b:CreateTexture(nil,"OVERLAY")
-        b.glow:SetPoint("TOPLEFT",-7,7)
-        b.glow:SetPoint("BOTTOMRIGHT",7,-7)
+        b.glow:SetPoint("TOPLEFT",-9,9)
+        b.glow:SetPoint("BOTTOMRIGHT",9,-9)
         b.glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
         b.glow:SetBlendMode("ADD")
         b.glow:SetAlpha(0.90)
         b.glow:Hide()
+        -- Crisp accent ring just outside the slot, inside the 4px gap.
+        b.ring = HCOB_MakeRing(b, 1, 2, "OVERLAY")
         b:SetScript("OnEnter", function(self)
             if GameTooltip and self.actionName then
                 GameTooltip:SetOwner(self,"ANCHOR_RIGHT")

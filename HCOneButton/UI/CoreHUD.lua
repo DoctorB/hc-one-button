@@ -4,6 +4,74 @@ local HCOB = HCOneButton
 local E = HCOB.Internal
 setfenv(1, E)
 
+-- Flat dark theme shared by BASE, the Advisor and the fixed slots: cropped
+-- icons on a flat frame instead of Blizzard's beveled slot art.
+HCOB_THEME = {
+    slot = {0.025, 0.028, 0.034, 0.99},
+    edge = {0.20, 0.23, 0.27, 0.95},
+    accent = {1, 0.76, 0.08},
+}
+
+function HCOB_CropIcon(texture)
+    if texture and texture.SetTexCoord then texture:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+end
+
+-- Square icon slot. The returned edge is a flat white texture behind the
+-- slot background, so SetVertexColor on it tints a crisp frame of `edge`
+-- pixels around the cropped icon.
+function HCOB_MakeIconSlot(frame, edge, inset)
+    local frameEdge = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+    frameEdge:SetAllPoints()
+    frameEdge:SetColorTexture(1, 1, 1, 1)
+    frameEdge:SetVertexColor(unpack(HCOB_THEME.edge))
+    local slot = frame:CreateTexture(nil, "BACKGROUND", nil, 0)
+    slot:SetPoint("TOPLEFT", edge, -edge)
+    slot:SetPoint("BOTTOMRIGHT", -edge, edge)
+    slot:SetColorTexture(unpack(HCOB_THEME.slot))
+    local iconTexture = frame:CreateTexture(nil, "ARTWORK")
+    iconTexture:SetPoint("TOPLEFT", inset, -inset)
+    iconTexture:SetPoint("BOTTOMRIGHT", -inset, inset)
+    iconTexture:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+    HCOB_CropIcon(iconTexture)
+    return frameEdge, slot, iconTexture
+end
+
+-- Outer ring of four flat lines, `offset` pixels outside the frame. Plain
+-- textures, so showing it is safe on secure buttons during combat.
+function HCOB_MakeRing(frame, offset, thickness, layer)
+    local ring = {}
+    for i = 1, 4 do
+        ring[i] = frame:CreateTexture(nil, layer or "OVERLAY")
+        ring[i]:SetColorTexture(1, 1, 1, 1)
+        ring[i]:Hide()
+    end
+    ring[1]:SetPoint("TOPLEFT", frame, "TOPLEFT", -offset, offset)
+    ring[1]:SetPoint("TOPRIGHT", frame, "TOPRIGHT", offset, offset)
+    ring[1]:SetHeight(thickness)
+    ring[2]:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -offset, -offset)
+    ring[2]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", offset, -offset)
+    ring[2]:SetHeight(thickness)
+    ring[3]:SetPoint("TOPLEFT", frame, "TOPLEFT", -offset, offset)
+    ring[3]:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -offset, -offset)
+    ring[3]:SetWidth(thickness)
+    ring[4]:SetPoint("TOPRIGHT", frame, "TOPRIGHT", offset, offset)
+    ring[4]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", offset, -offset)
+    ring[4]:SetWidth(thickness)
+    return ring
+end
+
+function HCOB_SetRing(ring, shown, r, g, b, a)
+    if not ring then return end
+    for i = 1, 4 do
+        if shown then
+            ring[i]:SetVertexColor(r or 1, g or 1, b or 1, a or 1)
+            ring[i]:Show()
+        else
+            ring[i]:Hide()
+        end
+    end
+end
+
 btn = CreateFrame("Button", "HCOneButtonFrame", UIParent, "SecureActionButtonTemplate")
 btn:SetSize(82, 82)
 btn:SetFrameStrata("HIGH")
@@ -26,18 +94,7 @@ btn:SetAttribute("useOnKeyDown", hcobUseKeyDown)
 btn:SetPoint("CENTER", UIParent, "CENTER", 0, -180)
 btn:SetScale(1.0)
 
-bg = btn:CreateTexture(nil, "BACKGROUND")
-bg:SetAllPoints()
-bg:SetColorTexture(0.025, 0.028, 0.034, 0.99)
-
-icon = btn:CreateTexture(nil, "ARTWORK")
-icon:SetPoint("TOPLEFT", 5, -5)
-icon:SetPoint("BOTTOMRIGHT", -5, 5)
-icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-
-border = btn:CreateTexture(nil, "OVERLAY")
-border:SetAllPoints()
-border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+border, bg, icon = HCOB_MakeIconSlot(btn, 2, 4)
 
 glow = btn:CreateTexture(nil, "OVERLAY")
 glow:SetPoint("TOPLEFT", -12, 12)
@@ -136,7 +193,7 @@ HCOB_CoreShell:EnableMouse(false)
 HCOB_CoreShell.bg = HCOB_CoreShell:CreateTexture(nil, "BACKGROUND")
 HCOB_CoreShell.bg:SetAllPoints()
 HCOB_CoreShell.bg:SetColorTexture(0.012, 0.014, 0.018, 0.96)
-HCOB_MakeRectBorder(HCOB_CoreShell, 0, 0, 0, 0)
+HCOB_MakeRectBorder(HCOB_CoreShell, 0.20, 0.23, 0.27, 0.95)
 
 
 swingBG = CreateFrame("Frame", nil, btn)
@@ -198,8 +255,8 @@ function ApplyVisualTheme()
     classText:SetTextColor(cr, cg, cb)
     border:SetVertexColor(0.42, 0.48, 0.52, 0.95)
     if advisor.iconBorder then advisor.iconBorder:SetVertexColor(0.42, 0.48, 0.52, 0.95) end
-    -- v1.27.2: CoreShell border is alert-only. Normal/pull/buff states stay borderless.
-    HCOB_SetRectBorderColor(HCOB_CoreShell, 0, 0, 0, 0)
+    -- Neutral 1px frame; caution/danger recolor it from SetDisplay.
+    HCOB_SetRectBorderColor(HCOB_CoreShell, 0.20, 0.23, 0.27, 0.95)
     dpsValue:SetTextColor(0.72, 0.90, 1.0)
     if HCOB.UI.ActionPanel and HCOB.UI.ActionPanel.title then HCOB.UI.ActionPanel.title:SetTextColor(math.min(1,cr+0.18),math.min(1,cg+0.18),math.min(1,cb+0.18)) end
     label:SetTextColor(1, 0.97, 0.86)
