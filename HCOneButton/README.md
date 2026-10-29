@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.22`
+- **Current version:** `1.29.23`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.22` makes Warlock BASE the decision to pull: selecting a target no longer starts the rotation, and BASE sends the pet at once.
+Version `1.29.23` gives the HUD a flat dark look and makes the recommended Action Panel slot stand out.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -42,6 +42,8 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ---
 
 ## Current release
+
+Version `1.29.23` gives the HUD a **flat dark theme**: cropped icons on flat slots with a thin frame in the state color (BASE, Advisor, Action Panel, Survival Strip) and a neutral 1px frame around the panels. The **recommended Action Panel slot** now gets a gold ring, a smooth pulsing glow with a flash when the suggestion changes and a slightly larger icon, while the other slots dim; every slot prints its short key binding (`S4`, `CS1`). The Advisor shows a left accent stripe and an icon frame in the state color, with the glow around the icon only. Layout, sizes, saved positions, slots, bindings and the Diagnostic Pixel are unchanged.
 
 Version `1.29.22` makes **Warlock BASE the decision to pull**. Selecting a hostile target no longer shows the opener (so the Diagnostic Pixel stays black and a pixel reader casts nothing): the Advisor shows `PULL READY / PRESS BASE` without a spell. BASE now sends the pet at once, in or out of combat, like the Hunter (and starts the wand when equipped); the Shadow Bolt or Corruption opener then appears. Each new pull needs a new BASE press. Pre-pull Life Tap is still suggested because it does not pull.
 
@@ -417,7 +419,8 @@ The Action Panel contains fixed `SecureActionButton` slots. The Advisor highligh
 
 Each icon can display:
 
-- pulsing recommendation highlight;
+- recommendation highlight: gold ring, smooth pulsing glow and a slightly larger icon, with the other slots dimmed;
+- short key binding printed on the icon (`S4` = SHIFT-4, `CS1` = CTRL-SHIFT-1);
 - radial cooldown sweep;
 - numeric cooldown for meaningful cooldowns;
 - red range warning;
@@ -1336,10 +1339,11 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.22` passes the following automated checks:
+Version `1.29.23` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
-- **47/47 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
+- **48/48 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
+- **31 Action Panel highlight checks** drive the real CoreHUD and Action Panel code: flat icon slots, short key labels, the recommended ring, glow and larger icon, dimming of the other slots, the pulse with its change flash and clearing;
 - **128 Warlock checks** cover the pull gate (no opener on a fresh target with or without a wand, the BASE press starting the opener, a new target or a new fight needing a new press), pet-held versus exposed proximity, Drain Soul versus the finishing wand, the Shadowburn shard reserve, Health Funnel versus Drain Life and Death Coil, the no-wand filler and wait states, openers, Spell Lock cooldown, pet recovery spells, the single-press BASE in all trees with and without a wand, and the pet-off-target notice with its grace period;
 - **50 Warrior single-press checks** cover the BASE macro (no Rend sequence for any target or option), attack-stopped detection (stopped/active/unreadable state, reach unknown/out, unengaged target, cast hold, modern API fallback), funded-strike precedence, idle/no-target/Execute-pooling hints, risk decoration and the Advisor opener Rend with its option and window;
 - **41 Hunter pet/travel checks** cover Revive versus Call Pet after the pet's unit disappears, Mend Pet between pulls, the passive-pet warning, pet death in combat, fleeing detection (English and localized emotes, other units, expiry, target change), pet off target, the pre-pull aspect and the Cheetah reminder with its option;
@@ -1391,7 +1395,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.22.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.23.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 

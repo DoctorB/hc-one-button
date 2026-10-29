@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.22, the version-controlled public notes are in
-[`releases/1.29.22.md`](releases/1.29.22.md). Paste that document into
+For 1.29.23, the version-controlled public notes are in
+[`releases/1.29.23.md`](releases/1.29.23.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -140,7 +140,23 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.22 publication validation
+### 1.29.23 publication validation
+
+Publication authorized on 2026-10-29. Flat dark HUD theme: cropped icons on
+flat state-tinted slots (BASE, Advisor, Action Panel, Survival Strip), neutral
+1px shell frames, Advisor accent stripe; the recommended Action Panel slot gets
+a ring, a per-frame pulse with a change flash and a larger icon while others
+dim, and every slot prints its short binding. Layout, slots, bindings and the
+Diagnostic Pixel are unchanged. Validation: 57 Lua chunks, 48 Lua suites
+(31 new Action Panel highlight checks), 58 TOC references; the offline Python
+release tests run in the workflow. **In-game validation is pending** for the
+new UI and for the 1.29.21/1.29.22 Warlock changes; the public notes say so.
+
+Publish tag `v1.29.23`, title **HCOneButton v1.29.23**, using
+[`releases/1.29.23.md`](releases/1.29.23.md) as the ordinary Release body.
+Verify CurseForge acceptance separately from moderation approval.
+
+### Archived 1.29.22 publication validation
 
 Publication authorized on 2026-10-29. Warlock pull fix: selecting a target no
 longer shows the opener; it appears only after a BASE press on that target or

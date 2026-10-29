@@ -2,7 +2,17 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.22`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.23`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.23 — 2026-10-29
+
+### Improved — Flat dark HUD theme
+
+- Icons are cropped and sit on flat slots with a thin frame in the state color instead of Blizzard slot art: BASE, Advisor, Action Panel and Survival Strip. The HUD shell and the Action Panel keep a neutral 1px frame; caution/danger still recolor it.
+- The recommended Action Panel slot gets a gold ring, a smooth per-frame pulsing glow with a brighter flash when the recommendation changes, and a slightly larger icon (it covers its own frame edge, never the gap). While a slot is recommended the other slots dim to 55%.
+- Every learned slot prints its short key binding (`S4` = SHIFT-4, `CS1` = CTRL-SHIFT-1, `M4` = mouse button 4); the recommended one is gold.
+- The Advisor shows a left accent stripe and an icon frame in the state color of its badge; its glow surrounds the icon only instead of being stretched over the panel.
+- Layout, sizes, saved positions, slot order, bindings and the Diagnostic Pixel are unchanged.
 
 ## 1.29.22 — 2026-10-29
 
