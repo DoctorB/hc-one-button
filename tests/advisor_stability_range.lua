@@ -83,6 +83,7 @@ C_Spell = {
 -- Engine.lua captures these helpers in ClassAPI while loading.
 function HasPlayerBuff() return false end
 function HasMyTargetDebuff() return false end
+function StableMyTargetDebuff() return false end
 function SpellCastSeconds() return 0 end
 function HasWandEquipped() return false end
 function AuraByName() return nil end

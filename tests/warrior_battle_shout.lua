@@ -35,6 +35,7 @@ environment.IsKnown = function(id) return id == S.BATTLE_SHOUT end
 environment.IsUsable = function(id) return id == S.BATTLE_SHOUT end
 environment.CooldownReady = function() return false end
 environment.HasMyTargetDebuff = function() return false end
+environment.StableMyTargetDebuff = environment.HasMyTargetDebuff
 environment.HasPlayerBuff = function(id)
     if id == S.BATTLE_SHOUT then return battleShoutActive, battleShoutRemaining end
     return false, 0

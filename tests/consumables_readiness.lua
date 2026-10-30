@@ -223,6 +223,7 @@ function IsUsable() return true end
 function CooldownReady() return true end
 function HasPlayerBuff() return false end
 function HasMyTargetDebuff() return false end
+function StableMyTargetDebuff() return false end
 function SpellCastSeconds() return 0 end
 function HasWandEquipped() return false end
 function Clamp(value, low, high) return math.max(low, math.min(high, value)) end

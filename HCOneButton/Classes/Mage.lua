@@ -282,7 +282,7 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
         -- Polymorph is the preferred 2-mob reset when you still have space.
         -- Creature eligibility varies, so the Advisor explicitly says "if valid";
         -- a failed Polymorph does not trigger any automation or retargeting.
-        if IsKnown(S.POLYMORPH) and Mage.PolymorphEligible() and not HasMyTargetDebuff(S.POLYMORPH) then
+        if IsKnown(S.POLYMORPH) and Mage.PolymorphEligible() and not StableMyTargetDebuff(S.POLYMORPH) then
             return S.POLYMORPH, "MULTI x2 - POLY", "ALT+CTRL", "Polymorph this target, then switch to the other mob", "caution"
         end
 

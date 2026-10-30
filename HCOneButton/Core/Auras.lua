@@ -69,13 +69,21 @@ local PLAYER_BUFF_MISSING_GRACE = 0.75
 local PLAYER_BUFF_CAST_GRACE = 1.00
 local playerBuffObservations = {}
 local playerSpellcastGrace = {}
+-- A target debuff reaches the client after UNIT_SPELLCAST_SUCCEEDED. Without
+-- this window the same DoT stays recommended for that gap and a reader that
+-- re-sends the shown slot casts it twice.
+local TARGET_DEBUFF_CAST_GRACE = 1.50
+local targetDebuffGrace = {}
 
 function NotePlayerSpellcastSucceeded(spellID)
     local groupHealing = HCOB.Advisor and HCOB.Advisor.GroupHealing
     if groupHealing and groupHealing.IsOtherUnitCast(spellID) then return end
     local name = SpellName(spellID)
     if not name then return end
-    playerSpellcastGrace[name] = GetTime() + PLAYER_BUFF_CAST_GRACE
+    local now = GetTime()
+    playerSpellcastGrace[name] = now + PLAYER_BUFF_CAST_GRACE
+    local guid = SafeUnitGUID and SafeUnitGUID("target")
+    if guid then targetDebuffGrace[name] = {guid=guid, untilTime=now + TARGET_DEBUFF_CAST_GRACE} end
 end
 
 local function StableUnitBuff(unit, id)
@@ -132,5 +140,23 @@ end
 
 function HasMyTargetDebuff(id)
     return AuraByName("target", SpellName(id), "HARMFUL", true)
+end
+
+-- HasMyTargetDebuff plus the post-cast window, bound to the target the spell
+-- was cast on. A resist leaves the debuff missing and it is offered again
+-- once the window ends.
+function StableMyTargetDebuff(id)
+    local name = SpellName(id)
+    if not name then return false, 0 end
+    local active, remaining = AuraByName("target", name, "HARMFUL", true)
+    local grace = targetDebuffGrace[name]
+    if active then
+        targetDebuffGrace[name] = nil
+        return true, remaining
+    end
+    if grace and grace.untilTime > GetTime() and grace.guid == (SafeUnitGUID and SafeUnitGUID("target")) then
+        return true, 999
+    end
+    return false, 0
 end
 

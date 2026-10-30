@@ -258,7 +258,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     end
 
-    if HCOB_DB.warriorAutoRend ~= false and IsKnown(S.REND) and (level <= 45 or (efficiency and efficiency[S.REND])) and not HasMyTargetDebuff(S.REND) and IsUsable(S.REND)
+    if HCOB_DB.warriorAutoRend ~= false and IsKnown(S.REND) and (level <= 45 or (efficiency and efficiency[S.REND])) and not StableMyTargetDebuff(S.REND) and IsUsable(S.REND)
        and self:CanFundMaintenance(S.REND, rage) then
         local worthRend = tough or targetLevel <= 0 or targetLevel >= (level - 4)
         if level >= 36 then worthRend = tough and (not estimatedTTK or estimatedTTK >= 12) end
@@ -400,7 +400,7 @@ end
 function Class:GetPanicRecommendation()
         if IsKnown(S.SHIELD_WALL) and CooldownReady(S.SHIELD_WALL) and IsUsable(S.SHIELD_WALL) then return S.SHIELD_WALL, "SHIELD WALL", "CAST MANUALLY", "Immediately reduce incoming damage" end
         if IsKnown(S.RETALIATION) and CooldownReady(S.RETALIATION) and IsUsable(S.RETALIATION) then return S.RETALIATION, "PANIC", "CAST MANUALLY", "Retaliation" end
-        if IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not HasMyTargetDebuff(S.HAMSTRING) then return S.HAMSTRING, "RUN!", "CAST MANUALLY", "Hamstring and create distance" end
+        if IsKnown(S.HAMSTRING) and IsUsable(S.HAMSTRING) and not StableMyTargetDebuff(S.HAMSTRING) then return S.HAMSTRING, "RUN!", "CAST MANUALLY", "Hamstring and create distance" end
         return nil, "RUN!", "PREPARE ESCAPE", "No immediate Warrior defensive available"
 end
 

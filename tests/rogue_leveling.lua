@@ -67,6 +67,7 @@ env.TalentSpec = function() return spec end
 env.HasPlayerBuff = function(id) return buffs[id] ~= nil, buffs[id] or 0 end
 env.StablePlayerBuff = env.HasPlayerBuff
 env.HasMyTargetDebuff = function(id) return debuffs[id] ~= nil, debuffs[id] or 0 end
+env.StableMyTargetDebuff = env.HasMyTargetDebuff
 env.AuraByName = function(_, name)
     for id, remaining in pairs(debuffs) do if names[id] == name then return true, remaining end end
     return false, 0

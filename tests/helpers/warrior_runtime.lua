@@ -53,6 +53,7 @@ env.SafeUnitLevel = function() return state.targetLevel end
 env.SafeUnitClassification = function() return state.classification or "normal" end
 env.SafeUnitGUID = function() return state.guid end
 env.HasMyTargetDebuff = function(id) return state.debuffs[id] ~= nil, state.debuffs[id] or 0 end
+env.StableMyTargetDebuff = env.HasMyTargetDebuff
 env.StablePlayerBuff = function(id)
     return id == S.BATTLE_SHOUT and state.shout, state.shout and 60 or 0
 end

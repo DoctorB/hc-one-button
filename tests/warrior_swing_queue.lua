@@ -50,6 +50,7 @@ environment.PlayerLevel = function() return 30 end
 environment.SafeUnitLevel = function() return 30 end
 environment.SafeUnitClassification = function() return "normal" end
 environment.HasMyTargetDebuff = function() return false end
+environment.StableMyTargetDebuff = environment.HasMyTargetDebuff
 environment.StablePlayerBuff = function() return false, 0 end
 environment.NewLines = function() return {} end
 environment.AddLine = function(lines, line) if line then lines[#lines + 1] = line end end

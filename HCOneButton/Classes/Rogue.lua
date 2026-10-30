@@ -213,7 +213,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
                     "Dagger burst opener; move behind the target in Stealth | Improved Ambush " .. ambush
                     .. "/3, Opportunity " .. opportunity .. "/5", 86 + ambush * 2 + opportunity * 0.5, "opener")
             end
-            if Ready(S.GARROTE) and not HasMyTargetDebuff(S.GARROTE) then
+            if Ready(S.GARROTE) and not StableMyTargetDebuff(S.GARROTE) then
                 engine.AddCandidate(candidates, S.GARROTE, "GARROTE - BEHIND", "CAST MANUALLY",
                     "Bleed opener; move behind the target in Stealth. Damage takes time; it prevents a Gouge recovery pause",
                     tough and 76 or 78, "opener")

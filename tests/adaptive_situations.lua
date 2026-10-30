@@ -251,6 +251,7 @@ env.IsKnown=function(spell) return spell==6343 or spell==7386 or spell==772 end
 env.IsUsable=function() return true end; env.CooldownReady=function() return true end
 env.StablePlayerBuff=function() return true,120 end
 env.HasMyTargetDebuff=function(spell) return spell==6343 and env.clapActive or false,20 end
+env.StableMyTargetDebuff=function(...) return env.HasMyTargetDebuff(...) end
 engine.RollingDynamics=function() return nil end
 engine.SpellRange=function() return true end
 loadInto(env,"HCOneButton/Classes/Warrior.lua")

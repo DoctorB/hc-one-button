@@ -157,7 +157,7 @@ function Class:GetCandidates(ctx)
 
     -- Curse of Weakness is deliberately a defensive curse here. It can replace
     -- Agony when the player, rather than the pet, is absorbing melee pressure.
-    local weakness = API.HasMyTargetDebuff(S.CURSE_WEAKNESS)
+    local weakness = API.StableMyTargetDebuff(S.CURSE_WEAKNESS)
     if close and playerTanking and targetHP >= 38 and reserve <= 58
        and API.IsKnown(S.CURSE_WEAKNESS) and API.IsUsable(S.CURSE_WEAKNESS) and not weakness then
         Engine.AddCandidate(candidates, S.CURSE_WEAKNESS, "CURSE OF WEAKNESS", "CAST MANUALLY",
@@ -166,7 +166,7 @@ function Class:GetCandidates(ctx)
     end
 
     if close and targetHP > 28 and reserve <= 42 and API.IsKnown(S.FEAR)
-       and API.IsUsable(S.FEAR) and not API.HasMyTargetDebuff(S.FEAR) then
+       and API.IsUsable(S.FEAR) and not API.StableMyTargetDebuff(S.FEAR) then
         Engine.AddCandidate(candidates, S.FEAR, "FEAR + DISTANCE", "CTRL",
             "Pressure is high: Fear only toward a verified clear escape path | " .. context, 103, "survival")
     end
@@ -201,7 +201,7 @@ function Class:GetCandidates(ctx)
             "Fast finisher with spare Soul Shards (" .. shards .. ") | " .. context, score, "finisher")
     end
 
-    local corruption = API.HasMyTargetDebuff(S.CORRUPTION)
+    local corruption = API.StableMyTargetDebuff(S.CORRUPTION)
     if API.IsKnown(S.CORRUPTION) and API.IsUsable(S.CORRUPTION) and not corruption
        and mana >= 26 and targetHP >= 38 and reserve >= 38 then
         local longEnough = not ttk or ttk >= 8
@@ -213,7 +213,7 @@ function Class:GetCandidates(ctx)
         end
     end
 
-    local agony = API.HasMyTargetDebuff(S.CURSE_AGONY)
+    local agony = API.StableMyTargetDebuff(S.CURSE_AGONY)
     if API.IsKnown(S.CURSE_AGONY) and API.IsUsable(S.CURSE_AGONY) and not agony and not weakness
        and mana >= 34 and targetHP >= 58 and reserve >= 48 and not playerTanking then
         local longEnough = not ttk or ttk >= 18
@@ -224,7 +224,7 @@ function Class:GetCandidates(ctx)
         end
     end
 
-    local immolate = API.HasMyTargetDebuff(S.IMMOLATE)
+    local immolate = API.StableMyTargetDebuff(S.IMMOLATE)
     if API.IsKnown(S.IMMOLATE) and API.IsUsable(S.IMMOLATE) and not immolate
        and mana >= 46 and targetHP >= 55 and reserve >= 48 and not exposed then
         local longEnough = not ttk or ttk >= 11

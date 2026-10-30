@@ -44,6 +44,7 @@ e.IsHelpfulSpell = function() return helpful end
 e.HasPlayerBuff = function(id) return proc and (id == e.S.SHADOW_TRANCE or id == e.S.CLEARCASTING) end
 e.StablePlayerBuff = function(id) if id == e.S.POWER_WORD_SHIELD then return shielded,100 end return true,100 end
 e.HasMyTargetDebuff = function() return true,100 end
+e.StableMyTargetDebuff = e.HasMyTargetDebuff
 local function load(path)
     local chunk = assert(loadfile("HCOneButton/"..path)); setfenv(chunk,e); chunk()
 end

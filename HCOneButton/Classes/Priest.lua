@@ -190,7 +190,7 @@ function Class:GetCandidates(ctx)
         end
     end
 
-    local pain = API.HasMyTargetDebuff(S.SHADOW_WORD_PAIN)
+    local pain = API.StableMyTargetDebuff(S.SHADOW_WORD_PAIN)
     if not pain and canSpend(S.SHADOW_WORD_PAIN, 30) and targetHP >= 40 and reserve >= 43 then
         local longEnough = not ttk or ttk >= 9
         if longEnough then
@@ -213,7 +213,7 @@ function Class:GetCandidates(ctx)
             "Use learned Shadow filler, including mixed builds, while keeping recovery mana | " .. context,
             ctx.spec == 3 and 80 or 78, "damage")
     end
-    if canSpend(S.HOLY_FIRE, 45) and not API.HasMyTargetDebuff(S.HOLY_FIRE)
+    if canSpend(S.HOLY_FIRE, 45) and not API.StableMyTargetDebuff(S.HOLY_FIRE)
        and targetHP >= 50 and reserve >= 52 and CastFits(S.HOLY_FIRE, DamageCastSeconds(S.HOLY_FIRE) + 6) then
         Engine.AddCandidate(candidates, S.HOLY_FIRE, "HOLY FIRE", "CAST MANUALLY",
             "Add learned Holy damage when there is time for the cast and useful DoT ticks | " .. context, 81, "damage")

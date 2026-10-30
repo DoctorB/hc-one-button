@@ -8,7 +8,7 @@ setfenv(1, E)
 HCOB.Core.ClassAPI = HCOB.Core.ClassAPI or {
     IsKnown = IsKnown, IsUsable = IsUsable, CooldownReady = CooldownReady,
     HasPlayerBuff = HasPlayerBuff, StablePlayerBuff = StablePlayerBuff,
-    HasMyTargetDebuff = HasMyTargetDebuff,
+    HasMyTargetDebuff = HasMyTargetDebuff, StableMyTargetDebuff = StableMyTargetDebuff,
     SpellCastSeconds = SpellCastSeconds, HasWandEquipped = HasWandEquipped,
     SpellName = SpellName, AuraByName = AuraByName, Clamp = Clamp,
 }

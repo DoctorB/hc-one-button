@@ -31,6 +31,7 @@ environment.HasMyTargetDebuff = function(id)
     local state = debuffs[id]
     return state ~= nil, state or 0
 end
+environment.StableMyTargetDebuff = function(id) return environment.HasMyTargetDebuff(id) end
 environment.StablePlayerBuff = function() return false, 0 end
 environment.SpellName = function(id) return id and ("Spell" .. tostring(id)) end
 environment.UnitHealthPct = function() return 90, true end

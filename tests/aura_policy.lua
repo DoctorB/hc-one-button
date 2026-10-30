@@ -3,17 +3,20 @@ local environment = setmetatable({}, {__index=hostGlobal})
 environment._G = environment
 
 local now = 100
-local auras = {player={}, pet={}}
+local auras = {player={}, pet={}, target={}}
+local targetGUID = "Creature-mob-1"
 local names = {
     [1001]="Test Armor",
     [1002]="Mend Pet",
     [2001]="Test Armor", -- higher rank of the same aura
+    [3001]="Test Corruption",
 }
 
 local internal = setmetatable({}, {__index=environment})
 environment.HCOneButton = {Internal=internal}
 environment.GetTime = function() return now end
-environment.UnitExists = function(unit) return unit == "player" or unit == "pet" end
+environment.UnitExists = function(unit) return unit == "player" or unit == "pet" or (unit == "target" and targetGUID ~= nil) end
+environment.SafeUnitGUID = function(unit) return unit == "target" and targetGUID or nil end
 environment.SpellName = function(id) return names[id] end
 environment.SafeString = function(value, fallback) return type(value) == "string" and value or fallback end
 environment.SafeNumber = function(value, fallback) return tonumber(value) or fallback end
@@ -80,5 +83,27 @@ expect(active, true, "transient pet aura miss suppressed")
 now = 301.10
 active = internal.StablePetBuff(1002)
 expect(active, false, "stable pet aura removal exposed")
+
+-- A DoT reaches the target aura list after UNIT_SPELLCAST_SUCCEEDED. The
+-- cast must count as applied meanwhile so the same slot is not shown again.
+now = 400
+expect(internal.StableMyTargetDebuff(3001), false, "missing target debuff exposed")
+internal.NotePlayerSpellcastSucceeded(3001)
+now = 400.30
+active, remaining = internal.StableMyTargetDebuff(3001)
+expect(active, true, "target debuff cast grace before the aura arrives")
+expect(remaining, 999, "target debuff cast grace is not near expiry")
+targetGUID = "Creature-mob-2"
+expect(internal.StableMyTargetDebuff(3001), false, "target debuff grace bound to the cast target")
+targetGUID = "Creature-mob-1"
+now = 401.60
+expect(internal.StableMyTargetDebuff(3001), false, "resisted DoT is offered again after the grace")
+internal.NotePlayerSpellcastSucceeded(3001)
+auras.target[1] = {name="Test Corruption", duration=18, expirationTime=419.60}
+active, remaining = internal.StableMyTargetDebuff(3001)
+expect(active, true, "visible target debuff detected")
+expect(math.floor(remaining), 18, "visible target debuff remaining")
+auras.target[1] = nil
+expect(internal.StableMyTargetDebuff(3001), false, "visible aura ends the cast grace")
 
 print("stable self/pet aura policy regression: PASS")

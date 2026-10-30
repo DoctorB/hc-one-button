@@ -129,7 +129,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     -- A fleeing mob comes back with friends. Slow it first, otherwise finish it.
     if inCombat and HCOB.Hunter.TargetFleeing() then
         if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and HCOB.Hunter.CanCastRanged(S.CONCUSSIVE_SHOT)
-           and not HasMyTargetDebuff(S.CONCUSSIVE_SHOT) then
+           and not StableMyTargetDebuff(S.CONCUSSIVE_SHOT) then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.CONCUSSIVE_SHOT, "FLEEING: CONCUSSIVE", "CTRL+SHIFT", "The target is running for help: slow it before it brings adds", 116, "control")
         elseif IsKnown(S.ARCANE_SHOT) and CooldownReady(S.ARCANE_SHOT) and HCOB.Hunter.CanCastRanged(S.ARCANE_SHOT) then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.ARCANE_SHOT, "FLEEING: ARCANE", IsKnown(S.AIMED_SHOT) and "CAST MANUALLY" or "ALT+SHIFT", "Finish it before it reaches other enemies", 112, "finisher")
@@ -139,7 +139,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     -- Without the pet tank every hit lands on the Hunter.
     if inCombat and petState == "dead" and targetHP > 25 then
         if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and HCOB.Hunter.CanCastRanged(S.CONCUSSIVE_SHOT)
-           and not HasMyTargetDebuff(S.CONCUSSIVE_SHOT) then
+           and not StableMyTargetDebuff(S.CONCUSSIVE_SHOT) then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.CONCUSSIVE_SHOT, "PET DEAD: CONCUSSIVE", "CTRL+SHIFT", "No pet tank: slow the target and keep it at range", 94, "survival")
         else
             HCOB.Advisor.Engine.AddCandidate(candidates, nil, "PET DEAD", "KEEP DISTANCE", "No pet tank: finish only if the fight stays safe", 84, "threat", "caution")
@@ -189,7 +189,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
             HCOB.Advisor.Engine.AddCandidate(candidates, S.RAPTOR_STRIKE, lowTarget and "RAPTOR FINISH" or "RAPTOR STRIKE", "CAST MANUALLY", "Queue one empowered melee swing; do not press again while queued", raptorScore, lowTarget and "finisher" or "damage")
         end
 
-        if IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
+        if IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not StableMyTargetDebuff(S.WING_CLIP) then
             local wingScore = dyingSoon and 76 or (lowTarget and 90 or 100)
             HCOB.Advisor.Engine.AddCandidate(candidates, S.WING_CLIP, "WING CLIP + EXIT", "ALT", "Dead zone: slow, create distance and resume Auto Shot", wingScore, "survival")
         end
@@ -232,7 +232,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     if estimatedTTK then markWorth = estimatedTTK >= 10 end
     if IsKnown(S.HUNTERS_MARK) and CooldownReady(S.HUNTERS_MARK) and HCOB.Hunter.CanCastRanged(S.HUNTERS_MARK)
        and targetHP >= 60 and (not inCombat or elapsed <= 3.5) and markWorth then
-        if not HasMyTargetDebuff(S.HUNTERS_MARK) then
+        if not StableMyTargetDebuff(S.HUNTERS_MARK) then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.HUNTERS_MARK, "HUNTER'S MARK", "CAST MANUALLY", "Target will live long enough | " .. context, (inCombat and 54 or 64) - riskPenalty * 0.25, "setup")
         end
     end
@@ -294,7 +294,7 @@ function Class:GetBuffRecommendation(inCombat)
 end
 
 function Class:GetCautionRecommendation(ctx)
-    if HCOB.Hunter.TargetIsClose() and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
+    if HCOB.Hunter.TargetIsClose() and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not StableMyTargetDebuff(S.WING_CLIP) then
         return S.WING_CLIP, "UNFAVORABLE FIGHT", "ALT", ctx.text .. ": Wing Clip and return to range", "caution"
     end
     if IsKnown(S.CONCUSSIVE_SHOT) and CooldownReady(S.CONCUSSIVE_SHOT) and HCOB.Hunter.CanCastRanged(S.CONCUSSIVE_SHOT) then
@@ -355,7 +355,7 @@ function Class:GetPanicRecommendation()
         if IsKnown(S.FEIGN_DEATH) and CooldownReady(S.FEIGN_DEATH) and IsUsable(S.FEIGN_DEATH) then
             return S.FEIGN_DEATH, "FEIGN DEATH", "CTRL+ALT+SHIFT", "Pet passive + follow, then Feign: do not let the pet keep you in combat"
         end
-        if HCOB.Hunter.TargetIsClose() and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
+        if HCOB.Hunter.TargetIsClose() and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not StableMyTargetDebuff(S.WING_CLIP) then
             return S.WING_CLIP, "WING CLIP + RUN", "ALT", "Feign unavailable: slow and create distance"
         end
         if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and HCOB.Hunter.CanCastRanged(S.SCATTER_SHOT) then
@@ -376,7 +376,7 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
             if IsKnown(S.FEIGN_DEATH) and CooldownReady(S.FEIGN_DEATH) and IsUsable(S.FEIGN_DEATH) then
                 return S.FEIGN_DEATH, "3+ MOBS - FEIGN", "CTRL+ALT+SHIFT", "Pet passive + follow and reset the pull", "danger"
             end
-            if close and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
+            if close and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not StableMyTargetDebuff(S.WING_CLIP) then
                 return S.WING_CLIP, "3+ MOBS - WING CLIP", "ALT", "Slow the target on you and create an escape route", "danger"
             end
             if IsKnown(S.SCATTER_SHOT) and CooldownReady(S.SCATTER_SHOT) and HCOB.Hunter.CanCastRanged(S.SCATTER_SHOT) then
@@ -390,7 +390,7 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
             return id, "2 MOBS - GET OUT", key or "CTRL+ALT+SHIFT", reason or "Reset the pull", "danger"
         end
 
-        if close and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not HasMyTargetDebuff(S.WING_CLIP) then
+        if close and IsKnown(S.WING_CLIP) and IsUsable(S.WING_CLIP) and not StableMyTargetDebuff(S.WING_CLIP) then
             return S.WING_CLIP, "MULTI x2 - DEAD ZONE", "ALT", "Slow, leave melee and put the pet back in front", "caution"
         end
 

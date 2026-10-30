@@ -32,6 +32,7 @@ environment.StablePetBuff = function(id)
     return remaining ~= nil, remaining or 0
 end
 environment.HasMyTargetDebuff = function() return false end
+environment.StableMyTargetDebuff = environment.HasMyTargetDebuff
 environment.SpellName = function(id, fallback) return id and ("Spell" .. tostring(id)) or fallback end
 environment.UnitHealthPct = function() return 100, true end
 environment.UnitPowerPct = function() return 100, true end
@@ -91,6 +92,7 @@ environment.HCOneButton.Core.ClassAPI = {
     HasPlayerBuff=environment.HasPlayerBuff,
     StablePlayerBuff=environment.StablePlayerBuff,
     HasMyTargetDebuff=environment.HasMyTargetDebuff,
+    StableMyTargetDebuff=environment.HasMyTargetDebuff,
     SpellCastSeconds=environment.SpellCastSeconds,
     HasWandEquipped=environment.HasWandEquipped,
     SpellName=environment.SpellName,

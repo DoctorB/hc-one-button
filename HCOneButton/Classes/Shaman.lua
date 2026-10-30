@@ -82,7 +82,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         HCOB.Advisor.Engine.AddCandidate(candidates, S.FROST_SHOCK, "FROST SHOCK + KITE", "CAST MANUALLY", "Defensive shock: slow and create distance | " .. context, 91, "control")
     end
 
-    local flame = HasMyTargetDebuff(S.FLAME_SHOCK)
+    local flame = StableMyTargetDebuff(S.FLAME_SHOCK)
     if IsKnown(S.FLAME_SHOCK) and not flame and manaPct >= 42 and targetHP >= 50 and reserve >= 45 then
         local longEnough = not ttk or ttk >= 10
         if longEnough then

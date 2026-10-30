@@ -78,6 +78,7 @@ env.SafeUnitGUID = function(unit)
     return state.guid
 end
 env.HasMyTargetDebuff = function(id) return state.debuffs[id] == true end
+env.StableMyTargetDebuff = env.HasMyTargetDebuff
 env.StablePlayerBuff = function(id) return state.buffs[id] == true end
 env.StablePetBuff = function(id) return state.petBuffs[id] == true end
 env.UnitCastingInfo = function() return state.casting end

@@ -78,7 +78,7 @@ end
 
 local function HasFeralFire()
     if not IsKnown(S.FAERIE_FIRE_FERAL) then return false end
-    return HasMyTargetDebuff(S.FAERIE_FIRE_FERAL)
+    return StableMyTargetDebuff(S.FAERIE_FIRE_FERAL)
 end
 
 function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
@@ -102,7 +102,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
     end
 
     if not inCombat and hostile and form ~= FORM_CAT and form ~= FORM_BEAR and spec ~= 2 then
-        if IsKnown(S.MOONFIRE) and IsUsable(S.MOONFIRE) and targetHP >= 45 and manaPct >= 35 and not HasMyTargetDebuff(S.MOONFIRE) then
+        if IsKnown(S.MOONFIRE) and IsUsable(S.MOONFIRE) and targetHP >= 45 and manaPct >= 35 and not StableMyTargetDebuff(S.MOONFIRE) then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.MOONFIRE, "MOONFIRE OPENER", "CAST MANUALLY", "Apply the instant DoT while the target is still at range", 72, "opener")
         elseif IsKnown(S.WRATH) and IsUsable(S.WRATH) and manaPct >= 25 then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.WRATH, "WRATH OPENER", "BASE", "Open from range before the target reaches melee", 66, "opener")
@@ -176,7 +176,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
             end
         end
 
-        if cp >= 4 and targetHP >= 42 and IsKnown(S.RIP) and IsUsable(S.RIP) and not HasMyTargetDebuff(S.RIP) then
+        if cp >= 4 and targetHP >= 42 and IsKnown(S.RIP) and IsUsable(S.RIP) and not StableMyTargetDebuff(S.RIP) then
             local longEnough = not ttk or ttk >= 10
             if longEnough then
                 HCOB.Advisor.Engine.AddCandidate(candidates, S.RIP, "RIP", "CAST MANUALLY", tostring(cp) .. " combo points and enough expected lifetime for the bleed | " .. context, 84, "dot")
@@ -184,7 +184,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
 
         if cp >= 4 and IsKnown(S.FEROCIOUS_BITE) and IsUsable(S.FEROCIOUS_BITE) then
-            local ripActive = HasMyTargetDebuff(S.RIP)
+            local ripActive = StableMyTargetDebuff(S.RIP)
             local biteNow = targetHP <= 38 or (ttk and ttk <= 8) or (cp >= 5 and (ripActive or targetHP <= 55))
             if biteNow then
                 local score = targetHP <= 24 and 101 or 88
@@ -192,7 +192,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
             end
         end
 
-        if IsKnown(S.RAKE) and IsUsable(S.RAKE) and targetHP >= 52 and not HasMyTargetDebuff(S.RAKE) and reserve >= 42 then
+        if IsKnown(S.RAKE) and IsUsable(S.RAKE) and targetHP >= 52 and not StableMyTargetDebuff(S.RAKE) and reserve >= 42 then
             local longEnough = not ttk or ttk >= 8
             if longEnough then
                 HCOB.Advisor.Engine.AddCandidate(candidates, S.RAKE, "RAKE", "CAST MANUALLY", "Early bleed with enough target lifetime remaining | " .. context, 69, "dot")
@@ -210,7 +210,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
         end
     else
         -- Caster form: control first, then spend mana according to spec.
-        if close and targetHP > 22 and IsKnown(S.ENTANGLING_ROOTS) and IsUsable(S.ENTANGLING_ROOTS) and not HasMyTargetDebuff(S.ENTANGLING_ROOTS) then
+        if close and targetHP > 22 and IsKnown(S.ENTANGLING_ROOTS) and IsUsable(S.ENTANGLING_ROOTS) and not StableMyTargetDebuff(S.ENTANGLING_ROOTS) then
             HCOB.Advisor.Engine.AddCandidate(candidates, S.ENTANGLING_ROOTS, "ROOT + DISTANCE", "CTRL", "Control the target, create range, then heal or resume ranged damage | " .. context, reserve < 55 and 98 or 86, "control")
         end
 
@@ -226,7 +226,7 @@ function Class:GetRecommendation(inCombat, hostile, targetHP, spec)
             end
         end
 
-        if spec ~= 2 and IsKnown(S.MOONFIRE) and IsUsable(S.MOONFIRE) and manaPct >= 32 and targetHP >= 45 and reserve >= 42 and not HasMyTargetDebuff(S.MOONFIRE) then
+        if spec ~= 2 and IsKnown(S.MOONFIRE) and IsUsable(S.MOONFIRE) and manaPct >= 32 and targetHP >= 45 and reserve >= 42 and not StableMyTargetDebuff(S.MOONFIRE) then
             local longEnough = not ttk or ttk >= 8
             if longEnough then
                 HCOB.Advisor.Engine.AddCandidate(candidates, S.MOONFIRE, "MOONFIRE", "CAST MANUALLY", "DoT only when target lifetime and mana reserve justify it | " .. context, spec == 1 and 72 or 61, "dot")
@@ -317,7 +317,7 @@ function Class:GetMultiPullRecommendation(enemies, hp, targetHP)
         return id, "2 MOBS - GET OUT", key or "ALL MODS", reason or "Reduce pressure", "danger"
     end
 
-    if form == FORM_CASTER and IsKnown(S.ENTANGLING_ROOTS) and IsUsable(S.ENTANGLING_ROOTS) and not HasMyTargetDebuff(S.ENTANGLING_ROOTS) then
+    if form == FORM_CASTER and IsKnown(S.ENTANGLING_ROOTS) and IsUsable(S.ENTANGLING_ROOTS) and not StableMyTargetDebuff(S.ENTANGLING_ROOTS) then
         return S.ENTANGLING_ROOTS, "MULTI x2 - ROOT", "CTRL", "Root one target and fight only one mob at a time", "caution"
     end
     if form ~= FORM_BEAR and IsKnown(S.BEAR_FORM) and IsUsable(S.BEAR_FORM) then

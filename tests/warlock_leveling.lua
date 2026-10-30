@@ -17,6 +17,7 @@ e.HasWandEquipped=function() return wand end
 e.StablePlayerBuff=function(id) return buffs[id]~=nil,buffs[id] or 0 end
 e.HasPlayerBuff=e.StablePlayerBuff
 e.HasMyTargetDebuff=function(id) return debuffs[id]==true end
+e.StableMyTargetDebuff=e.HasMyTargetDebuff
 e.SpellName=function(id) return "Localized"..tostring(id) end
 e.TalentSpec=function() return ctx.spec,"Test tree",1 end
 e.UnitHealthPct=function(unit) return unit=="player" and ctx.player.hp or ctx.target.hp,true end
