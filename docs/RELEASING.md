@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.24, the version-controlled public notes are in
-[`releases/1.29.24.md`](releases/1.29.24.md). Paste that document into
+For 1.29.25, the version-controlled public notes are in
+[`releases/1.29.25.md`](releases/1.29.25.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -140,7 +140,21 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.24 publication validation
+### 1.29.25 publication validation
+
+Publication authorized on 2026-10-30. Fixes DoTs and target debuffs being
+recommended twice: after a successful cast the debuff counts as applied for
+1.5 seconds on the cast target, so a pixel reader no longer casts it again
+before the aura arrives. Validation: 57 Lua chunks, 48 Lua suites (9 new
+target-debuff cast-window checks), 58 TOC references; the offline Python
+release tests run in the workflow. Not yet checked in game; the owner asked
+to publish without the in-game check.
+
+Publish tag `v1.29.25`, title **HCOneButton v1.29.25**, using
+[`releases/1.29.25.md`](releases/1.29.25.md) as the ordinary Release body.
+Verify CurseForge acceptance separately from moderation approval.
+
+### Archived 1.29.24 publication validation
 
 Publication authorized on 2026-10-29. Republishes the 1.29.23 UI update (flat
 dark theme, Action Panel highlight) with notes stating its in-game check; a

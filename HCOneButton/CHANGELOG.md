@@ -2,7 +2,18 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.24`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.25`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.25 — 2026-10-30
+
+### Fixed — DoTs and debuffs recommended twice
+
+- A target debuff reaches the client a moment after `UNIT_SPELLCAST_SUCCEEDED`. In that gap the Advisor still saw it missing and showed the same slot again after the Diagnostic Pixel acknowledgement, so a pixel reader cast the DoT a second time. After a successful cast the debuff now counts as applied for 1.5 seconds on the target it was cast on (`StableMyTargetDebuff`); a visible debuff ends the window, a resisted one is offered again when it ends, and a different target is not affected.
+- Applies to Warlock (Corruption, Curse of Agony, Immolate, Curse of Weakness, Fear), Priest (Shadow Word: Pain, Holy Fire), Shaman (Flame Shock), Druid (Moonfire, Rip, Rake, Faerie Fire (Feral), Entangling Roots), Hunter (Hunter's Mark, Concussive Shot, Wing Clip), Mage (Polymorph), Rogue (Garrote) and Warrior (Rend, Hamstring). Gouge, Frost Nova, Serpent Sting and the Warrior defensive debuffs keep their own tracking.
+
+### Validation
+
+- Version `1.29.25`, Interface `11509`; 57 Lua chunks, 48 Lua suites (9 new target-debuff cast-window checks), 58 TOC references. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.25.md`. Not yet checked in game.
 
 ## 1.29.24 — 2026-10-29
 
