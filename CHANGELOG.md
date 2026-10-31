@@ -13,7 +13,7 @@ The current release is `1.29.26`, targeting WoW Classic Era / Hardcore interface
 
 ### Validation
 
-- Version `1.29.26`, Interface `11509`; 57 Lua chunks, 48 Lua suites (6 new cast-start window checks, 15 target-debuff cast-window checks in total), 58 TOC references. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.26.md`. Not yet checked in game.
+- Version `1.29.26`, Interface `11509`; 57 Lua chunks, 48 Lua suites (6 new cast-start window checks, 15 target-debuff cast-window checks in total), 58 TOC references. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.26.md`. Checked in game on 2026-10-31: in 60 Warlock fights (level 11-12) Corruption was applied in 58, and a cast-time DoT came back at the end of its own cast in 3 of 129 casts (all in 2-4 enemy fights, against 15 of 68 on `1.29.25`); in single-enemy fights a DoT was cast twice only after a resist.
 
 ## 1.29.25 — 2026-10-30
 
@@ -24,7 +24,7 @@ The current release is `1.29.26`, targeting WoW Classic Era / Hardcore interface
 
 ### Validation
 
-- Version `1.29.25`, Interface `11509`; 57 Lua chunks, 48 Lua suites (9 new target-debuff cast-window checks), 58 TOC references. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.25.md`. Not yet checked in game.
+- Version `1.29.25`, Interface `11509`; 57 Lua chunks, 48 Lua suites (9 new target-debuff cast-window checks), 58 TOC references. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.25.md`. Not yet checked in game; combat logs later showed the fix incomplete for cast-time DoTs, completed in `1.29.26`.
 
 ## 1.29.24 — 2026-10-29
 

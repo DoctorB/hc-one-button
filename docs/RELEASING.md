@@ -148,8 +148,11 @@ now opens at cast start and is withdrawn only when that same cast fails, so
 the gap between the cast bar ending and the cast success no longer shows the
 DoT again. Validation: 57 Lua chunks, 48 Lua suites (6 new cast-start window
 checks), 58 TOC references; the offline Python release tests run in the
-workflow. Not yet checked in game; the owner asked to publish and installed
-the build on the gaming PC for the in-game check.
+workflow. Published with in-game validation pending; the owner confirmed it
+in game on 2026-10-31 (60 Warlock fights at level 11-12: Corruption applied in
+58, end-of-cast DoT repeat in 3 of 129 casts, all in multi-enemy fights,
+against 15 of 68 on 1.29.25). The repository notes and the GitHub Release body
+were corrected; the CurseForge file changelog is edited by hand.
 
 Publish tag `v1.29.26`, title **HCOneButton v1.29.26**, using
 [`releases/1.29.26.md`](releases/1.29.26.md) as the ordinary Release body.
@@ -163,7 +166,8 @@ recommended twice: after a successful cast the debuff counts as applied for
 before the aura arrives. Validation: 57 Lua chunks, 48 Lua suites (9 new
 target-debuff cast-window checks), 58 TOC references; the offline Python
 release tests run in the workflow. Not yet checked in game; the owner asked
-to publish without the in-game check.
+to publish without the in-game check. Combat logs of 2026-10-31 showed the fix
+incomplete for cast-time DoTs (Corruption/Immolate rank 1); 1.29.26 completes it.
 
 Publish tag `v1.29.25`, title **HCOneButton v1.29.25**, using
 [`releases/1.29.25.md`](releases/1.29.25.md) as the ordinary Release body.
