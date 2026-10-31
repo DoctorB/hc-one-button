@@ -106,4 +106,24 @@ expect(math.floor(remaining), 18, "visible target debuff remaining")
 auras.target[1] = nil
 expect(internal.StableMyTargetDebuff(3001), false, "visible aura ends the cast grace")
 
+-- A 2 s cast-time DoT leaves the cast bar before UNIT_SPELLCAST_SUCCEEDED.
+-- The window opened at cast start must cover that gap.
+environment.SpellCastSeconds = function() return 2 end
+now = 500
+internal.NotePlayerSpellcastStart(3001, "cast-1")
+now = 502.05
+expect(internal.StableMyTargetDebuff(3001), true, "cast-time DoT covered between cast end and success")
+internal.NotePlayerSpellcastFailed("cast-other")
+expect(internal.StableMyTargetDebuff(3001), true, "failure of another press keeps the running cast window")
+internal.NotePlayerSpellcastFailed("cast-1")
+expect(internal.StableMyTargetDebuff(3001), false, "failed or interrupted cast is offered again")
+now = 600
+internal.NotePlayerSpellcastStart(3001, "cast-2")
+now = 602.00
+internal.NotePlayerSpellcastSucceeded(3001)
+internal.NotePlayerSpellcastFailed("cast-2")
+expect(internal.StableMyTargetDebuff(3001), true, "success replaces the cast-start window")
+now = 603.60
+expect(internal.StableMyTargetDebuff(3001), false, "cast-time DoT window is bounded after success")
+
 print("stable self/pet aura policy regression: PASS")

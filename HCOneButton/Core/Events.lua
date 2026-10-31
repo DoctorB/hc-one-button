@@ -139,6 +139,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
             elseif (event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_CHANNEL_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED") and CancelTuningPending then
                 CancelTuningPending(eventArg3, eventArg2)
             end
+            if event == "UNIT_SPELLCAST_START" and NotePlayerSpellcastStart then
+                NotePlayerSpellcastStart(eventArg3, eventArg2)
+            elseif (event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED") and NotePlayerSpellcastFailed then
+                NotePlayerSpellcastFailed(eventArg2)
+            end
         end
         if event == "CURRENT_SPELL_CAST_CHANGED" and RecordTuningQueueState then RecordTuningQueueState() end
         if event == "UNIT_SPELLCAST_SUCCEEDED" and eventArg1 == "player" and AcknowledgeDiagnosticPixelCast then

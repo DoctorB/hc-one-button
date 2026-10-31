@@ -86,6 +86,26 @@ function NotePlayerSpellcastSucceeded(spellID)
     if guid then targetDebuffGrace[name] = {guid=guid, untilTime=now + TARGET_DEBUFF_CAST_GRACE} end
 end
 
+-- A cast-time DoT (Corruption/Immolate rank 1, Polymorph) leaves the cast bar
+-- before UNIT_SPELLCAST_SUCCEEDED arrives. Start the window at cast start so
+-- that gap cannot show the same slot again; only a failure of this very cast
+-- (matched by castGUID) withdraws it.
+function NotePlayerSpellcastStart(spellID, castGUID)
+    local name = SpellName(spellID)
+    local guid = SafeUnitGUID and SafeUnitGUID("target")
+    if not name or not guid then return end
+    local castSeconds = SpellCastSeconds and SpellCastSeconds(spellID) or 0
+    targetDebuffGrace[name] = {guid=guid, castGUID=castGUID,
+        untilTime=GetTime() + castSeconds + TARGET_DEBUFF_CAST_GRACE}
+end
+
+function NotePlayerSpellcastFailed(castGUID)
+    if castGUID == nil then return end
+    for name, grace in pairs(targetDebuffGrace) do
+        if grace.castGUID == castGUID then targetDebuffGrace[name] = nil end
+    end
+end
+
 local function StableUnitBuff(unit, id)
     local name = SpellName(id)
     if not name then return false, 0 end
