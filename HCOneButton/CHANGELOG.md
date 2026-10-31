@@ -2,7 +2,18 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.25`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.26`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.26 — 2026-10-31
+
+### Fixed — cast-time DoTs still cast twice
+
+- The `1.29.25` window started at `UNIT_SPELLCAST_SUCCEEDED`. A cast-time DoT (Corruption and Immolate at rank 1, 2 s cast) leaves the cast bar before that event, so for a moment the Advisor saw neither a cast in progress nor the debuff and showed the same slot again. Warlock combat logs on `1.29.25` showed the repeat about 2.16 s after the first recommendation, without a resist, in 14 of 43 Corruption fights and 6 of 11 Immolate fights.
+- `NotePlayerSpellcastStart` now opens the target-debuff window at `UNIT_SPELLCAST_START` for the cast time plus 1.5 s, bound to the target; `NotePlayerSpellcastFailed` withdraws it only for a failure or interruption with the same cast GUID, so a rejected extra press during the cast does not reopen the slot. A successful cast still restarts the usual 1.5 s window. Applies to every cast-time target debuff, Polymorph included.
+
+### Validation
+
+- Version `1.29.26`, Interface `11509`; 57 Lua chunks, 48 Lua suites (6 new cast-start window checks, 15 target-debuff cast-window checks in total), 58 TOC references. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.26.md`. Not yet checked in game.
 
 ## 1.29.25 — 2026-10-30
 

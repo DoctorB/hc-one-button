@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.25`
+- **Current version:** `1.29.26`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.25` stops DoTs and debuffs from being recommended twice right after a successful cast.
+Version `1.29.26` stops cast-time DoTs such as Corruption and Immolate from being cast twice in a row.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -42,6 +42,8 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ---
 
 ## Current release
+
+Version `1.29.26` completes the double-DoT fix for **cast-time DoTs**. Corruption and Immolate at low rank have a 2-second cast: the cast bar ends a moment before the cast success is confirmed, and in that gap the Advisor showed the same DoT again, so a pixel reader cast it a second time (Warlock combat logs on `1.29.25` showed it in 14 of 43 Corruption fights and 6 of 11 Immolate fights). The debuff window now opens when the cast starts, lasts the cast time plus 1.5 seconds on the cast target and is withdrawn only if that same cast fails or is interrupted. It applies to every cast-time target debuff, Polymorph included. Not yet checked in game.
 
 Version `1.29.25` fixes **double DoT casts**. A target debuff reaches the client a moment after the cast succeeds; in that gap the same DoT stayed recommended and a pixel reader, which re-sends the shown slot, cast it a second time. After a successful cast the debuff now counts as applied for 1.5 seconds on the target it was cast on; a debuff that shows up earlier ends the window, and a resisted one is offered again when it ends. This covers Warlock (Corruption, Curse of Agony, Immolate, Curse of Weakness, Fear), Priest (Shadow Word: Pain, Holy Fire), Shaman (Flame Shock), Druid (Moonfire, Rip, Rake, Faerie Fire (Feral), Entangling Roots), Hunter (Hunter's Mark, Concussive Shot, Wing Clip), Mage (Polymorph), Rogue (Garrote) and Warrior (Rend, Hamstring). Not yet checked in game.
 
@@ -1343,11 +1345,11 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.25` passes the following automated checks:
+Version `1.29.26` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
 - **48/48 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
-- **9 target-debuff cast-window checks** cover the window before the aura arrives, its binding to the cast target, a resist after the window and a visible debuff ending it;
+- **15 target-debuff cast-window checks** cover the window before the aura arrives, its binding to the cast target, a resist after the window, a visible debuff ending it, the gap between a cast-time DoT's cast end and its success, and withdrawal only when that same cast fails;
 - **31 Action Panel highlight checks** drive the real CoreHUD and Action Panel code: flat icon slots, short key labels, the recommended ring, glow and larger icon, dimming of the other slots, the pulse with its change flash and clearing;
 - **128 Warlock checks** cover the pull gate (no opener on a fresh target with or without a wand, the BASE press starting the opener, a new target or a new fight needing a new press), pet-held versus exposed proximity, Drain Soul versus the finishing wand, the Shadowburn shard reserve, Health Funnel versus Drain Life and Death Coil, the no-wand filler and wait states, openers, Spell Lock cooldown, pet recovery spells, the single-press BASE in all trees with and without a wand, and the pet-off-target notice with its grace period;
 - **50 Warrior single-press checks** cover the BASE macro (no Rend sequence for any target or option), attack-stopped detection (stopped/active/unreadable state, reach unknown/out, unengaged target, cast hold, modern API fallback), funded-strike precedence, idle/no-target/Execute-pooling hints, risk decoration and the Advisor opener Rend with its option and window;
@@ -1400,7 +1402,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.25.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.26.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 
