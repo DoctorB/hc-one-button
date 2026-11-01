@@ -99,8 +99,8 @@ raw commit list or the complete historical `CHANGELOG.md`:
    version's results as current. Keep public notes focused on those facts.
 6. `Compatibility Target`, followed by `Author` (`DoctorB`).
 
-For 1.29.26, the version-controlled public notes are in
-[`releases/1.29.26.md`](releases/1.29.26.md). Paste that document into
+For 1.29.27, the version-controlled public notes are in
+[`releases/1.29.27.md`](releases/1.29.27.md). Paste that document into
 the GitHub Release body: the upload code sends the body unchanged as Markdown.
 The manual-run artifact's changelog extract is only a technical preview, not
 the curated public release text. Formatting these notes does not publish them.
@@ -140,7 +140,23 @@ the package is ready; a real upload acceptance message requires a successful
 API response and its receipt. Checkout/artifact actions are pinned Node 24
 versions, not Node 20 actions relying on a forced runtime override.
 
-### 1.29.26 publication validation
+### 1.29.27 publication validation
+
+Publication authorized on 2026-11-01. The Priest pull now waits for BASE
+(opener only after a BASE press on that target, `PULL READY / PRESS BASE`
+with no spell before it, mark cleared in combat), and the Warlock DoT gates
+use the historical kill time of the same mob until the rolling TTK is ready.
+Validation: 57 Lua chunks, 48 Lua suites (144 Warlock, 125 Priest checks),
+58 TOC references; the offline Python release tests run in the workflow.
+Checked in game before release: 60 Priest fights at level 8-9 on 2026-11-01
+(41 opened with the new `PULL READY` text, the others after the mob engaged,
+no deaths); the owner confirmed the Warlock change in game.
+
+Publish tag `v1.29.27`, title **HCOneButton v1.29.27**, using
+[`releases/1.29.27.md`](releases/1.29.27.md) as the ordinary Release body.
+Verify CurseForge acceptance separately from moderation approval.
+
+### Archived 1.29.26 publication validation
 
 Publication authorized on 2026-10-31. Completes the 1.29.25 double-DoT fix
 for cast-time DoTs (Corruption and Immolate rank 1): the target-debuff window

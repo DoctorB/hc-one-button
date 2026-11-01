@@ -2,7 +2,21 @@
 
 This file records the HCOneButton release history. The current feature reference, installation instructions and command documentation live in [`README.md`](README.md).
 
-The current release is `1.29.26`, targeting WoW Classic Era / Hardcore interface `11509`.
+The current release is `1.29.27`, targeting WoW Classic Era / Hardcore interface `11509`.
+
+## 1.29.27 — 2026-11-01
+
+### Fixed — Priest pulled as soon as a target was selected
+
+- Out of combat the Advisor offered the Priest opener (Holy Fire, Mind Blast, Smite, Shadow Word: Pain) as soon as a hostile target was selected, and without one the ranged BASE fallback showed Smite or Shoot: both are Action Panel slots, so a pixel reader started the pull. The Priest now uses the Warlock rule of `1.29.22`: `OnBaseInput` records the target GUID on a BASE press, the opener is offered only for that target, `GetIdleRecommendation` returns `PULL READY / PRESS BASE` with no spell before the press, and entering combat clears the mark.
+
+### Improved — Warlock DoT gates at the start of a fight
+
+- `HCOB.Advisor.Engine.HistoricalKillTime(name, targetLevel, playerLevel)` returns the median duration of the latest ≤7 solo kills (≥3 needed) of the same mob by the current character, with mob and player level within one. `BuildClassContext` exposes it as `ctx.combat.ttkPrior`, scaled by target HP. The Warlock Corruption (8 s), Curse of Agony (18 s) and Immolate (11 s) gates use it while the rolling TTK is not confident; the reason text shows `TTK ~Ns hist`.
+
+### Validation
+
+- Version `1.29.27`, Interface `11509`; 57 Lua chunks, 48 Lua suites (144 Warlock checks, 125 Priest checks), 58 TOC references. No settings, bindings, history or learning reset. Public notes: `docs/releases/1.29.27.md`. Checked in game before release: 60 Priest fights at level 8-9 on 2026-11-01 (41 opened with the new `PULL READY` text, the others after the mob engaged, no deaths); the Warlock change was confirmed by the owner.
 
 ## 1.29.26 — 2026-10-31
 

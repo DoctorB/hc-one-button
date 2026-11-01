@@ -2,11 +2,11 @@
 
 > Smart WoW Classic Hardcore combat assistant with class-aware recommendations, secure clickable actions, survival logic, pet management, profession coaching, cooldown awareness, combat telemetry and passive diagnostics.
 
-- **Current version:** `1.29.26`
+- **Current version:** `1.29.27`
 - **Target client:** World of Warcraft Classic Era / Hardcore
 - **Interface:** `11509`
 
-Version `1.29.26` stops cast-time DoTs such as Corruption and Immolate from being cast twice in a row.
+Version `1.29.27` makes the Priest wait for BASE before a pull and lets Warlock DoT gates use the usual kill time of a mob at the start of a fight.
 
 HCOneButton is a quality-of-life combat assistant designed for WoW Classic Hardcore. It analyzes the current combat state and recommends useful actions while keeping the final gameplay input in the player's hands.
 
@@ -42,6 +42,8 @@ The addon combines a compact combat HUD, **Advisor Engine 2.0 for all nine class
 ---
 
 ## Current release
+
+Version `1.29.27` makes **BASE the decision to pull for the Priest**, as for the Warlock since `1.29.22`: selecting a hostile target out of combat shows `PULL READY / PRESS BASE` with no spell, so a pixel reader no longer starts the pull; the opener follows a BASE press on that target and every pull needs its own press. The **Warlock DoT gates** (Corruption 8 s, Curse of Agony 18 s, Immolate 11 s) now use how long this character usually takes to kill the same mob alone (median of the latest 3-7 solo kills, mob and player level within one) until the rolling time-to-kill estimate is ready; the reason text shows `TTK ~Ns hist`. Checked in game before release: 60 Priest fights at level 8-9 with no unwanted pull and no deaths; the Warlock change was confirmed by the author.
 
 Version `1.29.26` completes the double-DoT fix for **cast-time DoTs**. Corruption and Immolate at low rank have a 2-second cast: the cast bar ends a moment before the cast success is confirmed, and in that gap the Advisor showed the same DoT again, so a pixel reader cast it a second time (Warlock combat logs on `1.29.25` showed it in 14 of 43 Corruption fights and 6 of 11 Immolate fights). The debuff window now opens when the cast starts, lasts the cast time plus 1.5 seconds on the cast target and is withdrawn only if that same cast fails or is interrupted. It applies to every cast-time target debuff, Polymorph included. Checked in game on 2026-10-31 with a Warlock at level 11-12: Corruption was applied in 58 of 60 fights and the end-of-cast repeat dropped from 15 of 68 casts to 3 of 129, all in multi-enemy fights.
 
@@ -1345,13 +1347,13 @@ HCOB_CharacterDB (per character)
 
 ## Current baseline validation
 
-Version `1.29.26` passes the following automated checks:
+Version `1.29.27` passes the following automated checks:
 
 - **57/57 Lua chunks** pass syntax parsing in the current validation environment;
 - **48/48 Lua 5.1 regression harnesses** pass through the shared `tests/run.ps1` runner, including Hunter leveling, macro order, queue state, movement, range and aura-event regressions;
 - **15 target-debuff cast-window checks** cover the window before the aura arrives, its binding to the cast target, a resist after the window, a visible debuff ending it, the gap between a cast-time DoT's cast end and its success, and withdrawal only when that same cast fails;
 - **31 Action Panel highlight checks** drive the real CoreHUD and Action Panel code: flat icon slots, short key labels, the recommended ring, glow and larger icon, dimming of the other slots, the pulse with its change flash and clearing;
-- **128 Warlock checks** cover the pull gate (no opener on a fresh target with or without a wand, the BASE press starting the opener, a new target or a new fight needing a new press), pet-held versus exposed proximity, Drain Soul versus the finishing wand, the Shadowburn shard reserve, Health Funnel versus Drain Life and Death Coil, the no-wand filler and wait states, openers, Spell Lock cooldown, pet recovery spells, the single-press BASE in all trees with and without a wand, and the pet-off-target notice with its grace period;
+- **144 Warlock checks** cover the historical kill time used by the DoT gates, the pull gate (no opener on a fresh target with or without a wand, the BASE press starting the opener, a new target or a new fight needing a new press), pet-held versus exposed proximity, Drain Soul versus the finishing wand, the Shadowburn shard reserve, Health Funnel versus Drain Life and Death Coil, the no-wand filler and wait states, openers, Spell Lock cooldown, pet recovery spells, the single-press BASE in all trees with and without a wand, and the pet-off-target notice with its grace period;
 - **50 Warrior single-press checks** cover the BASE macro (no Rend sequence for any target or option), attack-stopped detection (stopped/active/unreadable state, reach unknown/out, unengaged target, cast hold, modern API fallback), funded-strike precedence, idle/no-target/Execute-pooling hints, risk decoration and the Advisor opener Rend with its option and window;
 - **41 Hunter pet/travel checks** cover Revive versus Call Pet after the pet's unit disappears, Mend Pet between pulls, the passive-pet warning, pet death in combat, fleeing detection (English and localized emotes, other units, expiry, target change), pet off target, the pre-pull aspect and the Cheetah reminder with its option;
 - **173 Warrior DPR checks**, **66 mitigation checks** and **118 damage-timing checks** cover changing inputs/decisions, aura/range guards, live/final HUD values and preserved learning metrics;
@@ -1360,7 +1362,7 @@ Version `1.29.26` passes the following automated checks:
 - **1,261 party-panel checks** cover all four healer classes, fixed-unit clicks, modifiers, learned-rank upgrades, persistence, independent movement, solo/party/raid visibility, combat-safe configuration and temporary hover-binding cleanup;
 - **198 group-healing checks** cover triage, mana/range/movement, incoming heals, maintained auras, optional advice, dedicated mouseover actions and isolation from self-survival tuning;
 - **250 wand checks** cover Priest/Mage/Warlock auto-repeat detection, real event dispatch, localized queries, missing/error API fallback, cooldown cycles, start/stop and range transitions, preserved efficiency scoring, healing/proc/cast/channel precedence and consistent BASE feedback;
-- **114 Priest leveling checks** cover all three talent-tree classifications, early/mixed learned spells, rank/talent-adjusted mana costs and cast times, reserve boundaries, DoT lifetime, close casting, recovery priority, no-wand fallback and extreme adaptive biases; see `docs/PRIEST_LEVELING_REVIEW.md` for the policy review;
+- **125 Priest leveling checks** cover the pull gate (no opener or slot on a fresh target, the BASE press starting the opener, a new target or a new fight needing a new press), all three talent-tree classifications, early/mixed learned spells, rank/talent-adjusted mana costs and cast times, reserve boundaries, DoT lifetime, close casting, recovery priority, no-wand fallback and extreme adaptive biases; see `docs/PRIEST_LEVELING_REVIEW.md` for the policy review;
 - threat-meter coverage verifies 48 API states across all nine classes, scaled versus raw percentage, 85% warning boundary, status-only fallback, unknown/restricted/invalid data, pet-first pulls, target/OOC reset, real DPS-history integration, saved visibility and shared-scale/layout clearance;
 - 163 Bag Quick Delete checks use simulated inventories to cover standard/ElvUI click routing, complete-stack confirmation, stale identity/count rejection, protected items, missing data/APIs, cursor ownership, scale and lifecycle safety; no live inventory is modified;
 - 192 focused recovery checks cover all nine classes, tier/level/conjured selection, secure single-edge use, active/full-resource/no-stock guards, localized auras, simultaneous eating/drinking, emergency precedence, frozen assignments and six-button layout;
@@ -1402,7 +1404,7 @@ The current Warrior policy review and repeatable diagnostic are recorded in `doc
 
 ---
 
-Curated public notes are in `docs/releases/1.29.26.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
+Curated public notes are in `docs/releases/1.29.27.md` (repository only). Publication uses the GitHub Release body unchanged as the CurseForge file changelog; an accepted upload is distinct from CurseForge moderation approval.
 
 ## License
 

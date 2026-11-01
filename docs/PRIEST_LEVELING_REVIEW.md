@@ -97,3 +97,22 @@ or overall leveling-speed gain from priority changes alone.
 API contract reference: [Blizzard spell API declarations](https://github.com/Gethe/wow-ui-source/blob/classic/Interface/AddOns/Blizzard_APIDocumentationGenerated/SpellDocumentation.lua).
 Native spell identifiers accept names; power-cost results are resource-specific
 entries. Actual client reads remain authoritative.
+
+## Follow-up: BASE is the decision to pull (1.29.27)
+
+Date: 2026-11-01. Owner feedback: as the Warlock before 1.29.22, the Priest
+pulled as soon as a mob was selected, without waiting for BASE.
+
+- Cause: out of combat the Advisor offered the opener (Holy Fire, Mind Blast,
+  Smite, Shadow Word: Pain) for any hostile target, and without one the ranged
+  BASE fallback showed Smite or Shoot. Both are Action Panel slots, so the
+  pixel reader cast them.
+- The opener is now offered only after a BASE press on this target, recorded
+  by the `OnBaseInput` class hook by target GUID. Before that the Advisor shows
+  `PULL READY / PRESS BASE` without a spell. Entering combat clears the mark.
+- `tests/priest_leveling.lua` (125 checks) covers the fresh target with and
+  without a wand, non-hostile presses, the BASE press starting the opener, a
+  new target needing a new press and the reset at combat start.
+- Checked in game on 2026-11-01 (owner report and 60 fights at level 8-9: 41
+  opened with the new `PULL READY` text, the others after the mob engaged, no
+  deaths).
