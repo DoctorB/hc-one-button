@@ -211,6 +211,42 @@ function HCOB.Advisor.Engine.ResetStabilization()
 end
 
 
+-- The rolling estimate needs a few seconds of damage, so a DoT gate used to
+-- pass on every pull. Until it is confident, use how long this character took
+-- to kill the same mob alone: median of the latest fights with mob and
+-- player levels within one.
+local KILL_TIME_SAMPLES, KILL_TIME_MIN_SAMPLES = 7, 3
+local killTimeCache = {}
+
+function HCOB.Advisor.Engine.HistoricalKillTime(name, targetLevel, playerLevel)
+    if not name or not FightBelongsToCurrentCharacter then return nil end
+    local fights = type(HCOB_CombatLog) == "table" and type(HCOB_CombatLog.fights) == "table" and HCOB_CombatLog.fights or nil
+    if not fights then return nil end
+    local key = name .. ":" .. tostring(targetLevel) .. ":" .. tostring(playerLevel)
+    local stamp = #fights .. ":" .. tostring(HCOB_CombatLog.totalFights)
+    local cached = killTimeCache[key]
+    if cached and cached.stamp == stamp then return cached.value end
+    local samples = {}
+    for i = #fights, 1, -1 do
+        local f = fights[i]
+        if FightBelongsToCurrentCharacter(f) and f.target == name
+           and math.abs((tonumber(f.targetLevel) or 0) - targetLevel) <= 1
+           and math.abs((tonumber(f.level) or 0) - playerLevel) <= 1
+           and (tonumber(f.maxEnemies) or 1) <= 1 and (tonumber(f.kills) or 0) >= 1 and not f.died then
+            local duration = tonumber(f.damageDuration) or tonumber(f.duration)
+            if duration and duration > 0 then samples[#samples + 1] = duration end
+            if #samples >= KILL_TIME_SAMPLES then break end
+        end
+    end
+    local value
+    if #samples >= KILL_TIME_MIN_SAMPLES then
+        table.sort(samples)
+        value = samples[math.floor((#samples + 1) / 2)]
+    end
+    killTimeCache[key] = {stamp=stamp, value=value}
+    return value
+end
+
 function HCOB.Advisor.Engine.BuildClassContext(inCombat, hostile, targetHP, spec)
     local hp = UnitHealthPct("player")
     local mana = HCOB.Advisor.Engine.ManaPct()
@@ -224,6 +260,11 @@ function HCOB.Advisor.Engine.BuildClassContext(inCombat, hostile, targetHP, spec
     end
     local level = PlayerLevel()
     local targetLevel = hostile and SafeUnitLevel("target", level) or level
+    local ttkPrior
+    if hostile then
+        local killTime = HCOB.Advisor.Engine.HistoricalKillTime(SafeUnitName("target", nil), targetLevel, level)
+        if killTime then ttkPrior = killTime * (tonumber(targetHP) or 100) / 100 end
+    end
     local classification = hostile and SafeUnitClassification("target", "normal") or "normal"
     local tough = classification == "elite" or classification == "rareelite" or classification == "worldboss" or targetLevel >= level + 1
     return {
@@ -237,7 +278,7 @@ function HCOB.Advisor.Engine.BuildClassContext(inCombat, hostile, targetHP, spec
             onPlayer = hostile and HCOB.Advisor.Engine.TargetOnPlayer() or false,
             onPet = hostile and HCOB.Advisor.Engine.TargetOnPet() or false,
         },
-        combat = { reserve = reserve, reserveLabel = reserveLabel, dynamics = dyn, ttk = ttk },
+        combat = { reserve = reserve, reserveLabel = reserveLabel, dynamics = dyn, ttk = ttk, ttkPrior = ttkPrior },
         pet = { alive = HCOB.Advisor.Engine.PetAlive(), hp = HCOB.Advisor.Engine.PetHP(), tanking = hostile and HCOB.Advisor.Engine.TargetOnPet() or false },
     }
 end

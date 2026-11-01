@@ -67,7 +67,8 @@ local function ContextText(ctx)
         ctx.player.hp, ctx.player.mana, ctx.combat.reserve, ctx.combat.reserveLabel or "?"
     )
     local ttk = ctx.combat.ttk
-    if ttk and ttk < math.huge then text = text .. string.format(" | TTK ~%.0fs", ttk) end
+    if ttk and ttk < math.huge then text = text .. string.format(" | TTK ~%.0fs", ttk)
+    elseif ctx.combat.ttkPrior then text = text .. string.format(" | TTK ~%.0fs hist", ctx.combat.ttkPrior) end
     if ctx.pet.alive then
         text = text .. string.format(" | pet %.0f%%%s", ctx.pet.hp or 0, ctx.pet.tanking and " tanking" or "")
     else
@@ -106,6 +107,9 @@ function Class:GetCandidates(ctx)
     local reserve = ctx.combat.reserve
     local dyn = ctx.combat.dynamics
     local ttk = ctx.combat.ttk
+    -- DoT gates fall back to the usual kill time of this mob while the
+    -- rolling estimate is not confident yet (start of the fight).
+    local dotTTK = ttk or ctx.combat.ttkPrior
     local close = ctx.target.close
     local playerTanking = ctx.target.onPlayer
     local petTanking = ctx.pet.tanking
@@ -204,7 +208,7 @@ function Class:GetCandidates(ctx)
     local corruption = API.StableMyTargetDebuff(S.CORRUPTION)
     if API.IsKnown(S.CORRUPTION) and API.IsUsable(S.CORRUPTION) and not corruption
        and mana >= 26 and targetHP >= 38 and reserve >= 38 then
-        local longEnough = not ttk or ttk >= 8
+        local longEnough = not dotTTK or dotTTK >= 8
         if longEnough then
             local score = ctx.spec == 1 and 78 or 73
             Engine.AddCandidate(candidates, S.CORRUPTION, "CORRUPTION", "CAST MANUALLY",
@@ -216,7 +220,7 @@ function Class:GetCandidates(ctx)
     local agony = API.StableMyTargetDebuff(S.CURSE_AGONY)
     if API.IsKnown(S.CURSE_AGONY) and API.IsUsable(S.CURSE_AGONY) and not agony and not weakness
        and mana >= 34 and targetHP >= 58 and reserve >= 48 and not playerTanking then
-        local longEnough = not ttk or ttk >= 18
+        local longEnough = not dotTTK or dotTTK >= 18
         if longEnough then
             Engine.AddCandidate(candidates, S.CURSE_AGONY, "CURSE OF AGONY", "CAST MANUALLY",
                 "Damage curse only when the fight is long and pet/control state is stable | " .. context,
@@ -227,7 +231,7 @@ function Class:GetCandidates(ctx)
     local immolate = API.StableMyTargetDebuff(S.IMMOLATE)
     if API.IsKnown(S.IMMOLATE) and API.IsUsable(S.IMMOLATE) and not immolate
        and mana >= 46 and targetHP >= 55 and reserve >= 48 and not exposed then
-        local longEnough = not ttk or ttk >= 11
+        local longEnough = not dotTTK or dotTTK >= 11
         if longEnough then
             Engine.AddCandidate(candidates, S.IMMOLATE, "IMMOLATE", "CAST MANUALLY",
                 "Add Immolate only when cast time, mana and remaining fight length justify it | " .. context,

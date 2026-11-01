@@ -51,6 +51,7 @@ environment.GetShapeshiftFormID = function() return 0 end
 environment.CountActiveEnemies = function() return 1 end
 environment.ActiveTargetCast = function() return nil end
 environment.HostileLiveTarget = function() return true end
+environment.SafeUnitGUID = function() return nil end
 environment.UnitExists = function() return true end
 environment.IsInGroup = function() return false end
 environment.GetWeaponEnchantInfo = function() return true end

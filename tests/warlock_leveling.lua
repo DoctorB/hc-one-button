@@ -78,6 +78,42 @@ expect(choose(),s.SHADOW_BOLT,"funded filler with DoTs up")
 debuffs[s.CORRUPTION]=nil
 expect(choose(),s.CORRUPTION,"missing Corruption is applied first")
 
+-- Before the rolling TTK is confident, DoT gates use the usual kill time.
+reset();debuffs={}
+ctx.combat.ttkPrior=6
+expect(candidate(s.CORRUPTION),nil,"historically short fight: no Corruption")
+expect(candidate(s.CURSE_AGONY),nil,"historically short fight: no Curse of Agony")
+expect(candidate(s.IMMOLATE),nil,"historically short fight: no Immolate")
+expect(choose(),s.SHADOW_BOLT,"historically short fight: Shadow Bolt instead of DoTs")
+ctx.combat.ttkPrior=12
+expect(candidate(s.CORRUPTION)~=nil,true,"12 s usual kill time keeps Corruption")
+expect(candidate(s.IMMOLATE)~=nil,true,"12 s usual kill time keeps Immolate")
+expect(candidate(s.CURSE_AGONY),nil,"12 s usual kill time is too short for Curse of Agony")
+ctx.combat.ttk=20
+expect(candidate(s.CURSE_AGONY)~=nil,true,"a confident rolling TTK overrides the history")
+ctx.combat.ttk=nil;ctx.combat.ttkPrior=nil
+expect(candidate(s.CURSE_AGONY)~=nil,true,"no history and no TTK keep the DoTs")
+
+-- Usual kill time: median of the latest solo kills of the same mob.
+e.FightBelongsToCurrentCharacter=function(f) return f.class=="WARLOCK" end
+local function fight(target,duration,extra)
+    local f={class="WARLOCK",target=target,targetLevel=12,level=12,maxEnemies=1,kills=1,damageDuration=duration}
+    for k,v in pairs(extra or {}) do f[k]=v end
+    return f
+end
+e.HCOB_CombatLog={totalFights=6,fights={fight("Boar",9),fight("Boar",30,{maxEnemies=2}),fight("Boar",40,{died=true}),
+    fight("Boar",11),fight("Wolf",25),fight("Boar",8)}}
+expect(engine.HistoricalKillTime("Boar",12,12),9,"median of solo kills, adds and deaths ignored")
+expect(engine.HistoricalKillTime("Boar",12,14),nil,"player level gap ignores old fights")
+expect(engine.HistoricalKillTime("Boar",13,12),9,"mob level within one shares the history")
+expect(engine.HistoricalKillTime("Boar",14,12),nil,"mob level two apart has no history")
+expect(engine.HistoricalKillTime("Wolf",12,12),nil,"fewer than three kills give no estimate")
+expect(engine.HistoricalKillTime(nil,12,12),nil,"unknown target name gives no estimate")
+local log=e.HCOB_CombatLog
+log.fights[#log.fights+1]=fight("Wolf",20);log.fights[#log.fights+1]=fight("Wolf",22);log.totalFights=8
+expect(engine.HistoricalKillTime("Wolf",12,12),22,"a new fight refreshes the cached estimate")
+e.HCOB_CombatLog=nil
+
 -- A mob the pet holds within ~10 yards is not a reason to stop casting.
 reset();ctx.target.close=true
 expect(candidate(s.SHADOW_BOLT)~=nil,true,"Shadow Bolt next to a pet-held mob")

@@ -237,8 +237,33 @@ ctx.player.hp=45;buffs[s.POWER_WORD_SHIELD]=nil;cooldown[s.MIND_BLAST]=nil
 tuner.GetCandidateBias=function(c) return c.tag=="damage" and 12 or -12 end
 expect(choose(),s.POWER_WORD_SHIELD,"actual tuner safety policy protects emergency baseline")
 
+-- Targeting alone never pulls: no opener and no slot until BASE is pressed
+-- on this target; combat clears the mark for the next pull.
+local targetGUID,hostileTarget="Creature-mob-1",true
+e.SafeUnitGUID=function() return targetGUID end
+e.HostileLiveTarget=function() return hostileTarget end
+reset();ctx.inCombat=false;priest.engagedGUID=nil
+expect(#priest:GetCandidates(ctx),0,"fresh target offers no opener")
+id,title,key=priest:GetIdleRecommendation(false,true)
+expect(id,nil,"fresh target idle has no spell slot")
+expect(title,"PULL READY","fresh target waits for BASE")
+expect(key,"PRESS BASE","fresh target asks for BASE")
+wand=false
+expect(priest:GetIdleRecommendation(false,true),nil,"fresh target without wand still has no slot")
+hostileTarget=false;priest:OnBaseInput()
+expect(priest.engagedGUID,nil,"BASE on a non-hostile target does not engage")
+hostileTarget=true;priest:OnBaseInput()
+expect(priest.engagedGUID,"Creature-mob-1","BASE on the target engages it")
+expect(choose(),s.MIND_BLAST,"BASE press starts the opener")
+expect(priest:GetIdleRecommendation(false,true),nil,"engaged target leaves the PULL READY gate")
+targetGUID="Creature-mob-2"
+expect(#priest:GetCandidates(ctx),0,"a new target needs a new BASE press")
+targetGUID="Creature-mob-1";ctx.inCombat=true;priest:GetCandidates(ctx)
+expect(priest.engagedGUID,nil,"combat clears the engagement mark")
+
 -- Leveling openers and secure contract: no learned-rank suffix or new slot.
 reset();ctx.inCombat=false;ctx.player.level=1;wand=false;known[s.MIND_BLAST]=nil
+priest.engagedGUID=targetGUID
 expect(choose(),s.SMITE,"level-one learned cast-time opener")
 ctx.player.level=10;known[s.MIND_BLAST]=true
 expect(choose(),s.MIND_BLAST,"leveling burst opener")

@@ -87,6 +87,18 @@ local function ContextText(ctx, spiritTap)
     return text
 end
 
+-- Targeting alone never pulls: the opener is an Action Panel slot, which the
+-- pixel reader presses as soon as it shows. A BASE press on this target is
+-- the decision to engage.
+local function Engaged()
+    local guid = SafeUnitGUID("target")
+    return guid ~= nil and guid == Class.engagedGUID
+end
+
+function Class:OnBaseInput()
+    if HostileLiveTarget() then Class.engagedGUID = SafeUnitGUID("target") end
+end
+
 function Class:GetCandidates(ctx)
     local candidates = {}
     local mana = ctx.player.mana
@@ -99,6 +111,7 @@ function Class:GetCandidates(ctx)
     -- Openers remain available out of combat, but self auras are never part of
     -- the idle/pre-pull recommendation stream.
     if not ctx.inCombat and ctx.hostile then
+        if not Engaged() then return candidates end
         if ctx.spec ~= 3 and canSpend(S.HOLY_FIRE, 45) then
             Engine.AddCandidate(candidates, S.HOLY_FIRE, "HOLY FIRE OPENER", "CAST MANUALLY",
                 "Open at range with a learned Holy spell while preserving recovery mana", 85, "opener")
@@ -115,7 +128,11 @@ function Class:GetCandidates(ctx)
         return candidates
     end
 
-    if not ctx.inCombat or not ctx.hostile then return candidates end
+    if not ctx.inCombat then return candidates end
+    -- The engagement mark only gates the out-of-combat opener; the next
+    -- pull needs a new BASE press.
+    Class.engagedGUID = nil
+    if not ctx.hostile then return candidates end
 
     local hp = ctx.player.hp
     local close = ctx.target.close
@@ -253,6 +270,14 @@ function Class:GetBuffRecommendation(inCombat)
 end
 
 function Class:GetIdleRecommendation(inCombat, hostile)
+    -- No spell before the pull, so the pixel stays black (the ranged BASE
+    -- fallback would show Smite or Shoot) until the player presses BASE.
+    if hostile and not inCombat and not Engaged() then
+        local readiness = Engine.lastPrePullReadiness
+        local summary = readiness and readiness.ready and readiness.summary
+        return nil, "PULL READY", "PRESS BASE",
+            "BASE starts the pull and the rotation" .. (summary and (" | " .. summary) or ""), "idle"
+    end
     -- Without a wand, generic BASE fallback would otherwise immediately offer
     -- Smite again after the class declined it for mana/casting safety.
     if hostile and (not API.HasWandEquipped() or not API.IsKnown(S.SHOOT)) then
